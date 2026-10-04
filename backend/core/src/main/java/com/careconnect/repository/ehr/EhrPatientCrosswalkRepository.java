@@ -23,6 +23,6 @@ public interface EhrPatientCrosswalkRepository extends JpaRepository<EhrPatientC
     /** Every source this patient is linked to. */
     List<EhrPatientCrosswalk> findByPatientId(Long patientId);
 
-    /* Find the user trying to link their accounts by the link token */
-    Optional<EhrPatientCrosswalk> findByLinkToken(String linkToken);
+    /** Remove this patient's link to one source (disconnect cleanup). */
+    int deleteByPatientIdAndSourceId(Long patientId, Long sourceId);
 }
