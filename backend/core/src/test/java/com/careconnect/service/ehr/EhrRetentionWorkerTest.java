@@ -4,6 +4,7 @@ import com.careconnect.repository.ehr.EhrAuditEventRepository;
 import com.careconnect.repository.ehr.EhrCoverageRecordRepository;
 import com.careconnect.repository.ehr.EhrIdentityConflictRepository;
 import com.careconnect.repository.ehr.EhrRawPayloadRepository;
+import com.careconnect.repository.ehr.EhrResourceRepository;
 import com.careconnect.repository.ehr.EhrSourceIdentityRepository;
 import com.careconnect.repository.ehr.EhrVisitRecordRepository;
 import com.careconnect.repository.ehr.PatientDateOfBirth;
@@ -39,7 +40,7 @@ import static org.mockito.Mockito.when;
  * The age logic is shared by every table, so it is exercised once, through
  * {@code ehr_raw_payload} (TC-EHR-RAW). TC-EHR-RET covers what differs per table.
  * <p>
- * Test IDs TC-EHR-RAW-004..006 and 008..012, and TC-EHR-RET-001..004 and 010, are permanent. Never
+ * Test IDs TC-EHR-RAW-004..006 and 008..012, and TC-EHR-RET-001..004 and 008, are permanent. Never
  * renumber, never reuse. The queries themselves are checked on PostgreSQL: TC-EHR-RAW-007 in
  * {@code EhrRawPayloadPostgresJsonbTest}, TC-EHR-RET-005..007 in
  * {@code EhrRetentionQueriesPostgresTest}.
@@ -62,9 +63,7 @@ class EhrRetentionWorkerTest {
     @Mock
     EhrAuditEventRepository auditEvents;
     @Mock
-    EhrCoverageRecordRepository coverages;
-    @Mock
-    EhrVisitRecordRepository visits;
+    EhrResourceRepository resources;
 
     private static PatientDateOfBirth patient(final long id, final String dob) {
         return new PatientDateOfBirth() {
@@ -81,8 +80,8 @@ class EhrRetentionWorkerTest {
     }
 
     private EhrRetentionWorker worker(final int years, final int untilAge) {
-        return new EhrRetentionWorker(rawPayloads, conflicts, sourceIdentities, auditEvents, coverages, visits,
-                years, untilAge);
+        return new EhrRetentionWorker(
+                rawPayloads, conflicts, sourceIdentities, auditEvents, resources, years, untilAge);
     }
 
     private EhrRetentionWorker worker() {
@@ -109,7 +108,7 @@ class EhrRetentionWorkerTest {
     @DisplayName("TC-EHR-RAW-005: years=0 turns the purge off and no table is read or deleted from")
     void offPurgesNothing() {
         assertThat(worker(0, 25).purgeExpired(NOW)).isZero();
-        verifyNoInteractions(rawPayloads, conflicts, sourceIdentities, auditEvents, coverages, visits);
+        verifyNoInteractions(rawPayloads, conflicts, sourceIdentities, auditEvents, resources);
     }
 
     @Test
@@ -117,7 +116,7 @@ class EhrRetentionWorkerTest {
     void negativePeriodIsOff() {
         // now.minusYears(-5) is five years ahead: every row would be older than it.
         assertThat(worker(-5, 25).purgeExpired(NOW)).isZero();
-        verifyNoInteractions(rawPayloads, conflicts, sourceIdentities, auditEvents, coverages, visits);
+        verifyNoInteractions(rawPayloads, conflicts, sourceIdentities, auditEvents, resources);
     }
 
     @Test
@@ -219,37 +218,37 @@ class EhrRetentionWorkerTest {
     }
 
     @Test
-    @DisplayName("TC-EHR-RET-004: one run covers all six tables and returns the total")
+    @DisplayName("TC-EHR-RET-008: mirrored resources are purged on last_synced_at, as an instant")
+    void purgesResourceMirror() {
+        // The current-state mirror the read APIs / Ask AI serve from; measured on last_synced_at.
+        // Patient 2 is a minor (born 2010) and is kept; the adult's rows go.
+        when(resources.findPatientsWithResourceSyncedBefore(CUTOFF_INSTANT))
+                .thenReturn(List.of(patient(1L, "1950-03-09"), patient(2L, "2010-05-01")));
+        when(resources.deleteSyncedBeforeForPatients(CUTOFF_INSTANT, List.of(1L))).thenReturn(6);
+
+        assertThat(worker().purgeExpired(NOW)).isEqualTo(6);
+        verify(resources).deleteSyncedBeforeForPatients(CUTOFF_INSTANT, List.of(1L));
+    }
+
+    @Test
+    @DisplayName("TC-EHR-RET-004: one run covers all five tables and returns the total")
     void oneRunCoversEveryTable() {
         final PatientDateOfBirth adult = patient(1L, "1950-03-09");
         when(rawPayloads.findPatientsWithPayloadRetrievedBefore(CUTOFF)).thenReturn(List.of(adult));
+        when(resources.findPatientsWithResourceSyncedBefore(CUTOFF_INSTANT)).thenReturn(List.of(adult));
         when(conflicts.findPatientsWithConflictResolvedBefore(CUTOFF_INSTANT)).thenReturn(List.of(adult));
         when(sourceIdentities.findPatientsWithSnapshotUpdatedBefore(CUTOFF_LOCAL)).thenReturn(List.of(adult));
         when(auditEvents.findPatientsWithEventBefore(CUTOFF)).thenReturn(List.of(adult));
         when(coverages.findPatientsWithCoverageUpdatedBefore(CUTOFF_LOCAL)).thenReturn(List.of(adult));
         when(visits.findPatientsWithVisitUpdatedBefore(CUTOFF_LOCAL)).thenReturn(List.of(adult));
         when(rawPayloads.deleteRetrievedBeforeForPatients(CUTOFF, List.of(1L))).thenReturn(1);
+        when(resources.deleteSyncedBeforeForPatients(CUTOFF_INSTANT, List.of(1L))).thenReturn(5);
         when(conflicts.deleteResolvedBeforeForPatients(CUTOFF_INSTANT, List.of(1L))).thenReturn(2);
         when(sourceIdentities.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(3);
         when(auditEvents.deleteEventsBeforeForPatients(CUTOFF, List.of(1L))).thenReturn(4);
         when(coverages.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(5);
         when(visits.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(6);
 
-        assertThat(worker().purgeExpired(NOW)).isEqualTo(21);
-    }
-
-    @Test
-    @DisplayName("TC-EHR-RET-010: coverage and visit records are purged on updated_at, in the zone Auditable writes")
-    void purgesCoverageAndVisitRecords() {
-        when(coverages.findPatientsWithCoverageUpdatedBefore(CUTOFF_LOCAL))
-                .thenReturn(List.of(patient(1L, "1950-03-09"), patient(2L, "2010-05-01")));
-        when(visits.findPatientsWithVisitUpdatedBefore(CUTOFF_LOCAL))
-                .thenReturn(List.of(patient(1L, "1950-03-09")));
-        when(coverages.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(2);
-        when(visits.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(3);
-
-        assertThat(worker().purgeExpired(NOW)).isEqualTo(5);
-        // The patient under 25 keeps their coverage.
-        verify(coverages).deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L));
+        assertThat(worker().purgeExpired(NOW)).isEqualTo(15);
     }
 }
