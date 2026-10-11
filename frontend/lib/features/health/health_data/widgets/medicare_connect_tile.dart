@@ -95,7 +95,8 @@ class _MedicareConnectTileState extends State<MedicareConnectTile>
       if (mounted) setState(() => _message = _Message.forError(e.error));
     } catch (_) {
       if (mounted) {
-        setState(() => _message = _Message.forError(MedicareConnectError.server));
+        setState(
+            () => _message = _Message.forError(MedicareConnectError.server));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -141,8 +142,8 @@ class _MedicareConnectTileState extends State<MedicareConnectTile>
         _message = const _Message(_Tone.info,
             'Medicare is disconnected. You can connect again anytime.');
       } else {
-        _message = const _Message(_Tone.error,
-            'We couldn\'t disconnect Medicare. Please try again.');
+        _message = const _Message(
+            _Tone.error, 'We couldn\'t disconnect Medicare. Please try again.');
       }
     });
   }
@@ -243,7 +244,8 @@ class _MedicareConnectTileState extends State<MedicareConnectTile>
         height: 24,
         child: Semantics(
           label: 'Please wait',
-          child: const CircularProgressIndicator(strokeWidth: 2.5, color: _teal),
+          child:
+              const CircularProgressIndicator(strokeWidth: 2.5, color: _teal),
         ),
       );
     }
@@ -281,8 +283,11 @@ class _MedicareConnectTileState extends State<MedicareConnectTile>
   Widget _messageBanner(_Message m) {
     final (Color fg, Color bg, IconData icon) = switch (m.tone) {
       _Tone.success => (_success, const Color(0xFFECFDF5), Icons.check_circle),
-      _Tone.info => (const Color(0xFF1E40AF), const Color(0xFFEFF6FF),
-          Icons.info_outline),
+      _Tone.info => (
+          const Color(0xFF1E40AF),
+          const Color(0xFFEFF6FF),
+          Icons.info_outline
+        ),
       _Tone.error => (_error, const Color(0xFFFEF2F2), Icons.error_outline),
     };
     return Semantics(
@@ -306,8 +311,8 @@ class _MedicareConnectTileState extends State<MedicareConnectTile>
             const SizedBox(width: 8),
             Expanded(
               child: Text(m.text,
-                  style: const TextStyle(
-                      fontSize: 15, height: 1.4, color: _text)),
+                  style:
+                      const TextStyle(fontSize: 15, height: 1.4, color: _text)),
             ),
             IconButton(
               tooltip: 'Dismiss message',
@@ -322,8 +327,18 @@ class _MedicareConnectTileState extends State<MedicareConnectTile>
 
   static String _shortDate(DateTime d) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
@@ -346,19 +361,22 @@ class _Message {
         return const _Message(_Tone.success,
             'Medicare account connected. Your Medicare claims will show in Health Data.');
       case MedicareConnectResult.cancelled:
-        return const _Message(_Tone.info,
+        return const _Message(
+            _Tone.info,
             'You didn\'t finish connecting Medicare, so nothing changed. '
             'You can try again anytime.');
       case MedicareConnectResult.failed:
         return const _Message(_Tone.error,
             'We couldn\'t connect to Medicare. Please try again in a few minutes.');
       case MedicareConnectResult.linkExpired:
-        return const _Message(_Tone.info,
+        return const _Message(
+            _Tone.info,
             'The connection timed out before it finished. '
             'Press Connect Medicare Account to try again.');
       case MedicareConnectResult.alreadyLinked:
         // Backend: ALREADY_LINKED_ELSEWHERE, i.e. a different patient.
-        return const _Message(_Tone.error,
+        return const _Message(
+            _Tone.error,
             'This Medicare account is already connected to a different '
             'CareConnect account, so we didn\'t connect it here. '
             'If you didn\'t expect this, please contact support.');
@@ -375,7 +393,8 @@ class _Message {
         return const _Message(_Tone.error,
             'Your sign-in has expired. Please sign in again, then connect Medicare.');
       case MedicareConnectError.notPatient:
-        return const _Message(_Tone.info,
+        return const _Message(
+            _Tone.info,
             'Only the patient can connect their own Medicare account. '
             'Please sign in with the patient\'s account to connect it.');
       case MedicareConnectError.network:

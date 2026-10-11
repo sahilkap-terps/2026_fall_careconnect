@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 // --- Raw values from --dart-define ---
 // We define all the compile-time variables here
 
-
 const String _backendBaseUrl = String.fromEnvironment(
   'BACKEND_URL',
   defaultValue: '',

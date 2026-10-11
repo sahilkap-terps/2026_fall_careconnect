@@ -50,7 +50,9 @@ class EmergencyInfo {
   String qrPayload() {
     final primaryContact = contacts.firstWhere(
       (c) => c.isPrimary,
-      orElse: () => contacts.isNotEmpty ? contacts.first : const _Contact(name: 'None', role: '', phone: ''),
+      orElse: () => contacts.isNotEmpty
+          ? contacts.first
+          : const _Contact(name: 'None', role: '', phone: ''),
     );
 
     // Generate PNG image data URI
@@ -87,9 +89,11 @@ class QrScreen extends StatelessWidget {
   // The base URL is now configurable via the BASE_URL environment variable.
   // Set it at build time with: flutter run --dart-define=BASE_URL=https://yourdomain.com
   // For development, it defaults to http://localhost:8080 if BASE_URL is not set.
-  static const String _baseUrl = String.fromEnvironment('BASE_URL', defaultValue: 'http://localhost:8080');
+  static const String _baseUrl =
+      String.fromEnvironment('BASE_URL', defaultValue: 'http://localhost:8080');
 
-  const QrScreen({super.key, required this.payload, this.emergencyId, this.patientId});
+  const QrScreen(
+      {super.key, required this.payload, this.emergencyId, this.patientId});
 
   @override
   Widget build(BuildContext context) {
@@ -203,9 +207,8 @@ class QrScreen extends StatelessWidget {
                           ),
                         ),
 
-
                         const SizedBox(width: 12),
-                        
+
                         // Print PDF Button
                         Expanded(
                           child: ElevatedButton.icon(
@@ -214,15 +217,16 @@ class QrScreen extends StatelessWidget {
                             label: const Text('Print Emergency PDF'),
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: theme.colorScheme.primaryContainer,
-                              foregroundColor: theme.colorScheme.onPrimaryContainer,
+                              backgroundColor:
+                                  theme.colorScheme.primaryContainer,
+                              foregroundColor:
+                                  theme.colorScheme.onPrimaryContainer,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                           ),
                         ),
-
                       ],
                     ),
                   ],
@@ -373,56 +377,46 @@ class QrScreen extends StatelessWidget {
     }
   }
 
+  // Print Emergency PDF
+  void _printPdf(BuildContext context) async {
+    if (emergencyId == null) return;
 
+    final url = _getPdfUrl();
 
-
-
-
-    // Print Emergency PDF
-    void _printPdf(BuildContext context) async {
-      if (emergencyId == null) return;
-
-      final url = _getPdfUrl();
-
-      try {
-        if (kIsWeb) {
-          // Web: open print dialog directly in new tab
-          html.window.open('$url?print=true', '_blank');
+    try {
+      if (kIsWeb) {
+        // Web: open print dialog directly in new tab
+        html.window.open('$url?print=true', '_blank');
+      } else {
+        // Mobile & Desktop: open system print dialog using OS viewer
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
         } else {
-          // Mobile & Desktop: open system print dialog using OS viewer
-          final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(
-              uri,
-              mode: LaunchMode.externalApplication,
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cannot open print dialog'),
+                backgroundColor: Colors.red,
+              ),
             );
-          } else {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Cannot open print dialog'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
           }
         }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error printing PDF: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error printing PDF: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
-
-
-
-
-
+  }
 
   // Share emergency information
   void _shareEmergencyInfo(BuildContext context) async {

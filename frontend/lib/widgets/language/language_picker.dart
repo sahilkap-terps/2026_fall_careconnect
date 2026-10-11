@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class LanguagePicker {
-
   static Future<void> show(BuildContext context) async {
     final locales = AppLocalizations.supportedLocales;
     final current = context.read<LocaleProvider>().locale;

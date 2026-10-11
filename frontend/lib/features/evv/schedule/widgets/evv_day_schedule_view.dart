@@ -48,7 +48,8 @@ class _EVVDayScheduleViewState extends State<EVVDayScheduleView> {
       return visit.scheduledTime.year == date.year &&
           visit.scheduledTime.month == date.month &&
           visit.scheduledTime.day == date.day;
-    }).toList()..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
+    }).toList()
+      ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
   }
 
   @override
@@ -222,8 +223,7 @@ class _EVVDayScheduleViewState extends State<EVVDayScheduleView> {
   }
 
   String _getEndTime(ScheduledVisit visit) {
-    final endMinutes =
-        visit.scheduledTime.hour * 60 +
+    final endMinutes = visit.scheduledTime.hour * 60 +
         visit.scheduledTime.minute +
         visit.duration.inMinutes;
     final endHour = endMinutes ~/ 60;

@@ -27,7 +27,6 @@ class VideoCallWidget extends StatefulWidget {
 }
 
 class _VideoCallWidgetState extends State<VideoCallWidget> {
-
   // final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   // final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   // MediaStream? _localStream;

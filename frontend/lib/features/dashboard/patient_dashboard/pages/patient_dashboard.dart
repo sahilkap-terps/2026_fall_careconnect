@@ -36,7 +36,6 @@ class PatientDashboard extends StatefulWidget {
 }
 
 class _PatientDashboardState extends State<PatientDashboard> {
-
   // Patient data
   Map<String, dynamic>? patient;
   List<Map<String, dynamic>> caregivers = [];
@@ -634,9 +633,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
     }
 
     _providerVideoCallsEnabled = enabled;
-    _providerCallPolicyMessage = enabled
-        ? null
-        : t.ptdashboard_videoCallDisabledByProvider;
+    _providerCallPolicyMessage =
+        enabled ? null : t.ptdashboard_videoCallDisabledByProvider;
   }
 
   int? _parseMoodScore(dynamic value) {
@@ -715,9 +713,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
     final t = AppLocalizations.of(context)!;
     final next = existing
         .where(
-          (alert) =>
-              !(alert.type == AlertType.important &&
-                  alert.message == t.ptdashboard_moodScoreLow),
+          (alert) => !(alert.type == AlertType.important &&
+              alert.message == t.ptdashboard_moodScoreLow),
         )
         .toList();
 
@@ -757,9 +754,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
     required bool hasPendingUntaken,
   }) {
     final t = AppLocalizations.of(context)!;
-    final next = existing
-        .where((alert) => !_isPendingMedicationAlert(alert))
-        .toList();
+    final next =
+        existing.where((alert) => !_isPendingMedicationAlert(alert)).toList();
 
     if (!hasPendingUntaken) {
       dismissedAlertIds.remove(t.ptdashboard_medPendingReminder);
@@ -1046,37 +1042,38 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 _providerVideoCallsEnabled
                     ? t.ptdashboard_startVideoCallProvider
                     : (_providerCallPolicyMessage ??
-                          t.ptdashboard_disabledVideoCallProvider),
+                        t.ptdashboard_disabledVideoCallProvider),
               ),
               enabled: _providerVideoCallsEnabled,
               onTap: _providerVideoCallsEnabled
                   ? () async {
                       Navigator.pop(context);
 
-                if (primaryCareProvider == null) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    SnackBar(
-                      content: Text(t.ptdashboard_providerInfoUnavailable),
-                    ),
-                  );
-                  return;
-                }
+                      if (primaryCareProvider == null) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text(t.ptdashboard_providerInfoUnavailable),
+                          ),
+                        );
+                        return;
+                      }
 
                       final user = Provider.of<UserProvider>(
                         this.context,
                         listen: false,
                       ).user;
 
-                if (user == null) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    SnackBar(
-                      content: Text(t.ptdashboard_notLoggedInCall),
-                    ),
-                  );
-                  return;
-                }
+                      if (user == null) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text(t.ptdashboard_notLoggedInCall),
+                          ),
+                        );
+                        return;
+                      }
 
                       final targetCaregiver = <String, dynamic>{
                         ...?primaryCareProvider,
@@ -1559,7 +1556,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 );
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text('${t.ptdashboard_smsSent} $name')));
+                ).showSnackBar(
+                    SnackBar(content: Text('${t.ptdashboard_smsSent} $name')));
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).primaryColor,

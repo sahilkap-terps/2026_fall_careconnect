@@ -9,7 +9,6 @@ import 'package:http/http.dart' as http;
 import '../../../../providers/user_provider.dart';
 import '../model/PostWithCommentCountDto.dart';
 
-
 class NewPostScreen extends StatefulWidget {
   const NewPostScreen({super.key});
 
@@ -43,7 +42,6 @@ class _NewPostScreenState extends State<NewPostScreen> {
         'content': content,
       });
 
-
       final response = await http.post(uri, headers: headers, body: body);
 
       print('Create post status: ${response.statusCode}');
@@ -56,15 +54,13 @@ class _NewPostScreenState extends State<NewPostScreen> {
         final newPost = PostWithCommentCountDto.fromJson(json);
         Navigator.pop(context, newPost);
       } else {
-        ScaffoldMessenger.of(
-          context
-        ).showSnackBar(SnackBar(content: Text('Error: ${response.body}')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: ${response.body}')));
       }
     } catch (e) {
       setState(() => isPosting = false);
-      ScaffoldMessenger.of(
-        context
-      ).showSnackBar(SnackBar(content: Text('Exception: ${e.toString()}')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Exception: ${e.toString()}')));
     }
   }
 

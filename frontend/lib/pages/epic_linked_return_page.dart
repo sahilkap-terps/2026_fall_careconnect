@@ -58,7 +58,8 @@ class _EpicLinkedReturnPageState extends State<EpicLinkedReturnPage> {
               const SizedBox(height: 16),
               Text(
                 _ok ? 'Epic connected' : 'Epic connection was not completed',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),

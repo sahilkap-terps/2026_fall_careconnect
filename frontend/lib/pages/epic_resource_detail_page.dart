@@ -34,7 +34,8 @@ class _EpicResourceDetailPageState extends State<EpicResourceDetailPage> {
   }
 
   Future<void> _load() async {
-    final data = await EpicService.getResource(widget.resourceType, widget.resourceId);
+    final data =
+        await EpicService.getResource(widget.resourceType, widget.resourceId);
     if (!mounted) return;
     setState(() {
       _data = data;
@@ -58,11 +59,15 @@ class _EpicResourceDetailPageState extends State<EpicResourceDetailPage> {
                     children: [
                       const Icon(Icons.local_hospital_outlined),
                       const SizedBox(width: 8),
-                      Text('From Epic (MyChart)', style: theme.textTheme.titleMedium),
+                      Text('From Epic (MyChart)',
+                          style: theme.textTheme.titleMedium),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  if (_data == null) ..._notFound(theme) else ..._details(theme),
+                  if (_data == null)
+                    ..._notFound(theme)
+                  else
+                    ..._details(theme),
                 ],
               ),
             ),
@@ -84,12 +89,17 @@ class _EpicResourceDetailPageState extends State<EpicResourceDetailPage> {
     final data = _data!;
     final resource = data['resource'];
     return [
-      _row(theme, 'Type', (data['resourceType'] ?? widget.resourceType).toString()),
+      _row(theme, 'Type',
+          (data['resourceType'] ?? widget.resourceType).toString()),
       if (data['title'] != null) _row(theme, 'Title', data['title'].toString()),
-      if (data['status'] != null) _row(theme, 'Status', data['status'].toString()),
-      if (data['occurredAt'] != null) _row(theme, 'Date', data['occurredAt'].toString()),
-      _row(theme, 'FHIR id', (data['resourceId'] ?? widget.resourceId).toString()),
-      if (data['lastSyncedAt'] != null) _row(theme, 'Last synced', data['lastSyncedAt'].toString()),
+      if (data['status'] != null)
+        _row(theme, 'Status', data['status'].toString()),
+      if (data['occurredAt'] != null)
+        _row(theme, 'Date', data['occurredAt'].toString()),
+      _row(theme, 'FHIR id',
+          (data['resourceId'] ?? widget.resourceId).toString()),
+      if (data['lastSyncedAt'] != null)
+        _row(theme, 'Last synced', data['lastSyncedAt'].toString()),
       const SizedBox(height: 16),
       Text('FHIR resource', style: theme.textTheme.titleSmall),
       const SizedBox(height: 8),
@@ -120,7 +130,8 @@ class _EpicResourceDetailPageState extends State<EpicResourceDetailPage> {
           SizedBox(
             width: 120,
             child: Text(label,
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600)),
           ),
           Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
         ],

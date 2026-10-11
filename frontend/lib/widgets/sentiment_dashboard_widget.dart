@@ -363,7 +363,8 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
-                  color: _statusColor(overallStatus, overallDisplayScore, isDark: isDark),
+                  color: _statusColor(overallStatus, overallDisplayScore,
+                      isDark: isDark),
                 ),
               ),
             )
@@ -423,11 +424,11 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
     final label = hasUsableSample ? _labelFromScore(score) : status;
     final notes = hasUsableSample
         ? _notes(channel)
-      : (status == 'DEGRADED'
-        ? 'Insights are briefly paused. Your call is still running normally.'
-        : (status == 'QUIET'
-          ? 'No speech detected in this window.'
-          : 'Listening for a stable signal...'));
+        : (status == 'DEGRADED'
+            ? 'Insights are briefly paused. Your call is still running normally.'
+            : (status == 'QUIET'
+                ? 'No speech detected in this window.'
+                : 'Listening for a stable signal...'));
     final color = _statusColor(status, score, isDark: isDark);
     final cardBg = isDark ? const Color(0xFF252540) : Colors.white;
 
@@ -491,9 +492,8 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
                     ),
                     // Filled bar
                     FractionallySizedBox(
-                      widthFactor: hasUsableSample
-                          ? score.clamp(0.0, 1.0)
-                          : 0.0,
+                      widthFactor:
+                          hasUsableSample ? score.clamp(0.0, 1.0) : 0.0,
                       child: Container(
                         height: 8,
                         decoration: BoxDecoration(
@@ -640,7 +640,8 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
   // COLOR HELPER
   // ================================================================
 
-  static Color _statusColor(String status, double score, {bool isDark = false}) =>
+  static Color _statusColor(String status, double score,
+          {bool isDark = false}) =>
       SentimentColors.forStatus(status, score, isDark: isDark);
 }
 
@@ -673,9 +674,8 @@ class _SentimentDetailScreen extends StatelessWidget {
     final color = SentimentColors.forChannel(channel, isDark: isDark);
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF0D0D1A)
-          : const Color(0xFFF5F7FA),
+      backgroundColor:
+          isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF5F7FA),
       appBar: AppBar(
         backgroundColor: isDark ? const Color(0xFF1A1A2E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black87,
@@ -853,7 +853,6 @@ class _SentimentDetailScreen extends StatelessWidget {
       }).toList(),
     );
   }
-
 }
 
 // ================================================================
@@ -886,9 +885,8 @@ class _SentimentLineChart extends StatelessWidget {
         painter: _LineChartPainter(
           points: history,
           lineColor: color,
-          gridColor: isDark
-              ? Colors.white12
-              : Colors.black.withValues(alpha: 0.08),
+          gridColor:
+              isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
           labelColor: isDark ? Colors.white38 : Colors.black38,
           isDark: isDark,
         ),

@@ -46,7 +46,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     super.initState();
   }
 
-
   @override
   void dispose() {
     _descriptionController.dispose();
@@ -54,13 +53,13 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
   }
 
   List<FileCategory> get _availableCategories {
-    if (widget.allowedCategories != null && widget.allowedCategories!.isNotEmpty) {
+    if (widget.allowedCategories != null &&
+        widget.allowedCategories!.isNotEmpty) {
       return widget.allowedCategories!;
     } else {
       return FileCategory.values;
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +78,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
             _buildFileSelector(),
             if (_selectedFile != null) ...[
               const SizedBox(height: 16),
+
               /// Remove build file preview as it is not currently supported
               /// _buildFilePreview(),
               /// const SizedBox(height: 16),
@@ -113,46 +113,46 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     );
   }
 
-  String _translateCategory(String name){
+  String _translateCategory(String name) {
     final t = AppLocalizations.of(context)!;
-    switch(name){
-      case('Medical Report'):
+    switch (name) {
+      case ('Medical Report'):
         return t.filemanage_medReport;
-      case('Lab Result'):
+      case ('Lab Result'):
         return t.filemanage_labResult;
-      case('Prescription'):
+      case ('Prescription'):
         return t.filemanage_prescription;
-      case('Clinical Notes'): 
+      case ('Clinical Notes'):
         return t.filemanage_clinicNotes;
-      case('Profile Picture'): 
+      case ('Profile Picture'):
         return t.filemanage_profilePic;
-      case('Emergency Contact'):
+      case ('Emergency Contact'):
         return t.filemanage_emgContact;
-      case('Insurance Document'):
+      case ('Insurance Document'):
         return t.filemanage_insurDocument;
-      case('AI Chat File'):
+      case ('AI Chat File'):
         return t.filemanage_aiChatFile;
-      case('General Document'):
+      case ('General Document'):
         return t.filemanage_genDocument;
-      case('Health Data Import'):
+      case ('Health Data Import'):
         return t.filemanage_hlthDataImport;
-      case('Backup File'):
+      case ('Backup File'):
         return t.filemanage_backupFile;
-      case('Employment Application'):
+      case ('Employment Application'):
         return t.filemanage_empApplication;
-      case('Onboarding Form'):
+      case ('Onboarding Form'):
         return t.filemanage_onboardForm;
-      case('Background Check'):
+      case ('Background Check'):
         return t.filemanage_backgroundCheck;
-      case('Certification / License'):
+      case ('Certification / License'):
         return t.filemanage_cert;
-      case('Reference'):
+      case ('Reference'):
         return t.filemanage_ref;
-      case('Employment Contract'):
+      case ('Employment Contract'):
         return t.filemanage_empContract;
-      case('Tax Form (W-4)'):
+      case ('Tax Form (W-4)'):
         return t.filemanage_taxForm;
-      case('Work Authorization (I-9)'):
+      case ('Work Authorization (I-9)'):
       default:
         return name;
     }
@@ -170,7 +170,8 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
       items: categories.map((category) {
         return DropdownMenuItem<FileCategory>(
           value: category,
-          child: Text('${category.icon} ${_translateCategory(category.displayName)}'),
+          child: Text(
+              '${category.icon} ${_translateCategory(category.displayName)}'),
         );
       }).toList(),
       onChanged: (value) {
@@ -184,11 +185,13 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
         }
         return null;
       },
-      initialValue: _selectedCategory,  // Starts as null!
-      hint: Text(t.manualentrywidget_selectCat),  // This shows when value is null
+      initialValue: _selectedCategory, // Starts as null!
+      hint:
+          Text(t.manualentrywidget_selectCat), // This shows when value is null
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
@@ -238,8 +241,9 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
                 Text(
                   _selectedFile != null
                       ? '${t.fileuploadwidget_fileSelected}: ${_selectedFile!.path}'
-                      : _selectedFileName != null ? '${t.fileuploadwidget_fileSelected}: $_selectedFileName' :
-                  _getFileInstructions(),
+                      : _selectedFileName != null
+                          ? '${t.fileuploadwidget_fileSelected}: $_selectedFileName'
+                          : _getFileInstructions(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _selectedFile != null
@@ -288,30 +292,31 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
 
   Widget _buildUploadButton() {
     final t = AppLocalizations.of(context)!;
-    final canUpload =
-        _selectedCategory != null &&
-            (_selectedFile != null ||
-                (_selectedFileBytes != null && _selectedFileName != null))
-            && !_isUploading;
+    final canUpload = _selectedCategory != null &&
+        (_selectedFile != null ||
+            (_selectedFileBytes != null && _selectedFileName != null)) &&
+        !_isUploading;
 
     return ElevatedButton.icon(
       onPressed: canUpload ? _uploadFileWeb : null,
       style: canUpload
           ? Theme.of(context).elevatedButtonTheme.style
           : ElevatedButton.styleFrom(
-        backgroundColor: Theme.of(context).disabledColor,
-        foregroundColor: Theme.of(
-          context,
-        ).colorScheme.onSurface.withOpacity(0.38),
-      ),
+              backgroundColor: Theme.of(context).disabledColor,
+              foregroundColor: Theme.of(
+                context,
+              ).colorScheme.onSurface.withOpacity(0.38),
+            ),
       icon: _isUploading
           ? const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      )
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : const Icon(Icons.cloud_upload),
-      label: Text(_isUploading ? '${t.fileuploadwidget_uploading}...' : t.fileuploadwidget_uploadFile),
+      label: Text(_isUploading
+          ? '${t.fileuploadwidget_uploading}...'
+          : t.fileuploadwidget_uploadFile),
     );
   }
 
@@ -350,7 +355,8 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
 
     try {
       if (kIsWeb) {
-        final (Uint8List, String)? webSelectedFile = await ComprehensiveFileService.pickFileForCategoryWeb(
+        final (Uint8List, String)? webSelectedFile =
+            await ComprehensiveFileService.pickFileForCategoryWeb(
           _selectedCategory!,
         );
         if (webSelectedFile != null) {
@@ -359,8 +365,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
             _selectedFileName = webSelectedFile.$2;
           });
         }
-      }
-      else {
+      } else {
         final File? file = await ComprehensiveFileService.pickFileForCategory(
           _selectedCategory!,
         );
@@ -453,7 +458,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
   }
 
   Future<void> _uploadFileWeb() async {
-
     if (_selectedCategory == null ||
         _selectedFileBytes == null ||
         _selectedFileName == null) {
@@ -531,8 +535,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
   }
 }
 
-
-
 /// Quick upload buttons for common file types
 class QuickUploadButtons extends StatelessWidget {
   final int? patientId;
@@ -595,11 +597,11 @@ class QuickUploadButtons extends StatelessWidget {
   }
 
   Widget _buildQuickButton(
-      BuildContext context, {
-        required IconData icon,
-        required String label,
-        required FileCategory category,
-      }) {
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required FileCategory category,
+  }) {
     return ElevatedButton.icon(
       onPressed: () => _showUploadDialog(context, category),
       style: AppTheme.secondaryButtonStyle,

@@ -74,7 +74,8 @@ class _MedicationCardState extends State<MedicationCard> {
       );
 
       unawaited(
-          Telemetry.event('feature.medications.delete_soft', {'statusCode': response.statusCode}),
+        Telemetry.event('feature.medications.delete_soft',
+            {'statusCode': response.statusCode}),
       );
 
       if (response.statusCode == 204 || response.statusCode == 200) {
@@ -162,24 +163,25 @@ class _MedicationCardState extends State<MedicationCard> {
                     Text(
                       widget.medication.medicationName,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${widget.medication.dosage} • ${widget.medication.frequency}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
                     ),
                   ],
                 ),
               ),
               // Remove button - only show when medication is active and NOT a prescription
               if (widget.medication.isActive &&
-                  widget.medication.medicationType != MedicationType.PRESCRIPTION)
+                  widget.medication.medicationType !=
+                      MedicationType.PRESCRIPTION)
                 IconButton(
                   onPressed: _isRemoving ? null : _removeMedication,
                   icon: _isRemoving
@@ -223,13 +225,13 @@ class _MedicationCardState extends State<MedicationCard> {
                   Expanded(
                     child: Text(
                       'Medication is pending caregiver approval for removal. '
-                          'Please continue to take medication as prescribed. '
-                          'If medication is causing severe symptoms, please call '
-                          'your caregiver immediately.',
+                      'Please continue to take medication as prescribed. '
+                      'If medication is causing severe symptoms, please call '
+                      'your caregiver immediately.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.orange[700],
-                        fontWeight: FontWeight.w500,
-                      ),
+                            color: Colors.orange[700],
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
                   ),
                 ],
@@ -251,10 +253,10 @@ class _MedicationCardState extends State<MedicationCard> {
               Text(
                 'Next dose: ${widget.medication.nextDose ?? "Not specified"}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
               ),
             ],
           ),
@@ -272,8 +274,8 @@ class _MedicationCardState extends State<MedicationCard> {
                 child: Text(
                   'Route: ${widget.medication.route}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                 ),
               ),
             ],
@@ -297,10 +299,10 @@ class _MedicationCardState extends State<MedicationCard> {
                   child: Text(
                     'Prescribed by: ${widget.medication.prescribedBy}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
                   ),
                 ),
               ],
@@ -325,11 +327,11 @@ class _MedicationCardState extends State<MedicationCard> {
                   child: Text(
                     widget.medication.notes!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontStyle: FontStyle.italic,
-                    ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          fontStyle: FontStyle.italic,
+                        ),
                   ),
                 ),
               ],
@@ -339,5 +341,4 @@ class _MedicationCardState extends State<MedicationCard> {
       ),
     );
   }
-
 }

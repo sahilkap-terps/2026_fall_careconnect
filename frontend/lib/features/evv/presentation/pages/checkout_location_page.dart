@@ -45,7 +45,8 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
   bool _isGettingLocation = false;
   bool _gpsAttemptFailed = false;
   String? _selectedNoGpsReason;
-  final TextEditingController _manualAddressController = TextEditingController();
+  final TextEditingController _manualAddressController =
+      TextEditingController();
 
   static const _noGpsReasons = [
     {'value': 'GPS_SERVICE_DISABLED', 'label': 'GPS service disabled'},
@@ -53,7 +54,10 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
     {'value': 'GPS_TIMEOUT', 'label': 'GPS signal timeout'},
     {'value': 'INDOOR_LOCATION', 'label': 'Indoor location (no GPS signal)'},
     {'value': 'COMMUNITY_VISIT', 'label': 'Community visit location'},
-    {'value': 'HOME_VISIT_ADDRESS_USED', 'label': 'Home visit – using patient address'},
+    {
+      'value': 'HOME_VISIT_ADDRESS_USED',
+      'label': 'Home visit – using patient address'
+    },
     {'value': 'OTHER', 'label': 'Other reason'},
   ];
 
@@ -78,7 +82,7 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
 
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final user = userProvider.user;
-      
+
       if (user == null) {
         throw Exception('User not authenticated');
       }
@@ -89,7 +93,7 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        
+
         // Find the specific patient
         for (var json in data) {
           try {
@@ -117,10 +121,11 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
             print('Error parsing patient: $e');
           }
         }
-        
+
         throw Exception('Patient not found');
       } else {
-        throw Exception('Failed to load patient details: ${response.statusCode}');
+        throw Exception(
+            'Failed to load patient details: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
@@ -140,7 +145,8 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         setState(() => _gpsAttemptFailed = true);
-        _showLocationError('Location services are disabled. Please enable location services in your device settings.');
+        _showLocationError(
+            'Location services are disabled. Please enable location services in your device settings.');
         return;
       }
 
@@ -150,14 +156,16 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           setState(() => _gpsAttemptFailed = true);
-          _showLocationError('Location permissions are denied. Please enable location permissions to use GPS location.');
+          _showLocationError(
+              'Location permissions are denied. Please enable location permissions to use GPS location.');
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
         setState(() => _gpsAttemptFailed = true);
-        _showLocationError('Location permissions are permanently denied. Please enable location permissions in your device settings.');
+        _showLocationError(
+            'Location permissions are permanently denied. Please enable location permissions in your device settings.');
         return;
       }
 
@@ -178,7 +186,6 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
         longitude: position.longitude,
         accuracyM: position.accuracy,
       );
-
     } catch (e) {
       setState(() {
         _isGettingLocation = false;
@@ -380,15 +387,15 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     if (_error != null) {
       return _buildErrorState();
     }
-    
+
     if (_selectedPatient == null) {
       return _buildPatientNotFoundState();
     }
-    
+
     return _buildLocationSelection();
   }
 
@@ -558,7 +565,8 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.edit_location_alt, color: Colors.orange[600]!, size: 24),
+                    Icon(Icons.edit_location_alt,
+                        color: Colors.orange[600]!, size: 24),
                     const SizedBox(width: 12),
                     Text(
                       'Enter Manual Location',
@@ -581,7 +589,8 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
                   decoration: InputDecoration(
                     labelText: 'Visit Address',
                     hintText: '123 Main St, City, State 12345',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     prefixIcon: const Icon(Icons.home_work),
                   ),
                   maxLines: 2,
@@ -591,7 +600,8 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
                   initialValue: _selectedNoGpsReason,
                   decoration: InputDecoration(
                     labelText: 'Reason GPS Not Used',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                     prefixIcon: const Icon(Icons.info_outline),
                   ),
                   items: _noGpsReasons
@@ -600,7 +610,8 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
                             child: Text(r['label']!),
                           ))
                       .toList(),
-                  onChanged: (val) => setState(() => _selectedNoGpsReason = val),
+                  onChanged: (val) =>
+                      setState(() => _selectedNoGpsReason = val),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(

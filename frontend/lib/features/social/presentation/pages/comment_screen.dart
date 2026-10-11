@@ -67,9 +67,8 @@ class _CommentScreenState extends State<CommentScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          comments = (data as List)
-              .map((json) => CommentDto.fromJson(json))
-              .toList();
+          comments =
+              (data as List).map((json) => CommentDto.fromJson(json)).toList();
           isLoading = false;
         });
       } else {
@@ -84,7 +83,9 @@ class _CommentScreenState extends State<CommentScreen> {
   }
 
   Future<void> submitComment() async {
-    if (_userId == null || _username == null || _commentController.text.trim().isEmpty) {
+    if (_userId == null ||
+        _username == null ||
+        _commentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User not loaded or comment empty')),
       );
@@ -110,7 +111,6 @@ class _CommentScreenState extends State<CommentScreen> {
     );
 
     setState(() => isSubmitting = false);
-
 
     if (response.statusCode == 201) {
       _commentController.clear();
@@ -153,13 +153,13 @@ class _CommentScreenState extends State<CommentScreen> {
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : comments.isEmpty
-                ? const Center(child: Text('No comments yet.'))
-                : ListView.builder(
-                    itemCount: comments.length,
-                    itemBuilder: (context, index) {
-                      return buildCommentCard(comments[index]);
-                    },
-                  ),
+                    ? const Center(child: Text('No comments yet.'))
+                    : ListView.builder(
+                        itemCount: comments.length,
+                        itemBuilder: (context, index) {
+                          return buildCommentCard(comments[index]);
+                        },
+                      ),
           ),
           const Divider(height: 1),
           Padding(

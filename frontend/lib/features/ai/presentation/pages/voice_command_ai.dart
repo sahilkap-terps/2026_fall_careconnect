@@ -168,13 +168,21 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
     _CommandMatch(
         phrase: 'smart devices', intent: 'navigate', entity: 'smart devices'),
     _CommandMatch(
-        phrase: 'show smart devices', intent: 'navigate', entity: 'smart devices'),
+        phrase: 'show smart devices',
+        intent: 'navigate',
+        entity: 'smart devices'),
     _CommandMatch(
-        phrase: 'my smart devices', intent: 'navigate', entity: 'smart devices'),
+        phrase: 'my smart devices',
+        intent: 'navigate',
+        entity: 'smart devices'),
     _CommandMatch(
-        phrase: 'open my smart devices', intent: 'navigate', entity: 'smart devices'),
+        phrase: 'open my smart devices',
+        intent: 'navigate',
+        entity: 'smart devices'),
     _CommandMatch(
-        phrase: 'take me to smart devices', intent: 'navigate', entity: 'smart devices'),
+        phrase: 'take me to smart devices',
+        intent: 'navigate',
+        entity: 'smart devices'),
     _CommandMatch(
         phrase: 'open home monitoring',
         intent: 'navigate',
@@ -187,7 +195,9 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
     _CommandMatch(
         phrase: 'show social feed', intent: 'navigate', entity: 'social feed'),
     _CommandMatch(
-        phrase: 'take me to social feed', intent: 'navigate', entity: 'social feed'),
+        phrase: 'take me to social feed',
+        intent: 'navigate',
+        entity: 'social feed'),
     // Caregiver
     _CommandMatch(
         phrase: 'open patient list',
@@ -205,17 +215,26 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
     _CommandMatch(phrase: 'e-v-v', intent: 'navigate', entity: 'evv'),
     _CommandMatch(phrase: 'open e v v', intent: 'navigate', entity: 'evv'),
     _CommandMatch(phrase: 'open ee vee vee', intent: 'navigate', entity: 'evv'),
-    _CommandMatch(phrase: 'electronic visit verification', intent: 'navigate', entity: 'evv'),
-    _CommandMatch(phrase: 'open electronic visit verification', intent: 'navigate', entity: 'evv'),
-    _CommandMatch(phrase: 'visit verification', intent: 'navigate', entity: 'evv'),
+    _CommandMatch(
+        phrase: 'electronic visit verification',
+        intent: 'navigate',
+        entity: 'evv'),
+    _CommandMatch(
+        phrase: 'open electronic visit verification',
+        intent: 'navigate',
+        entity: 'evv'),
+    _CommandMatch(
+        phrase: 'visit verification', intent: 'navigate', entity: 'evv'),
     _CommandMatch(phrase: 'start evv', intent: 'navigate', entity: 'evv'),
     _CommandMatch(phrase: 'clock in', intent: 'navigate', entity: 'evv'),
     _CommandMatch(phrase: 'clock out', intent: 'navigate', entity: 'evv'),
     _CommandMatch(
         phrase: 'open note taker', intent: 'navigate', entity: 'notetaker'),
     _CommandMatch(
-        phrase: 'take me to note taker', intent: 'navigate', entity: 'notetaker'),
-     _CommandMatch(
+        phrase: 'take me to note taker',
+        intent: 'navigate',
+        entity: 'notetaker'),
+    _CommandMatch(
         phrase: 'note taker', intent: 'navigate', entity: 'notetaker'),
     _CommandMatch(
         phrase: 'open invoice assistant',
@@ -231,7 +250,7 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
         phrase: 'open informed delivery',
         intent: 'navigate',
         entity: 'informed delivery'),
-        _CommandMatch(
+    _CommandMatch(
         phrase: 'open information delivery',
         intent: 'navigate',
         entity: 'informed delivery'),
@@ -246,12 +265,9 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
         intent: 'navigate',
         entity: 'achievements'),
     _CommandMatch(phrase: 'open search', intent: 'navigate', entity: 'search'),
-    _CommandMatch(
-        phrase: 'search', intent: 'navigate', entity: 'search'),
-    _CommandMatch(
-        phrase: 'go to search', intent: 'navigate', entity: 'search'),
-    _CommandMatch(
-        phrase: 'show search', intent: 'navigate', entity: 'search'),
+    _CommandMatch(phrase: 'search', intent: 'navigate', entity: 'search'),
+    _CommandMatch(phrase: 'go to search', intent: 'navigate', entity: 'search'),
+    _CommandMatch(phrase: 'show search', intent: 'navigate', entity: 'search'),
     _CommandMatch(
         phrase: 'take me to search', intent: 'navigate', entity: 'search'),
     _CommandMatch(
@@ -265,15 +281,21 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
         intent: 'navigate',
         entity: 'ai configuration'),
     _CommandMatch(
-        phrase: 'ai configuration', intent: 'navigate', entity: 'ai configuration'),
+        phrase: 'ai configuration',
+        intent: 'navigate',
+        entity: 'ai configuration'),
     _CommandMatch(
         phrase: 'ai settings', intent: 'navigate', entity: 'ai configuration'),
     _CommandMatch(
-        phrase: 'open ai settings', intent: 'navigate', entity: 'ai configuration'),
+        phrase: 'open ai settings',
+        intent: 'navigate',
+        entity: 'ai configuration'),
     _CommandMatch(
         phrase: 'configure ai', intent: 'navigate', entity: 'ai configuration'),
     _CommandMatch(
-        phrase: 'take me to ai configuration', intent: 'navigate', entity: 'ai configuration'),
+        phrase: 'take me to ai configuration',
+        intent: 'navigate',
+        entity: 'ai configuration'),
     //emergency
     _CommandMatch(phrase: 'emergency', intent: 'sos', entity: 'emergency'),
   ];
@@ -346,7 +368,8 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
     if (_currentThemeModel.useThemeSurface) {
       return Theme.of(context).colorScheme.surface;
     }
-    return _currentThemeModel.surfaceColor ?? Theme.of(context).colorScheme.surface;
+    return _currentThemeModel.surfaceColor ??
+        Theme.of(context).colorScheme.surface;
   }
 
   Color _cardColor() {
@@ -1077,11 +1100,10 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
 
       // Fall through to keyword matching
       final phraseMatches = _commandTable
-          .where(
-              (c) => _containsCommandPhrase(
-                    cmd,
-                    _commandPhraseToTranslatedString(c.phrase),
-                  ))
+          .where((c) => _containsCommandPhrase(
+                cmd,
+                _commandPhraseToTranslatedString(c.phrase),
+              ))
           .toList();
 
       // Keep deterministic commands usable in natural utterances while
@@ -1090,9 +1112,8 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
       // "home" alias.
       final longestPhraseLength = phraseMatches.fold<int>(
         0,
-        (longest, match) => match.phrase.length > longest
-            ? match.phrase.length
-            : longest,
+        (longest, match) =>
+            match.phrase.length > longest ? match.phrase.length : longest,
       );
       final mostSpecificMatches = phraseMatches
           .where((match) => match.phrase.length == longestPhraseLength)
@@ -1229,8 +1250,7 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
   }
 
   bool _containsCommandPhrase(String command, String phrase) {
-    final phrasePattern =
-        RegExp.escape(phrase.trim()).replaceAll(' ', r'\s+');
+    final phrasePattern = RegExp.escape(phrase.trim()).replaceAll(' ', r'\s+');
     return RegExp(
       '(^|\\W)$phrasePattern(?=\\W|\$)',
       caseSensitive: false,
@@ -1801,7 +1821,8 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
             key: const Key('voice_theme_dropdown'),
             value: _currentTheme,
             itemHeight: kMinInteractiveDimension,
-            dropdownColor: _currentThemeModel.isFuturistic ? _cardColor() : null,
+            dropdownColor:
+                _currentThemeModel.isFuturistic ? _cardColor() : null,
             iconEnabledColor: Colors.white,
             style: TextStyle(
               color: menuTextColor,

@@ -39,7 +39,6 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-
       final authResult = await EnhancedAuthService.loginWithRoleValidation(
         email: _email.text.trim(),
         password: _pwd.text,
@@ -59,7 +58,8 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         Provider.of<UserProvider>(context, listen: false).setUser(user);
-        await Provider.of<UserProvider>(context, listen: false).fetchUserDetails();
+        await Provider.of<UserProvider>(context, listen: false)
+            .fetchUserDetails();
         await Future.delayed(const Duration(milliseconds: 100));
         navigateToDashboard(context, routePatientToDailyBrief: true);
       } else {
@@ -71,7 +71,8 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       setState(() {
-        _error = '${AppLocalizations.of(context)?.login_loginFailedError ?? 'Login failed'}: $e';
+        _error =
+            '${AppLocalizations.of(context)?.login_loginFailedError ?? 'Login failed'}: $e';
       });
     } finally {
       setState(() => _busy = false);
@@ -81,7 +82,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -440,9 +440,11 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       _buildSecurityBadge(t.login_badgeSecure, Icons.security),
                       const SizedBox(width: 16),
-                      _buildSecurityBadge(t.login_badgeHipaa, Icons.verified_user),
+                      _buildSecurityBadge(
+                          t.login_badgeHipaa, Icons.verified_user),
                       const SizedBox(width: 16),
-                      _buildSecurityBadge(t.login_badgeAccessible, Icons.accessibility),
+                      _buildSecurityBadge(
+                          t.login_badgeAccessible, Icons.accessibility),
                     ],
                   ),
 
@@ -460,7 +462,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(width: 16),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppTheme.primary,
                           borderRadius: BorderRadius.circular(4),

@@ -258,7 +258,9 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       builder: (_, __) => const UiPreviewScreen(),
     ),
     GoRoute(path: '/stml/brief', builder: (_, __) => const StmlBriefPage()),
-    GoRoute(path: '/summaries', builder: (_, __) => const SummaryConfirmationList()),
+    GoRoute(
+        path: '/summaries',
+        builder: (_, __) => const SummaryConfirmationList()),
     GoRoute(path: '/stml/recall', builder: (_, __) => const StmlRecallPage()),
     GoRoute(path: '/stml/search', builder: (_, __) => const StmlSearchPage()),
     GoRoute(
@@ -277,7 +279,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return StmlCheckInPage(patientId: patientId);
       },
     ),
-    GoRoute(path: '/symptoms', builder: (_, __) => const SymptomsAllergiesPage()),
+    GoRoute(
+        path: '/symptoms', builder: (_, __) => const SymptomsAllergiesPage()),
     GoRoute(
       path: '/login',
       builder: (context, state) {

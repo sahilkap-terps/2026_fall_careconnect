@@ -52,8 +52,9 @@ class _SchedulePageState extends State<SchedulePage> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final isPatient =
         (userProvider.user?.role.toUpperCase() ?? '') == 'PATIENT';
-    _perspective =
-        isPatient ? _SchedulePerspective.patient : _SchedulePerspective.caregiver;
+    _perspective = isPatient
+        ? _SchedulePerspective.patient
+        : _SchedulePerspective.caregiver;
     _loadScheduledVisits();
     _loadUpcomingVisits();
     _loadAndSetSummaryData();
@@ -109,7 +110,8 @@ class _SchedulePageState extends State<SchedulePage> {
       }
 
       print('🔍 Fetching scheduled visits (week range) from: $url');
-      final response = await ApiServiceOffline.httpClient.get(url, headers: headers);
+      final response =
+          await ApiServiceOffline.httpClient.get(url, headers: headers);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -120,16 +122,15 @@ class _SchedulePageState extends State<SchedulePage> {
         final startWindow = now.subtract(const Duration(days: 7));
         final visits = all.where((v) {
           final dt = v.scheduledTime;
-          final isToday =
-              dt.year == today.year &&
+          final isToday = dt.year == today.year &&
               dt.month == today.month &&
               dt.day == today.day;
-          final isOverdueWithinWeek =
-              dt.isBefore(now) &&
+          final isOverdueWithinWeek = dt.isBefore(now) &&
               dt.isAfter(startWindow) &&
               v.status == 'Scheduled';
           return isToday || isOverdueWithinWeek;
-        }).toList()..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
+        }).toList()
+          ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
 
         setState(() {
           _scheduledVisits = visits;
@@ -178,13 +179,13 @@ class _SchedulePageState extends State<SchedulePage> {
         );
       }
 
-      final response = await ApiServiceOffline.httpClient.get(url, headers: headers);
+      final response =
+          await ApiServiceOffline.httpClient.get(url, headers: headers);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final visits = data
-            .map((json) => ScheduledVisit.fromJson(json))
-            .toList();
+        final visits =
+            data.map((json) => ScheduledVisit.fromJson(json)).toList();
 
         // Sort by date and time
         visits.sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
@@ -232,7 +233,8 @@ class _SchedulePageState extends State<SchedulePage> {
         );
       }
 
-      final response = await ApiServiceOffline.httpClient.get(url, headers: headers);
+      final response =
+          await ApiServiceOffline.httpClient.get(url, headers: headers);
       if (response.statusCode != 200) {
         throw Exception('summary range fetch failed');
       }
@@ -269,11 +271,9 @@ class _SchedulePageState extends State<SchedulePage> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('EVV Visit Schedules'),
-
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -448,9 +448,7 @@ class _SchedulePageState extends State<SchedulePage> {
               tooltip: _filtersExpanded ? 'Hide Filters' : 'Show Filters',
               icon: Icon(
                 _filtersExpanded ? Icons.filter_list_off : Icons.filter_list,
-                color: _hasActiveFilters
-                    ? cs.primary
-                    : cs.onSurfaceVariant,
+                color: _hasActiveFilters ? cs.primary : cs.onSurfaceVariant,
               ),
               onPressed: () =>
                   setState(() => _filtersExpanded = !_filtersExpanded),
@@ -700,8 +698,7 @@ class _SchedulePageState extends State<SchedulePage> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 18),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         filled: true,
         fillColor: cs.surface,
@@ -812,8 +809,7 @@ class _SchedulePageState extends State<SchedulePage> {
         children: [
           // Patient header row
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: cs.primaryContainer.withOpacity(0.4),
             ),
@@ -1218,7 +1214,8 @@ class _SchedulePageState extends State<SchedulePage> {
     final cappedScale = MediaQuery.of(context).textScaleFactor.clamp(1.0, 1.2);
 
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(cappedScale)),
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(cappedScale)),
       child: Container(
         // Allow it to grow if needed, but ensure a comfortable minimum
         constraints: const BoxConstraints(minHeight: 98),
@@ -1888,7 +1885,8 @@ class _ScheduleVisitDialogState extends State<_ScheduleVisitDialog> {
       final baseUrl = ApiConstants.baseUrl;
       final url = Uri.parse('${baseUrl}caregivers/$caregiverId/patients');
 
-      final response = await ApiServiceOffline.httpClient.get(url, headers: headers);
+      final response =
+          await ApiServiceOffline.httpClient.get(url, headers: headers);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -2274,9 +2272,9 @@ class _ScheduleVisitDialogState extends State<_ScheduleVisitDialog> {
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
                                     ),
                                     child: Text(
                                       DateFormat(
@@ -2305,9 +2303,9 @@ class _ScheduleVisitDialogState extends State<_ScheduleVisitDialog> {
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
                                     ),
                                     child: Text(
                                       _selectedTime != null
@@ -2362,9 +2360,7 @@ class _ScheduleVisitDialogState extends State<_ScheduleVisitDialog> {
                                               fontSize: 16,
                                               fontWeight: FontWeight.w500,
                                               color: theme
-                                                  .textTheme
-                                                  .bodyLarge
-                                                  ?.color,
+                                                  .textTheme.bodyLarge?.color,
                                             ),
                                           ),
                                         ),
@@ -2457,9 +2453,8 @@ class _ScheduleVisitDialogState extends State<_ScheduleVisitDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: _isSubmitting
-                        ? null
-                        : () => Navigator.pop(context),
+                    onPressed:
+                        _isSubmitting ? null : () => Navigator.pop(context),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,

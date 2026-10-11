@@ -296,8 +296,6 @@ class _EnhancedPatientNotesWidgetState
     }
   }
 
-
-
   void _previewFile(UserFileDTO file) {
     if (file.isPreviewable) {
       showDialog(
@@ -343,60 +341,60 @@ class _EnhancedPatientNotesWidgetState
                     padding: const EdgeInsets.all(16),
                     child: file.isImage
                         ? FutureBuilder<Uint8List?>(
-                      future: EnhancedFileService.downloadFile(file.id),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        if (snapshot.hasData) {
-                          return Image.memory(
-                            snapshot.data!,
-                            fit: BoxFit.contain,
-                          );
-                        }
-                        return const Center(
-                          child: Text('Failed to load image'),
-                        );
-                      },
-                    )
+                            future: EnhancedFileService.downloadFile(file.id),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
+                              if (snapshot.hasData) {
+                                return Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.contain,
+                                );
+                              }
+                              return const Center(
+                                child: Text('Failed to load image'),
+                              );
+                            },
+                          )
                         : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.description,
-                            size: 64,
-                            color: Theme.of(context).primaryColor,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.description,
+                                  size: 64,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Document Preview',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'File: ${file.originalFilename}',
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Size: ${_formatFileSize(file.fileSize)}',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: () => _downloadFile(file),
+                                  icon: const Icon(Icons.download),
+                                  label: const Text('Download to View'),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Document Preview',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'File: ${file.originalFilename}',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Size: ${_formatFileSize(file.fileSize)}',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () => _downloadFile(file),
-                            icon: const Icon(Icons.download),
-                            label: const Text('Download to View'),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
               ],
@@ -481,7 +479,7 @@ class _EnhancedPatientNotesWidgetState
                 ),
               )
             else if (_displayedFiles.isEmpty)
-            // Empty state
+              // Empty state
               Center(
                 child: Column(
                   children: [
@@ -509,7 +507,7 @@ class _EnhancedPatientNotesWidgetState
                 ),
               )
             else
-            // Files list
+              // Files list
               Column(
                 children: [
                   ..._displayedFiles.map((file) => _buildFileItem(file)),
@@ -621,5 +619,4 @@ class _EnhancedPatientNotesWidgetState
       ),
     );
   }
-
 }
