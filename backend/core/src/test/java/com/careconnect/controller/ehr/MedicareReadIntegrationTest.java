@@ -2,6 +2,7 @@ package com.careconnect.controller.ehr;
 
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
+import com.careconnect.model.CaregiverPatientLink;
 import com.careconnect.model.Patient;
 import com.careconnect.model.User;
 import com.careconnect.model.ehr.EhrAuditEvent;
@@ -11,6 +12,7 @@ import com.careconnect.model.ehr.EhrRetrievalOutcome;
 import com.careconnect.model.ehr.EhrSource;
 import com.careconnect.model.ehr.MedicareProperties;
 import com.careconnect.model.ehr.MedicareStatusGate;
+import com.careconnect.repository.CaregiverPatientLinkRepository;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.repository.ehr.EhrAuditEventRepository;
@@ -54,6 +56,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -122,6 +125,8 @@ class MedicareReadIntegrationTest {
     EhrVisitRecordRepository visits;
     @Autowired
     EhrAuditEventRepository auditEvents;
+    @Autowired
+    CaregiverPatientLinkRepository caregiverLinks;
 
     private Long medicareId;
     private Patient patient1;
@@ -380,5 +385,73 @@ class MedicareReadIntegrationTest {
         row.setPhotoStripped(false);
         row.setRetrievedAt(at);
         return row;
+    }
+
+    // Caregiver reads by patientId (FR-MCR-16, FR-MCR-17, NFR-SEC-05) over the real link queries.
+
+    private User caregiver(final String email) {
+        return users.save(User.builder().email(email).password("not-a-real-hash").role(Role.CAREGIVER).build());
+    }
+
+    private void caregiverLink(final User caregiver, final Patient p, final CaregiverPatientLink.LinkStatus status,
+                               final LocalDateTime expiresAt) {
+        final CaregiverPatientLink l = new CaregiverPatientLink(caregiver, p.getUser(), p.getUser(),
+                CaregiverPatientLink.LinkType.PERMANENT);
+        l.setStatus(status);
+        l.setExpiresAt(expiresAt);
+        caregiverLinks.save(l);
+    }
+
+    private static void signIn(final User u) {
+        SecurityContextHolder.setContext(new SecurityContextImpl(
+                new UsernamePasswordAuthenticationToken(u.getEmail(), null, List.of())));
+    }
+
+    @Test
+    @DisplayName("a caregiver with an active link reads the patient's coverage, and the audit row names the caregiver")
+    void linkedCaregiverReadsPatientCoverage() throws Exception {
+        link(patient1, "enc");
+        final User cg = caregiver("cg-active@example.test");
+        caregiverLink(cg, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        signIn(cg);
+        blueButtonServesFixtures();
+
+        final ResponseEntity<Object> response = controller.fetchCoverage("medicare", patient1.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(body(response).get("total").asInt()).isEqualTo(2);
+        assertThat(audits(patient1, "Coverage")).singleElement()
+                .satisfies(e -> assertThat(e.getActorUserId()).isEqualTo(cg.getId()));
+    }
+
+    @Test
+    @DisplayName("an expired, revoked or missing caregiver link is a 403, and Blue Button is never asked")
+    void inactiveCaregiverLinksAre403() {
+        link(patient1, "enc");
+        final User expired = caregiver("cg-expired@example.test");
+        caregiverLink(expired, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, LocalDateTime.now().minusDays(1));
+        final User revoked = caregiver("cg-revoked@example.test");
+        caregiverLink(revoked, patient1, CaregiverPatientLink.LinkStatus.REVOKED, null);
+        final User stranger = caregiver("cg-none@example.test");
+        caregiverLink(stranger, patient2, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+
+        for (final User u : List.of(expired, revoked, stranger)) {
+            signIn(u);
+            assertThat(controller.fetchVisits("medicare", patient1.getId()).getStatusCode())
+                    .as(u.getEmail()).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+        verifyNoInteractions(medicare);
+    }
+
+    @Test
+    @DisplayName("a patient asking for another patient's id is a 403, while their own id reads normally")
+    void patientCannotReadAnotherPatient() {
+        link(patient1, "enc");
+        link(patient2, "enc");
+        signIn(patient2);
+        blueButtonServesFixtures();
+
+        assertThat(controller.fetchCoverage("medicare", patient1.getId()).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(controller.fetchCoverage("medicare", patient2.getId()).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }
