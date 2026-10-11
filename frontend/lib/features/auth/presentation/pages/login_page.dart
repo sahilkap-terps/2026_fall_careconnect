@@ -22,7 +22,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _email = TextEditingController();
   final TextEditingController _pwd = TextEditingController();
   bool _busy = false;
-  final bool _googleSignInBusy = false;
   String? _error;
   bool _showPassword = false;
 
@@ -40,7 +39,6 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final extra = GoRouter.of(context).routerDelegate.currentConfiguration.extra;
 
       final authResult = await EnhancedAuthService.loginWithRoleValidation(
         email: _email.text.trim(),
@@ -84,13 +82,6 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
 
-    final extra = GoRouter.of(context).routerDelegate.currentConfiguration.extra;
-    String userType = 'patient';
-    if (widget.userType != null) {
-      userType = widget.userType!;
-    } else if (extra != null && extra is Map<String, dynamic> && extra.containsKey('userType')) {
-      userType = extra['userType'];
-    }
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 

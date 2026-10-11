@@ -31,7 +31,6 @@ class _SpeechToTextCardState extends State<SpeechToTextCard> {
   @override
   void initState() {
     super.initState();
-    final categories = _availableCategories;
     _speech = stt.SpeechToText();
   }
 

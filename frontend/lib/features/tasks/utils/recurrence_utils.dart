@@ -48,9 +48,6 @@ class RecurrenceUtils {
     int? intervalToSend = interval;
     int? countToSend = count;
 
-    // Preserve original task type safely
-    final normalizedTaskType = baseTask.taskType?.toLowerCase();
-
     // Default effective start date
     DateTime effectiveDate = (startDate ?? baseTask.date).toLocal();
     // Normalize end date if provided

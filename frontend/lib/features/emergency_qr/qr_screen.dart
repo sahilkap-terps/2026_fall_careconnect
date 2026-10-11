@@ -8,9 +8,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'html_stub.dart' if (dart.library.html) 'dart:html' as html;
-import 'dart:convert';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 class _Contact {
   final String name;
@@ -317,6 +314,7 @@ class QrScreen extends StatelessWidget {
           // For web: Trigger browser download
           final blob = html.Blob([response.bodyBytes]);
           final url = html.Url.createObjectUrlFromBlob(blob);
+          // ignore: unused_local_variable
           final anchor = html.AnchorElement(href: url)
             ..setAttribute('download', 'emergency-$emergencyId.pdf')
             ..click();

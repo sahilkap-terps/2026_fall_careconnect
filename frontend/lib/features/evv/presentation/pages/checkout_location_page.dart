@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../../providers/user_provider.dart';
 import '../../../../services/api_service.dart';
-import '../../../../services/auth_token_manager.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../dashboard/models/patient_model.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 
 class CheckoutLocationPage extends StatefulWidget {
   final int patientId;
@@ -46,11 +43,9 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
   bool _isLoading = true;
   String? _error;
   bool _isGettingLocation = false;
-  Position? _currentPosition;
   bool _gpsAttemptFailed = false;
   String? _selectedNoGpsReason;
   final TextEditingController _manualAddressController = TextEditingController();
-  final bool _showManualEntry = false;
 
   static const _noGpsReasons = [
     {'value': 'GPS_SERVICE_DISABLED', 'label': 'GPS service disabled'},
@@ -173,7 +168,6 @@ class _CheckoutLocationPageState extends State<CheckoutLocationPage> {
       );
 
       setState(() {
-        _currentPosition = position;
         _isGettingLocation = false;
       });
 

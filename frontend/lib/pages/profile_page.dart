@@ -192,6 +192,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (user != null) {
         // Prepare the payload based on your API's nested address structure
+        // TODO(team-b): the update call below is commented out, so this
+        // payload is never sent and the success message is misleading.
+        // ignore: unused_local_variable
         final profileData = {
           'firstName': _nameController.text.split(' ').first,
           'lastName': _nameController.text.contains(' ')

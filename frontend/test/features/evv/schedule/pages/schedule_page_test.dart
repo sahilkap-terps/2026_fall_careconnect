@@ -931,7 +931,6 @@ void main() {
     testWidgets('tapping View Details on upcoming visit shows dialog',
         (tester) async {
       // Visit dialog content labels changed; needs investigation.
-      return;
       final now = DateTime.now();
       // Use 14:00 (safe — won't wrap past midnight on any timezone)
       final visits = [
@@ -972,7 +971,7 @@ void main() {
       expect(find.text('Status:'), findsOneWidget);
       expect(find.text('Close'), findsOneWidget);
       expect(find.text('Start Visit'), findsOneWidget);
-    });
+    }, skip: true);
 
     testWidgets('View Details dialog Close button dismisses it',
         (tester) async {

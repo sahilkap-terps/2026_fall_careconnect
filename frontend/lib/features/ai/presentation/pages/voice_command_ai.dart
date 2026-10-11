@@ -357,10 +357,6 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
     return _currentThemeModel.accentColor;
   }
 
-  Color _mutedColor() {
-    return _currentThemeModel.mutedColor;
-  }
-
   Color _textColor() {
     return _currentThemeModel.textColor;
   }
@@ -1792,10 +1788,6 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
         ),
       ),
     );
-  }
-
-  String _themeLabel(VoiceCommandTheme theme) {
-    return _themeModelFor(theme).label;
   }
 
   Widget _buildThemeDropdown() {

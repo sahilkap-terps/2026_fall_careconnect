@@ -88,10 +88,6 @@ class ParsedAddress {
 class GooglePlacesService {
   final String? apiKey;
   final String backendBase;
-  static const String _placesSearchUrl =
-      'https://maps.googleapis.com/maps/api/place/autocomplete/json';
-  static const String _placeDetailsUrl =
-      'https://maps.googleapis.com/maps/api/place/details/json';
 
   GooglePlacesService({this.apiKey, required this.backendBase});
 

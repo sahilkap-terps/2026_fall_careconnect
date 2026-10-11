@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../features/dashboard/models/patient_model.dart';
@@ -79,7 +78,9 @@ class EvvService {
         if (Platform.isAndroid) {
           try {
             final androidInfo = await deviceInfo.androidInfo;
+            // ignore: dead_null_aware_expression
             info['deviceModel'] = androidInfo.model ?? 'Unknown Android';
+            // ignore: dead_null_aware_expression
             info['deviceManufacturer'] = androidInfo.manufacturer ?? 'Unknown';
           } catch (e) {
             print('⚠️ Android info failed: $e');
@@ -87,7 +88,9 @@ class EvvService {
         } else if (Platform.isIOS) {
           try {
             final iosInfo = await deviceInfo.iosInfo;
+            // ignore: dead_null_aware_expression
             info['deviceModel'] = iosInfo.model ?? 'Unknown iOS';
+            // ignore: dead_null_aware_expression
             info['deviceName'] = iosInfo.name ?? 'Unknown';
           } catch (e) {
             print('⚠️ iOS info failed: $e');
@@ -128,40 +131,6 @@ class EvvService {
   Future<bool> _isOnline() async {
     final connectivityResult = await _connectivity.checkConnectivity();
     return connectivityResult != ConnectivityResult.none;
-  }
-
-  // Get current location
-  Future<Map<String, double>?> _getCurrentLocation() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return null;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return null;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        return null;
-      }
-
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      return {
-        'lat': position.latitude,
-        'lng': position.longitude,
-      };
-    } catch (e) {
-      print('Error getting location: $e');
-      return null;
-    }
   }
 
   // Get headers with JWT authentication

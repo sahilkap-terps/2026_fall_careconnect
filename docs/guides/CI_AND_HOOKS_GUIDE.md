@@ -208,7 +208,7 @@ The `team-*-develop` glob matches any team's integration branch (`team-a-develop
 
 **Stage 1 — Build**
 - `flutter pub get`
-- `flutter analyze` (informational, non-blocking)
+- `flutter analyze --no-fatal-infos` (blocking on errors and warnings; infos are reported only; a verified develop sync reports warnings without failing)
 - `mvn compile -DskipTests`
 - `flutter build web` (compile check)
 
@@ -265,7 +265,7 @@ Runs on every PR from a `team-*-develop` branch into `develop`. This is the poin
 - Downloads every shard's `lcov.info` and merges them with `lcov -a` (a naive concatenation would double-count source files touched by more than one shard's tests)
 - Runs the same coverage regression gate as backend, against the merged report
 
-None of the frontend jobs run `flutter analyze` — it's already informational-only in `team-merge-ci.yml` and fully covered by `build-and-analyze.yml` on the same PR, so repeating it here added no decision-relevant information.
+None of the frontend jobs run `flutter analyze` — `team-merge-ci.yml` already blocks on its errors and warnings for every feature PR, and `build-and-analyze.yml` reports it on the same PR, so repeating it here added no decision-relevant information.
 
 **Exception:** if the PR's *source* is `team-a-develop`, every job here (`backend` included) skips its build/test steps (each still reports a passing status) for the same reason as above.
 

@@ -130,13 +130,6 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
     return ((data['status'] as String?) ?? 'COMPLETED').toUpperCase();
   }
 
-  String _label(String channel) {
-    final data = widget.sentimentData[channel.toLowerCase()];
-    if (data == null) return _labelFromScore(0.5);
-    final score = (data['score'] as num?)?.toDouble() ?? 0.5;
-    return _labelFromScore(score);
-  }
-
   String _notes(String channel) {
     final data = widget.sentimentData[channel.toLowerCase()];
     if (data == null) return '—';
@@ -225,13 +218,6 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
     return (overall['score'] as num?)?.toDouble() ?? 0.5;
   }
 
-  String _overallLabel() {
-    final overall = widget.sentimentData['overall'];
-    if (overall == null) return _labelFromScore(0.5);
-    final score = (overall['score'] as num?)?.toDouble() ?? 0.5;
-    return _labelFromScore(score);
-  }
-
   String _labelFromScore(double score) {
     if (score >= 0.60) return 'CALM';
     if (score >= 0.35) return 'ANXIOUS';
@@ -242,44 +228,6 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
     final overall = widget.sentimentData['overall'];
     if (overall == null) return 'AWAITING';
     return ((overall['status'] as String?) ?? 'COMPLETED').toUpperCase();
-  }
-
-  String? _captureModeLabel() {
-    final raw = (widget.sentimentData['_captureMode'] as String?)?.trim();
-    if (raw == null || raw.isEmpty) return null;
-
-    switch (raw.toUpperCase()) {
-      case 'ADAPTIVE_REALTIME':
-        return 'Adaptive · Realtime';
-      case 'ADAPTIVE_BALANCED':
-        return 'Adaptive · Balanced';
-      case 'REALTIME':
-        return 'Realtime';
-      case 'BALANCED':
-        return 'Balanced';
-      default:
-        return raw;
-    }
-  }
-
-  String _formatTimestampForChannel(String channelKey) {
-    final section = widget.sentimentData[channelKey.toLowerCase()];
-    if (section is! Map<String, dynamic>) return '—';
-
-    final status = ((section['status'] as String?) ?? '').toUpperCase();
-    if (status != 'COMPLETED' && status != 'DEGRADED') return '—';
-
-    final raw = (section['updatedAt'] ?? section['timestamp'])?.toString();
-    if (raw == null || raw.isEmpty) return '—';
-
-    final parsed = DateTime.tryParse(raw);
-    if (parsed == null) return '—';
-
-    final local = parsed.toLocal();
-    final hour = local.hour.toString().padLeft(2, '0');
-    final minute = local.minute.toString().padLeft(2, '0');
-    final second = local.second.toString().padLeft(2, '0');
-    return '$hour:$minute:$second';
   }
 
   List<String> _mutedChannels() {
@@ -662,66 +610,6 @@ class _SentimentDashboardWidgetState extends State<SentimentDashboardWidget>
   // ================================================================
   // INLINE CHAT INPUT — sends text for sentiment analysis
   // ================================================================
-
-  Widget _buildChatInput(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _chatController,
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Type a message to analyze sentiment...',
-                hintStyle: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? Colors.white30 : Colors.black38,
-                ),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF252540) : Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide(
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () async {
-              final text = _chatController.text.trim();
-              if (text.isEmpty) return;
-              _chatController.clear();
-              await widget.onTextSend?.call(text);
-            },
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.teal,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(Icons.send, color: Colors.white, size: 18),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ================================================================
   // DETAIL VIEW — full screen chart for one channel

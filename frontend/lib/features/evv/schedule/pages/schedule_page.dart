@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/user_provider.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/api_service_offline.dart';
 import '../../../../services/auth_token_manager.dart';
@@ -270,8 +269,6 @@ class _SchedulePageState extends State<SchedulePage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -1056,7 +1053,6 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _buildVisitDetailsDialog(ScheduledVisit visit) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
 
     return AlertDialog(
       title: Text(visit.patientName),

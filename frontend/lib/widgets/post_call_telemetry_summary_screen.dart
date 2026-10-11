@@ -685,12 +685,6 @@ class _PostCallTelemetrySummaryScreenState
 
   // ── Final overall sentiment ───────────────────────────────────────
 
-  int get _sentimentEventCount => _callTelemetry
-      .where((e) =>
-          (e['eventType'] as String?)?.toUpperCase().startsWith('SENTIMENT_') ==
-          true)
-      .length;
-
   Map<String, dynamic>? get _finalOverallEvent {
     for (final event in _callTelemetry.reversed) {
       final eventType =
@@ -1272,13 +1266,6 @@ class _PostCallTelemetrySummaryScreenState
         isSystemRecording;
     final isCapturing = status == 'STARTED' || status == 'CAPTURING';
     final isReady = status == 'STOPPED';
-    final statusColor = hasNoRecording
-        ? Colors.blueGrey.shade600
-        : isReady
-            ? Colors.green.shade700
-            : isCapturing
-                ? Colors.orange.shade700
-                : Colors.grey;
     final availabilityLabel = switch (concatenationStatus) {
       _ when hasNoRecording => 'NOT RECORDED',
       'READY' => 'VIDEO READY',

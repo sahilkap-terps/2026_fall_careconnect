@@ -125,7 +125,7 @@ class _CommentScreenState extends State<CommentScreen> {
   Widget buildCommentCard(CommentDto comment) {
     return ListTile(
       leading: const Icon(Icons.comment),
-      title: Text(comment.username ?? 'Unknown User'),
+      title: Text(comment.username),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

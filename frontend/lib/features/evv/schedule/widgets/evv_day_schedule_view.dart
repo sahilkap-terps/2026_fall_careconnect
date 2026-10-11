@@ -54,7 +54,6 @@ class _EVVDayScheduleViewState extends State<EVVDayScheduleView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
     final dayVisits = _getVisitsForDay(widget.selectedDate);
 
     return SingleChildScrollView(

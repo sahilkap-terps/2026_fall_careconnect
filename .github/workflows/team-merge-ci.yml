@@ -19,7 +19,8 @@
 #
 # Stages (single job, sequential steps):
 #   1. Checkout, branch info, JAVA_HOME
-#   2. Build  (Flutter + Maven)
+#   2. Build  (Flutter + Maven); flutter analyze fails on errors and
+#      warnings (infos are reported only)
 #   3. Unit tests for changed files only (BLOCKING) — a changed source
 #      file that gains lines but has no same-name test fails
 #      (scripts/test-exemptions.txt); deletion-only edits need no test
@@ -105,14 +106,6 @@ jobs:
         uses: ./.github/actions/setup-frontend
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      - name: Flutter analyze (fast static check)
-        if: steps.mode.outputs.run_suite == 'true'
-        working-directory: frontend
-        continue-on-error: true
-        run: |
-          flutter analyze --no-pub 2>&1 | tail -5
-          echo "Note: analyze is informational — build-and-analyze.yml (quality-gate) reports SAST findings (report-only)."
 
       - name: Maven compile (skip tests)
         if: steps.mode.outputs.run_suite == 'true'
@@ -208,6 +201,20 @@ jobs:
           fi
 
           echo "skip_changed_file_coverage=${skip_changed_file_coverage}" >> "$GITHUB_OUTPUT"
+
+      # Errors and warnings block; infos (~1,360 lint suggestions) are
+      # reported only. A verified develop sync reports warnings instead of
+      # failing on them: it carries the syncing team's own pre-existing
+      # history, which that team cleans up in its next feature PR.
+      - name: Flutter analyze (errors and warnings block)
+        if: steps.mode.outputs.run_suite == 'true'
+        working-directory: frontend
+        env:
+          VERIFIED_SYNC: ${{ steps.upstream_sync.outputs.skip_changed_file_coverage }}
+        run: |
+          extra=()
+          if [ "${VERIFIED_SYNC}" = "true" ]; then extra=(--no-fatal-warnings); fi
+          flutter analyze --no-pub --no-fatal-infos "${extra[@]}"
 
       - name: Map changed files to unit tests
         if: steps.mode.outputs.run_suite == 'true'

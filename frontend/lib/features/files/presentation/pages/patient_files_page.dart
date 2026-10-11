@@ -640,19 +640,4 @@ class _PatientFilesPageState extends State<PatientFilesPage>
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  String _formatDate(DateTime date) {
-    final t = AppLocalizations.of(context)!;
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return t.ptfiles_today;
-    } else if (difference.inDays == 1) {
-      return t.ptfiles_yesterday;
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} ${t.ptfiles_daysAgo}';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
 }

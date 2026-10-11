@@ -202,7 +202,7 @@ class _CustomTaskScreenState extends State<CustomTaskScreen> {
                         onTap: () async {
                           final DateTime? date = await showDatePicker(
                             context: context,
-                            initialDate: task.date ?? DateTime.now(),
+                            initialDate: task.date,
                             firstDate: DateTime(2000),
                             lastDate: DateTime(2100),
                           );

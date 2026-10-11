@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:care_connect_app/features/social/presentation/model/comment_dto.dart';
 import 'package:care_connect_app/features/social/presentation/pages/comment_screen.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 
@@ -84,6 +85,29 @@ void main() {
     testWidgets('shows AppBar with blue background', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byType(AppBar), findsOneWidget);
+    });
+  });
+
+  group('CommentScreen – comment card', () {
+    testWidgets('shows the commenter name, content and timestamp',
+        (tester) async {
+      await tester.pumpWidget(_wrap());
+      // The state class is private; buildCommentCard is public on it.
+      final dynamic state = tester.state(find.byType(CommentScreen));
+      final Widget card = state.buildCommentCard(CommentDto(
+        id: 7,
+        userId: 2,
+        postId: 1,
+        content: 'Feeling better today',
+        username: 'Jamie',
+        timestamp: DateTime(2026, 10, 11, 9, 30),
+      ));
+
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: card)));
+
+      expect(find.text('Jamie'), findsOneWidget);
+      expect(find.text('Feeling better today'), findsOneWidget);
+      expect(find.text('2026-10-11 at 09:30:00.000'), findsOneWidget);
     });
   });
 }

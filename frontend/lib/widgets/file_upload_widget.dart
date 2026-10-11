@@ -44,7 +44,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
   @override
   void initState() {
     super.initState();
-    final categories = _availableCategories;
   }
 
 
@@ -52,15 +51,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
   void dispose() {
     _descriptionController.dispose();
     super.dispose();
-  }
-
-  List<FileCategory> get _availableCategories1 {
-    if (widget.allowedCategories != null && widget.allowedCategories!.isNotEmpty) {
-      return widget.allowedCategories!;
-    }
-
-    // Return an empty list instead of null to avoid crashing UI
-    return [];
   }
 
   List<FileCategory> get _availableCategories {
@@ -268,61 +258,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     );
   }
 
-  Widget _buildFilePreview() {
-    if (_selectedFile == null) return const SizedBox.shrink();
-
-    final filePath = _selectedFile!.path;
-    final fileName = filePath.split('/').last;
-    final fileSize = _selectedFile!.lengthSync();
-    final fileSizeText = _formatFileSize(fileSize);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _getFileIcon(fileName),
-            size: 32,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fileName,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  fileSizeText,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _selectedFile = null;
-              });
-            },
-            icon: Icon(Icons.close, color: Theme.of(context).colorScheme.error),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDescriptionField() {
     final t = AppLocalizations.of(context)!;
     return Column(
@@ -401,38 +336,6 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     }
   }
 
-  IconData _getFileIcon(String fileName) {
-    final ext = fileName.toLowerCase().split('.').last;
-    switch (ext) {
-      case 'pdf':
-        return Icons.picture_as_pdf;
-      case 'doc':
-      case 'docx':
-        return Icons.description;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        return Icons.image;
-      case 'mp4':
-      case 'mov':
-        return Icons.video_file;
-      case 'mp3':
-      case 'wav':
-        return Icons.audio_file;
-      default:
-        return Icons.insert_drive_file;
-    }
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
-
   Future<void> _selectFile() async {
     final t = AppLocalizations.of(context)!;
     if (_selectedCategory == null) {
@@ -477,6 +380,10 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     }
   }
 
+  // TODO(team-b): mobile upload is broken. The button only calls
+  // _uploadFileWeb, which needs bytes, and pickFileForCategory returns
+  // null on mobile for document categories. Wire this in with that fix.
+  // ignore: unused_element
   Future<void> _uploadFile() async {
     if (_selectedCategory == null || _selectedFile == null) return;
 

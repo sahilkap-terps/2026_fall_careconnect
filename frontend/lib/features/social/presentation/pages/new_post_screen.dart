@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'dart:convert';
 
 import 'package:care_connect_app/config/env_constant.dart';
 import 'package:care_connect_app/services/api_service.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -21,16 +19,7 @@ class NewPostScreen extends StatefulWidget {
 
 class _NewPostScreenState extends State<NewPostScreen> {
   final TextEditingController _contentController = TextEditingController();
-  File? _selectedImage;
   bool isPosting = false;
-
-  Future<void> pickImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-
-    if (result != null && result.files.single.path != null) {
-      setState(() => _selectedImage = File(result.files.single.path!));
-    }
-  }
 
   Future<void> submitPost(int userId) async {
     final content = _contentController.text.trim();

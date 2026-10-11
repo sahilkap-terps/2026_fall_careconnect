@@ -40,7 +40,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
   // Patient data
   Map<String, dynamic>? patient;
   List<Map<String, dynamic>> caregivers = [];
-  List<Map<String, dynamic>> familyMembers = [];
 
   // Loading states
   bool loading = true;
@@ -61,8 +60,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
   String currentMoodLabel = '';
   List<String> moodTags = [];
 
-  // Notifications state
-  bool _callNotificationInitialized = false;
   bool _isOffline = false;
   DateTime? _lastSynced;
   List<AlertNotification> activeAlerts = [];
@@ -112,7 +109,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
       return;
     }
     _loadDashboardData();
-    _callNotificationInitialized = true;
     _checkConnectivity();
     _loadRecentMoodData();
     _loadMedicationReminders();
@@ -869,43 +865,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
     ];
   }
 
-  /// Load family members
-  Future<void> _loadFamilyMembers() async {
-    if (!isLoading) {
-      setState(() {
-        isLoading = true;
-      });
-    }
-
-    try {
-      final user = Provider.of<UserProvider>(context, listen: false).user;
-      final userId = widget.userId ?? user?.id ?? 1;
-
-      final response = await ApiService.getFamilyMembers(userId);
-
-      if (mounted) {
-        if (response.statusCode == 200) {
-          final List<dynamic> data = jsonDecode(response.body);
-          setState(() {
-            familyMembers = List<Map<String, dynamic>>.from(data);
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error loading family members: $e');
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
-  }
-
   /// Handle medication action
   Future<void> _handleMedicationAction(int medicationId, bool taken) async {
     final t = AppLocalizations.of(context)!;
@@ -1553,43 +1512,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     ),
                   ),
                 ),
-    );
-  }
-
-  Widget _buildQuickActionChip({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor;
-    final primaryColorLight = theme.primaryColorLight;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: primaryColorLight.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: primaryColor),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: primaryColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

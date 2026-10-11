@@ -13,7 +13,6 @@ class _EvvOfflineSyncPageState extends State<EvvOfflineSyncPage> {
   bool _isLoading = true;
   bool _isSyncing = false;
   List<EvvOfflineQueue> _offlineQueue = [];
-  List<EvvOfflineQueue> _syncStatus = [];
 
   @override
   void initState() {
@@ -24,11 +23,9 @@ class _EvvOfflineSyncPageState extends State<EvvOfflineSyncPage> {
   Future<void> _loadOfflineData() async {
     try {
       final queue = await _evvService.getOfflineQueue();
-      final status = await _evvService.getOfflineStatus();
 
       setState(() {
         _offlineQueue = queue;
-        _syncStatus = status;
         _isLoading = false;
       });
     } catch (e) {

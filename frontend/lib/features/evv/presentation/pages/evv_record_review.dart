@@ -213,7 +213,6 @@ class _EvvRecordReviewPageState extends State<EvvRecordReviewPage> {
     
     final claimId = '$patientId${record.dateOfService.millisecondsSinceEpoch.toString().substring(0, 10)}';
     final evvId = 'EVV-$claimId';
-    final lineEvvId = 'EVV-LINE-$claimId';
     
     final duration = record.timeOut.difference(record.timeIn).inMinutes;
     final units = ((duration / 15).ceil()).toString();

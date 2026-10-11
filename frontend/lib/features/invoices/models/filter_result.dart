@@ -188,7 +188,7 @@ class MobileCard extends StatelessWidget {
                 _kv('Statement Date', _date(invoice.dates.statementDate)),
                 _kv('Services',
                     '${invoice.services.length} ${invoice.services.length == 1 ? 'item' : 'items'}'),
-                _kv('Provider Phone', invoice.provider.phone ?? '—'), 
+                _kv('Provider Phone', invoice.provider.phone), 
               ],
             ),
 

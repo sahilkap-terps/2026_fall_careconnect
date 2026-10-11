@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:care_connect_app/services/api_service.dart';
 import 'package:care_connect_app/services/auth_token_manager.dart';
@@ -25,8 +23,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   bool _isLoading = true;
   bool _isSaving = false;
   String? _error;
-  File? _imageFile;
-  final ImagePicker _picker = ImagePicker();
   dynamic _userProfile;
   bool _isPatient = false;
   bool _isCaregiver = false;

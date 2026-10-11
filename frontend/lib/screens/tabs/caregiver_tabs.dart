@@ -233,12 +233,6 @@ class _CaregiverAnalyticsTabState extends State<CaregiverAnalyticsTab> {
     return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
-  String _shortDate(DateTime dt) {
-    final month = dt.month.toString().padLeft(2, '0');
-    final day = dt.day.toString().padLeft(2, '0');
-    return '$month/$day';
-  }
-
   String _shortDateWithYear(DateTime dt) {
     final month = dt.month.toString().padLeft(2, '0');
     final day = dt.day.toString().padLeft(2, '0');

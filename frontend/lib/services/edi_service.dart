@@ -44,7 +44,6 @@ class EdiService {
     
     final claimId = '${patient.id}${checkinTime.millisecondsSinceEpoch.toString().substring(0, 10)}';
     final evvId = 'EVV-$claimId';
-    final lineEvvId = 'EVV-LINE-$claimId';
     
     final units = ((duration / 15).ceil()).toString();
     final totalCharge = (30.0 * (duration / 15).ceil()).toStringAsFixed(2);

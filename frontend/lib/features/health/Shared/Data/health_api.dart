@@ -71,16 +71,6 @@ class HealthApi {
     return jsonEncode(body);
   }
 
-  T _decodeOrThrow<T>(http.Response res) {
-    final code = res.statusCode;
-    if (code >= 200 && code < 300) {
-      if (res.body.isEmpty) return (null as dynamic) as T;
-      final decoded = jsonDecode(res.body);
-      return decoded as T;
-    }
-    throw ApiException(code, res.body.isEmpty ? 'Request failed' : res.body);
-  }
-
   // =========================================================
   // Patients
   // =========================================================

@@ -273,10 +273,8 @@ void main() {
   });
 
   group('EmergencyContactCard url_launcher actions', () {
-    late List<MethodCall> launcherLog;
-
     setUp(() {
-      launcherLog = _installUrlLauncherMock();
+      _installUrlLauncherMock();
     });
 
     tearDown(() {

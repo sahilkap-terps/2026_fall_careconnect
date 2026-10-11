@@ -1081,31 +1081,6 @@ class _CaregiverDashboardState extends State<CaregiverDashboard> {
     );
   }
 
-  Widget _buildStartNewVisitAppBarButton() {
-    return ElevatedButton.icon(
-      onPressed: () {
-        context.go('/evv/select-patient');
-      },
-      icon: const Icon(Icons.add, color: Colors.white),
-      label: const Text(
-        'Start New Visit',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue[600],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        elevation: 2,
-      ),
-    );
-  }
-
   Widget _buildActionButton({
     required IconData icon,
     required String label,

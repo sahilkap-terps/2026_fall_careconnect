@@ -274,7 +274,7 @@ class _VisitCompletePageState extends State<VisitCompletePage> {
       );
 
       // Submit the EVV record
-      final evvRecord = await evvService.createRecord(request);
+      await evvService.createRecord(request);
 
       // Show success message and navigate to success page
       ScaffoldMessenger.of(context).showSnackBar(

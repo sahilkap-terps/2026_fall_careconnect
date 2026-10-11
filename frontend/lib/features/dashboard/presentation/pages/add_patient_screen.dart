@@ -30,7 +30,6 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
   // Email check results
   bool? _emailExists;
   String? _userRole;
-  int? _userId;
 
   @override
   void initState() {
@@ -63,7 +62,6 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       _errorMessage = null;
       _emailExists = null;
       _userRole = null;
-      _userId = null;
     });
 
     try {
@@ -73,7 +71,6 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         _isCheckingEmail = false;
         _emailExists = result['exists'] as bool;
         _userRole = result['role'] as String?;
-        _userId = result['userId'] as int?;
 
         if (_emailExists == true && _userRole != 'PATIENT') {
           _errorMessage =

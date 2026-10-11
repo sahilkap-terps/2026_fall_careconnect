@@ -106,7 +106,6 @@ class _StreamingAsrAndDiarizationScreenState
   List<int> recordedData = [];
   String _textToDisplay = '';
   String _last = '';
-  int _index = 0;
   bool _isInitialized = false;
   bool _isLoading = false;
   List<String> _speakerList = [];
@@ -208,7 +207,6 @@ class _StreamingAsrAndDiarizationScreenState
               _recognizer!.reset(_stream!);
               if (text != '') {
                 _last = textToDisplay;
-                _index += 1;
               }
             }
             _controller.value = TextEditingValue(
