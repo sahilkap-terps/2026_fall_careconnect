@@ -84,7 +84,8 @@ import static org.mockito.Mockito.when;
  * round trip is TC-MCR-CACHE-033 on PostgreSQL. The bearer-token filter chain is checked by the boot
  * smoke test in the PR #272 execution record, not here.
  * <p>
- * Test IDs TC-MCR-CACHE-026…032 are permanent (Testing Lead, 2026-10-06, PR #272 review). Never
+ * Test IDs TC-MCR-CACHE-026…032 (Testing Lead, 2026-10-06, PR #272 review) and TC-MCR-AUTHZ-038…040
+ * (PR #310 author's, named by the Testing Lead, 2026-10-11) are permanent. Never
  * renumber, never reuse.
  */
 @DataJpaTest
@@ -408,7 +409,7 @@ class MedicareReadIntegrationTest {
     }
 
     @Test
-    @DisplayName("a caregiver with an active link reads the patient's coverage, and the audit row names the caregiver")
+    @DisplayName("TC-MCR-AUTHZ-038: a caregiver with an active link reads the patient's coverage, and the audit row names the caregiver")
     void linkedCaregiverReadsPatientCoverage() throws Exception {
         link(patient1, "enc");
         final User cg = caregiver("cg-active@example.test");
@@ -425,7 +426,7 @@ class MedicareReadIntegrationTest {
     }
 
     @Test
-    @DisplayName("an expired, revoked or missing caregiver link is a 403, and Blue Button is never asked")
+    @DisplayName("TC-MCR-AUTHZ-039: an expired, revoked or missing caregiver link is a 403, and Blue Button is never asked")
     void inactiveCaregiverLinksAre403() {
         link(patient1, "enc");
         final User expired = caregiver("cg-expired@example.test");
@@ -444,7 +445,7 @@ class MedicareReadIntegrationTest {
     }
 
     @Test
-    @DisplayName("a patient asking for another patient's id is a 403, while their own id reads normally")
+    @DisplayName("TC-MCR-AUTHZ-040: a patient asking for another patient's id is a 403, while their own id reads normally")
     void patientCannotReadAnotherPatient() {
         link(patient1, "enc");
         link(patient2, "enc");

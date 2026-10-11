@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
  * {@code MedicareReadIntegrationTest}. A {@code patientId} read is a caregiver or family member reading their
  * patient's data (FR-MCR-16, FR-MCR-17).
  * <p>
- * Test IDs TC-MCR-CACHE-035..042 are permanent. Never renumber, never reuse.
+ * Test IDs TC-MCR-CACHE-035..042 and TC-MCR-AUTHZ-031..036 are permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
 class EhrControllerTest {
@@ -205,7 +205,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("a linked caregiver reads the patient's coverage, and the cache records the caregiver as the acting user")
+    @DisplayName("TC-MCR-AUTHZ-031: a linked caregiver reads the patient's coverage, and the cache records the caregiver as the acting user")
     void linkedCaregiverReadsCoverage() throws Exception {
         caregiverAllowed();
         final JsonNode active = resource("{\"resourceType\":\"Coverage\",\"id\":\"part-a\",\"status\":\"active\"}");
@@ -218,7 +218,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("a linked caregiver reads the patient's identity and visits through the same patient lookup")
+    @DisplayName("TC-MCR-AUTHZ-032: a linked caregiver reads the patient's identity and visits through the same patient lookup")
     void linkedCaregiverReadsIdentityAndVisits() throws Exception {
         caregiverAllowed();
         final JsonNode patient = resource("{\"resourceType\":\"Patient\",\"id\":\"bene-1\"}");
@@ -231,7 +231,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("a caller without access to the patient gets a 403 on every read, and nothing is looked up or retrieved")
+    @DisplayName("TC-MCR-AUTHZ-033: a caller without access to the patient gets a 403 on every read, and nothing is looked up or retrieved")
     void noAccessIs403() {
         when(ehrService.canReadMedicareFor(PATIENT)).thenReturn(false);
 
@@ -247,7 +247,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("an allowed caregiver whose patient never connected Medicare gets a 404, as the patient would")
+    @DisplayName("TC-MCR-AUTHZ-034: an allowed caregiver whose patient never connected Medicare gets a 404, as the patient would")
     void allowedButPatientNotConnectedIs404() {
         when(ehrService.canReadMedicareFor(PATIENT)).thenReturn(true);
         when(medicareService.getId()).thenReturn(MEDICARE);
@@ -258,7 +258,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("without a patientId the read is the caller's own and the access check is not consulted")
+    @DisplayName("TC-MCR-AUTHZ-035: without a patientId the read is the caller's own and the access check is not consulted")
     void ownReadSkipsAccessCheck() {
         notLinked();
 
@@ -268,7 +268,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("mock mode still refuses a caller without access to the patient, before serving any fixture")
+    @DisplayName("TC-MCR-AUTHZ-036: mock mode still refuses a caller without access to the patient, before serving any fixture")
     void mockModeStillChecksAccess() {
         ReflectionTestUtils.setField(properties, "mode", MedicareProperties.MODE_MOCK);
         when(ehrService.canReadMedicareFor(PATIENT)).thenReturn(false);

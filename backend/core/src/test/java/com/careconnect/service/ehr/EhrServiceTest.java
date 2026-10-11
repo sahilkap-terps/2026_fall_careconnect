@@ -43,7 +43,7 @@ import static org.mockito.Mockito.when;
  * {@code EhrService}: finding the signed-in patient's linked Medicare row, the acting user for the audit
  * log, upserting coverage and visit rows, and the shared FHIR context's HTTP client setup (DEF-MCR-06).
  * <p>
- * Test IDs TC-MCR-CACHE-043..052 are permanent. Never renumber, never reuse.
+ * Test IDs TC-MCR-CACHE-043..052 and TC-MCR-AUTHZ-037 are permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
 class EhrServiceTest {
@@ -306,7 +306,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("a patient's crosswalk by patient id is returned only when the link is complete")
+    @DisplayName("TC-MCR-AUTHZ-037: a patient's crosswalk by patient id is returned only when the link is complete")
     void crosswalkForPatientNeedsCompletedLink() {
         when(crosswalks.findByPatientIdAndSourceId(2L, MEDICARE)).thenReturn(Optional.of(crosswalk("encrypted-token")));
         assertThat(service.getCrosswalkForPatient(2L, MEDICARE)).isPresent();
