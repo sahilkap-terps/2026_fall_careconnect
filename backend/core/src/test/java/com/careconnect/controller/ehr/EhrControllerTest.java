@@ -41,6 +41,8 @@ import static org.mockito.Mockito.when;
  * {@code EhrControllerMockModeTest}; the real cache and JPA layer underneath are
  * {@code MedicareReadIntegrationTest}. A {@code patientId} read is a caregiver or family member reading their
  * patient's data (FR-MCR-16, FR-MCR-17).
+ * <p>
+ * Test IDs TC-MCR-CACHE-035..042 are permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
 class EhrControllerTest {
@@ -100,7 +102,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("a linked patient gets their Patient resource from the cache, labelled live and synthetic (sandbox), with the cache's fetchedAt")
+    @DisplayName("TC-MCR-CACHE-035: a linked patient gets their Patient resource from the cache, labelled live and synthetic (sandbox), with the cache's fetchedAt")
     void linkedPatientRead() throws Exception {
         linked();
         final JsonNode patient = resource("{\"resourceType\":\"Patient\",\"id\":\"bene-1\"}");
@@ -116,7 +118,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("a linked patient with nothing cached or returned gets an empty single-resource envelope, not an error")
+    @DisplayName("TC-MCR-CACHE-036: a linked patient with nothing cached or returned gets an empty single-resource envelope, not an error")
     void linkedPatientWithNoResource() {
         linked();
         when(cache.patient(crosswalk, ACTOR)).thenReturn(new CachedRead(List.of(), FETCHED));
@@ -128,7 +130,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("coverage goes through the status gate: a cancelled coverage is not served")
+    @DisplayName("TC-MCR-CACHE-037: coverage goes through the status gate: a cancelled coverage is not served")
     void coverageIsGated() throws Exception {
         linked();
         final JsonNode active = resource("{\"resourceType\":\"Coverage\",\"id\":\"part-a\",\"status\":\"active\"}");
@@ -143,7 +145,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("visits go through the status gate: an entered-in-error claim is not served")
+    @DisplayName("TC-MCR-CACHE-038: visits go through the status gate: an entered-in-error claim is not served")
     void visitsAreGated() throws Exception {
         linked();
         final JsonNode claim = resource("{\"resourceType\":\"ExplanationOfBenefit\",\"id\":\"c1\",\"status\":\"active\"}");
@@ -154,7 +156,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("no completed link is a 404 on every read, and the cache is never asked")
+    @DisplayName("TC-MCR-CACHE-039: no completed link is a 404 on every read, and the cache is never asked")
     void notLinkedIs404() {
         notLinked();
 
@@ -165,7 +167,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("a source other than medicare is a 404, without looking anything up")
+    @DisplayName("TC-MCR-CACHE-040: a source other than medicare is a 404, without looking anything up")
     void unknownSourceIs404() {
         assertThat(controller.fetchIdentity("athena", null).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(controller.fetchCoverage("epic", null).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -174,7 +176,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("the source name is case-insensitive")
+    @DisplayName("TC-MCR-CACHE-041: the source name is case-insensitive")
     void sourceIsCaseInsensitive() {
         notLinked();
 
@@ -183,7 +185,7 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("production (sandbox off) data is not labelled synthetic")
+    @DisplayName("TC-MCR-CACHE-042: production (sandbox off) data is not labelled synthetic")
     void productionIsNotSynthetic() {
         ReflectionTestUtils.setField(properties, "sandbox", false);
         linked();

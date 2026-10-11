@@ -42,6 +42,8 @@ import static org.mockito.Mockito.when;
 /**
  * {@code EhrService}: finding the signed-in patient's linked Medicare row, the acting user for the audit
  * log, upserting coverage and visit rows, and the shared FHIR context's HTTP client setup (DEF-MCR-06).
+ * <p>
+ * Test IDs TC-MCR-CACHE-043..052 are permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
 class EhrServiceTest {
@@ -100,7 +102,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("the crosswalk is looked up by patient.id (2), not the user id (6), and returned when linked")
+    @DisplayName("TC-MCR-CACHE-043: the crosswalk is looked up by patient.id (2), not the user id (6), and returned when linked")
     void crosswalkByPatientId() {
         signIn();
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
@@ -112,7 +114,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("a link that is still pending (no token yet) is not returned")
+    @DisplayName("TC-MCR-CACHE-044: a link that is still pending (no token yet) is not returned")
     void pendingLinkIsNotReturned() {
         signIn();
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
@@ -123,7 +125,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("a signed-in user with no patient record has no crosswalk")
+    @DisplayName("TC-MCR-CACHE-045: a signed-in user with no patient record has no crosswalk")
     void noPatientRecord() {
         signIn();
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
@@ -134,7 +136,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("with nobody signed in there is no crosswalk and no acting user, and nothing is looked up")
+    @DisplayName("TC-MCR-CACHE-046: with nobody signed in there is no crosswalk and no acting user, and nothing is looked up")
     void nobodySignedIn() {
         assertThat(service.getCrosswalk(MEDICARE)).isEmpty();
         assertThat(service.currentUserId()).isEmpty();
@@ -142,7 +144,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("the acting user is the signed-in user's id")
+    @DisplayName("TC-MCR-CACHE-047: the acting user is the signed-in user's id")
     void currentUserId() {
         signIn();
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
@@ -151,7 +153,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("a coverage already stored for that patient, source and external id is updated, not duplicated")
+    @DisplayName("TC-MCR-CACHE-048: a coverage already stored for that patient, source and external id is updated, not duplicated")
     void coverageUpsertUpdatesExisting() {
         final EhrCoverageRecord existing = EhrCoverageRecord.builder()
                 .patientId(2L).sourceId(MEDICARE).externalCoverageId("part-a").build();
@@ -169,7 +171,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("a new coverage or visit is inserted as a new row")
+    @DisplayName("TC-MCR-CACHE-049: a new coverage or visit is inserted as a new row")
     void upsertInsertsNew() {
         final EhrCoverageRecord coverage = EhrCoverageRecord.builder()
                 .patientId(2L).sourceId(MEDICARE).externalCoverageId("part-b").build();
@@ -190,7 +192,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("a visit already stored is updated in place")
+    @DisplayName("TC-MCR-CACHE-050: a visit already stored is updated in place")
     void visitUpsertUpdatesExisting() {
         final EhrVisitRecord existing = EhrVisitRecord.builder()
                 .patientId(2L).sourceId(MEDICARE).externalVisitId("carrier-1").build();
@@ -206,7 +208,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("FHIR JSON round-trips through the shared parser")
+    @DisplayName("TC-MCR-CACHE-051: FHIR JSON round-trips through the shared parser")
     void jsonRoundTrip() {
         final Coverage coverage = new Coverage();
         coverage.setId("part-a");
@@ -219,7 +221,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("the shared FHIR context uses the Apache client factory set up without automatic retries (DEF-MCR-06)")
+    @DisplayName("TC-MCR-CACHE-052: the shared FHIR context uses the Apache client factory set up without automatic retries (DEF-MCR-06)")
     void sharedContextHasNoRetryFactory() {
         assertThat(EhrService.ctxR4.getRestfulClientFactory())
                 .isInstanceOf(ApacheRestfulClientFactory.class)
