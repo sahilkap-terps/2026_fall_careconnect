@@ -1,23 +1,20 @@
+
 import 'package:care_connect_app/features/tasks/presentation/widgets/filters_panel.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
-
-/// =============================
-/// Mock User + Provider Setup
-/// =============================
 import 'package:care_connect_app/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../mock_user_provider.dart';
 
-/// A simple fake UserSession for testing.
-class MockUserSession extends UserSession {
+class _LocalUserSession extends UserSession {
   @override
   final bool isCaregiver;
   @override
-  final bool isPatient;
+  final bool isPatient = false;
 
-  MockUserSession({this.isCaregiver = true, this.isPatient = false})
+  _LocalUserSession({this.isCaregiver = true})
     : super(
         id: 1,
         email: 'test@test.com',
@@ -27,12 +24,45 @@ class MockUserSession extends UserSession {
 }
 
 /// Mock UserProvider that supplies a fake caregiver user.
-class MockUserProvider extends ChangeNotifier implements UserProvider {
+class _LocalUserProvider extends ChangeNotifier implements UserProvider {
   @override
-  UserSession? user = MockUserSession(isCaregiver: true);
+  UserSession? user = _LocalUserSession(isCaregiver: true);
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+// ── Helpers from features/tasks/widgets/filters_panel_test.dart (merged) ──
+
+class _NullUserProvider extends MockUserProvider {
+  _NullUserProvider() : super(mockUser: null);
+
+  @override
+  UserSession? get user => null;
+}
+
+Widget _wrap({bool expanded = false}) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<UserProvider>.value(value: _NullUserProvider()),
+      ChangeNotifierProvider<TaskTypeManager>(create: (_) => TaskTypeManager()),
+    ],
+    child: MaterialApp(
+      home: Scaffold(
+        body: FiltersPanel(
+          expanded: expanded,
+          patientNames: const {},
+          selectedTypes: const {},
+          selectedPatients: const {},
+          onClear: () {},
+          onTypeToggled: (_) {},
+          onPatientToggled: (_) {},
+          onToggleExpanded: () {},
+          onTodayPressed: () {},
+        ),
+      ),
+    ),
+  );
 }
 
 void main() {
@@ -62,7 +92,7 @@ void main() {
         providers: [
           ChangeNotifierProvider<TaskTypeManager>.value(value: manager),
           ChangeNotifierProvider<UserProvider>(
-            create: (_) => MockUserProvider(),
+            create: (_) => _LocalUserProvider(),
           ),
         ],
         child: MaterialApp(home: Scaffold(body: child)),
@@ -232,6 +262,57 @@ void main() {
         find.textContaining('Medication', findRichText: true),
         findsWidgets,
       );
+    });
+  });
+
+  // Cases merged from features/tasks/widgets/filters_panel_test.dart.
+  group('merged from features/tasks/widgets/filters_panel_test.dart', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    group('FiltersPanel – initial render', () {
+      testWidgets('renders without crashing (collapsed)', (tester) async {
+        await tester.pumpWidget(_wrap());
+        await tester.pump();
+        expect(find.byType(FiltersPanel), findsOneWidget);
+      });
+
+      testWidgets('shows Filters label', (tester) async {
+        await tester.pumpWidget(_wrap());
+        await tester.pump();
+        expect(find.text('Filters'), findsOneWidget);
+      });
+
+      testWidgets('shows expand icon when collapsed', (tester) async {
+        await tester.pumpWidget(_wrap());
+        await tester.pump();
+        expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+      });
+
+      testWidgets('shows expand_more icon when expanded', (tester) async {
+        await tester.pumpWidget(_wrap(expanded: true));
+        await tester.pump();
+        expect(find.byIcon(Icons.expand_more), findsOneWidget);
+      });
+
+      testWidgets('shows Filters text label', (tester) async {
+        await tester.pumpWidget(_wrap());
+        await tester.pump();
+        expect(find.text('Filters'), findsOneWidget);
+      });
+
+      testWidgets('shows Today button', (tester) async {
+        await tester.pumpWidget(_wrap());
+        await tester.pump();
+        expect(find.text('Today'), findsOneWidget);
+      });
+
+      testWidgets('shows Scaffold', (tester) async {
+        await tester.pumpWidget(_wrap());
+        await tester.pump();
+        expect(find.byType(Scaffold), findsOneWidget);
+      });
     });
   });
 }
