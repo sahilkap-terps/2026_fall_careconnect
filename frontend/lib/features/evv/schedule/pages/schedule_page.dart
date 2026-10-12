@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +27,7 @@ class _SchedulePageState extends State<SchedulePage> {
   List<ScheduledVisit> _upcomingVisits = [];
   bool _isLoading = false;
   String _viewMode = 'list'; // 'list', 'month', 'week', 'day'
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = clock.now();
   Map<String, int> _summaryData = {
     'overdue': 0,
     'ready': 0,
@@ -91,7 +92,7 @@ class _SchedulePageState extends State<SchedulePage> {
       final baseUrl = ApiConstants.baseUrl;
 
       // Fetch a range from the past 7 days up to today so we can include recent overdue items
-      final now = DateTime.now();
+      final now = clock.now();
       final weekAgo = now.subtract(const Duration(days: 7));
       final startStr = DateFormat('yyyy-MM-dd').format(weekAgo);
       final endStr = DateFormat('yyyy-MM-dd').format(now);
@@ -160,8 +161,8 @@ class _SchedulePageState extends State<SchedulePage> {
       final baseUrl = ApiConstants.baseUrl;
 
       // Get date range: tomorrow to 30 days out
-      final tomorrow = DateTime.now().add(const Duration(days: 1));
-      final endDate = DateTime.now().add(const Duration(days: 30));
+      final tomorrow = clock.now().add(const Duration(days: 1));
+      final endDate = clock.now().add(const Duration(days: 30));
 
       final startDateStr = DateFormat('yyyy-MM-dd').format(tomorrow);
       final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
@@ -214,7 +215,7 @@ class _SchedulePageState extends State<SchedulePage> {
       final headers = await AuthTokenManager.getAuthHeaders();
       final baseUrl = ApiConstants.baseUrl;
 
-      final now = DateTime.now();
+      final now = clock.now();
       final start = now.subtract(const Duration(days: 7));
       final end = now.add(const Duration(days: 30));
       final startStr = DateFormat('yyyy-MM-dd').format(start);
@@ -344,7 +345,7 @@ class _SchedulePageState extends State<SchedulePage> {
       onSelected: (_) {
         setState(() {
           _viewMode = mode;
-          _selectedDate = DateTime.now();
+          _selectedDate = clock.now();
         });
       },
       label: Row(
@@ -1342,17 +1343,14 @@ class _SchedulePageState extends State<SchedulePage> {
       return 'completed';
     }
 
-    final now = DateTime.now();
-    final visitDateTime = visit.scheduledTime;
-    final currentTime = TimeOfDay.fromDateTime(now);
-    final visitTime = TimeOfDay.fromDateTime(visitDateTime);
+    // Compare full date-times, as the summary counts do: the list also holds
+    // still-Scheduled visits from earlier days, which are overdue whatever
+    // their clock time.
+    final diffMinutes = visit.scheduledTime.difference(clock.now()).inMinutes;
 
-    final currentMinutes = currentTime.hour * 60 + currentTime.minute;
-    final visitMinutes = visitTime.hour * 60 + visitTime.minute;
-
-    if (visitMinutes < currentMinutes) {
+    if (diffMinutes < 0) {
       return 'overdue';
-    } else if (visitMinutes - currentMinutes <= 30) {
+    } else if (diffMinutes <= 30) {
       return 'ready';
     } else {
       return 'upcoming';
