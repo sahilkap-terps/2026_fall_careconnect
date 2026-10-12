@@ -276,9 +276,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
         final email =
             (link['caregiverEmail'] ?? '').toString().trim().toLowerCase();
         final rawUserId = link['caregiverUserId'];
-        final userId = rawUserId is int
-            ? rawUserId
-            : int.tryParse('$rawUserId');
+        final userId =
+            rawUserId is int ? rawUserId : int.tryParse('$rawUserId');
         if (email.isNotEmpty && userId != null) {
           byEmail[email] = userId;
         }
@@ -287,13 +286,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
       final granted = <int, bool>{};
       for (final caregiver in caregivers) {
         final caregiverUserId = _resolveCaregiverUserId(caregiver, byEmail);
-        if (caregiverUserId == null ||
-            granted.containsKey(caregiverUserId)) {
+        if (caregiverUserId == null || granted.containsKey(caregiverUserId)) {
           continue;
         }
         try {
-          granted[caregiverUserId] = await ConsentApiService
-              .isAiRetrievalGranted(
+          granted[caregiverUserId] =
+              await ConsentApiService.isAiRetrievalGranted(
             patientUserId: patientUserId,
             granteeUserId: caregiverUserId,
           );
@@ -1287,13 +1285,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 'Lets this caregiver ask AI about your care records',
               ),
               value: consentGranted,
-              onChanged:
-                  consentUpdating
-                      ? null
-                      : (value) => _onToggleAiRetrievalConsent(
-                            caregiverUserId,
-                            value,
-                          ),
+              onChanged: consentUpdating
+                  ? null
+                  : (value) => _onToggleAiRetrievalConsent(
+                        caregiverUserId,
+                        value,
+                      ),
             ),
         ],
       ),

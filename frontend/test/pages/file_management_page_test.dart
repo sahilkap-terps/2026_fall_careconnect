@@ -2239,6 +2239,7 @@ void main() {
         final matchesSearch = searchQuery.isEmpty ||
             file.originalFilename.toLowerCase().contains(searchQuery.toLowerCase()) ||
             (file.description?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false);
+        // ignore: unnecessary_null_comparison
         final matchesCategory = selectedCategory == null ||
             file.fileCategory == selectedCategory.value;
         return matchesSearch && matchesCategory;
@@ -2259,6 +2260,7 @@ void main() {
         final matchesSearch = searchQuery.isEmpty ||
             file.originalFilename.toLowerCase().contains(searchQuery.toLowerCase()) ||
             (file.description?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false);
+        // ignore: unnecessary_null_comparison
         final matchesCategory = selectedCategory == null ||
             file.fileCategory == selectedCategory.value;
         return matchesSearch && matchesCategory;
@@ -2280,6 +2282,7 @@ void main() {
         final matchesSearch = searchQuery.isEmpty ||
             file.originalFilename.toLowerCase().contains(searchQuery.toLowerCase()) ||
             (file.description?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false);
+        // ignore: unnecessary_null_comparison
         final matchesCategory = selectedCategory == null ||
             file.fileCategory == selectedCategory.value;
         return matchesSearch && matchesCategory;
@@ -2341,6 +2344,7 @@ void main() {
         final matchesSearch = searchQuery.isEmpty ||
             file.originalFilename.toLowerCase().contains(searchQuery.toLowerCase()) ||
             (file.description?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false);
+        // ignore: unnecessary_null_comparison
         final matchesCategory = selectedCategory == null ||
             file.fileCategory == selectedCategory.value;
         return matchesSearch && matchesCategory;

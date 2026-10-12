@@ -41,7 +41,6 @@ void main() {
 
   group('FiltersPanel Widget Tests', () {
     late TaskTypeManager manager;
-    late bool expanded;
     late bool clearPressed;
     late bool todayPressed;
     late bool togglePressed;
@@ -50,7 +49,6 @@ void main() {
 
     setUp(() {
       manager = TaskTypeManager();
-      expanded = true;
       clearPressed = false;
       todayPressed = false;
       togglePressed = false;

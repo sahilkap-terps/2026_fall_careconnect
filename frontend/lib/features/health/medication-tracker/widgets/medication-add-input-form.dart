@@ -226,7 +226,8 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
                         return null;
                       },
                     ),
-                    _buildPhotoFieldNote(MedicationPhotoFieldKey.medicationName),
+                    _buildPhotoFieldNote(
+                        MedicationPhotoFieldKey.medicationName),
                     const SizedBox(height: 16),
 
                     // Dosage
@@ -258,51 +259,52 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
                     KeyedSubtree(
                       key: const Key('medication-frequency-field'),
                       child: DropdownButtonFormField<String>(
-                      key: ValueKey('frequency-$_prefillGeneration'),
-                      initialValue: _selectedFrequency,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).dividerColor,
+                        key: ValueKey('frequency-$_prefillGeneration'),
+                        initialValue: _selectedFrequency,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).dividerColor,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
                           ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
+                        items: _frequencyOptions.map((String frequency) {
+                          return DropdownMenuItem<String>(
+                            value: frequency,
+                            child: Text(frequency),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedFrequency = newValue!;
+                            _showCustomFrequency = newValue == 'Custom';
+                            if (!_showCustomFrequency) {
+                              _customFrequencyController.clear();
+                            }
+                          });
+                          _markEditedByUser(MedicationPhotoFieldKey.frequency);
+                        },
                       ),
-                      items: _frequencyOptions.map((String frequency) {
-                        return DropdownMenuItem<String>(
-                          value: frequency,
-                          child: Text(frequency),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedFrequency = newValue!;
-                          _showCustomFrequency = newValue == 'Custom';
-                          if (!_showCustomFrequency) {
-                            _customFrequencyController.clear();
-                          }
-                        });
-                        _markEditedByUser(MedicationPhotoFieldKey.frequency);
-                      },
-                    ),
                     ),
                     if (_showCustomFrequency) ...[
                       const SizedBox(height: 16),
                       _buildTextField(
-                        fieldKey: const Key('medication-custom-frequency-field'),
-                        onChanged: (_) =>
-                            _markEditedByUser(MedicationPhotoFieldKey.frequency),
+                        fieldKey:
+                            const Key('medication-custom-frequency-field'),
+                        onChanged: (_) => _markEditedByUser(
+                            MedicationPhotoFieldKey.frequency),
                         controller: _customFrequencyController,
                         label: 'Custom Frequency',
                         hintText: 'e.g., Every 8 hours, Twice weekly, etc.',
@@ -372,47 +374,51 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
                     KeyedSubtree(
                       key: const Key('medication-type-field'),
                       child: DropdownButtonFormField<MedicationType>(
-                      key: ValueKey('type-$_prefillGeneration'),
-                      initialValue: _selectedMedicationType,
-                      isExpanded: true,
-                      hint: const Text('Select a type'),
-                      validator: (value) =>
-                          value == null ? 'Please select a medication type' : null,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).dividerColor,
+                        key: ValueKey('type-$_prefillGeneration'),
+                        initialValue: _selectedMedicationType,
+                        isExpanded: true,
+                        hint: const Text('Select a type'),
+                        validator: (value) => value == null
+                            ? 'Please select a medication type'
+                            : null,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).dividerColor,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
                           ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
+                        items: MedicationType.values.map((MedicationType type) {
+                          return DropdownMenuItem<MedicationType>(
+                            value: type,
+                            child: Text(type.label,
+                                overflow: TextOverflow.ellipsis),
+                          );
+                        }).toList(),
+                        onChanged: (MedicationType? newValue) {
+                          setState(() {
+                            _selectedMedicationType = newValue!;
+                            _typeChosenByUser = true;
+                          });
+                          _markEditedByUser(
+                              MedicationPhotoFieldKey.medicationType);
+                        },
                       ),
-                      items: MedicationType.values.map((MedicationType type) {
-                        return DropdownMenuItem<MedicationType>(
-                          value: type,
-                          child: Text(type.label, overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (MedicationType? newValue) {
-                        setState(() {
-                          _selectedMedicationType = newValue!;
-                          _typeChosenByUser = true;
-                        });
-                        _markEditedByUser(MedicationPhotoFieldKey.medicationType);
-                      },
                     ),
-                    ),
-                    _buildPhotoFieldNote(MedicationPhotoFieldKey.medicationType),
+                    _buildPhotoFieldNote(
+                        MedicationPhotoFieldKey.medicationType),
                     const SizedBox(height: 16),
 
                     // Prescribed By
@@ -681,7 +687,8 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
     if (result == null) return const SizedBox.shrink();
 
     if (result.manualEntryRequired) {
-      return _buildPhotoFailureMessage(result.message ?? _unreadablePhotoMessage);
+      return _buildPhotoFailureMessage(
+          result.message ?? _unreadablePhotoMessage);
     }
 
     return Padding(
@@ -755,13 +762,16 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
     if (!_isPhotoReview) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    final (IconData icon, String text, String noteKey) = _machineGenerated
-            .contains(key)
-        ? (Icons.auto_awesome, 'Read from photo. Please check it.', 'ai')
-        : _editedByUser.contains(key)
-            ? (Icons.edit, 'Edited by you.', 'edited')
-            : (Icons.help_outline, 'Not found on the label. Please fill this in.',
-                'missing');
+    final (IconData icon, String text, String noteKey) =
+        _machineGenerated.contains(key)
+            ? (Icons.auto_awesome, 'Read from photo. Please check it.', 'ai')
+            : _editedByUser.contains(key)
+                ? (Icons.edit, 'Edited by you.', 'edited')
+                : (
+                    Icons.help_outline,
+                    'Not found on the label. Please fill this in.',
+                    'missing'
+                  );
 
     return Padding(
       key: Key('medication-photo-$noteKey-note-$key'),
@@ -856,7 +866,8 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
       _editedByUser.clear();
       if (result.manualEntryRequired) return;
 
-      final name = result.prefilledValue(MedicationPhotoFieldKey.medicationName);
+      final name =
+          result.prefilledValue(MedicationPhotoFieldKey.medicationName);
       if (name != null) {
         _nameController.text = name;
         _machineGenerated.add(MedicationPhotoFieldKey.medicationName);
@@ -868,7 +879,8 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
         _machineGenerated.add(MedicationPhotoFieldKey.dosage);
       }
 
-      final frequency = result.prefilledValue(MedicationPhotoFieldKey.frequency);
+      final frequency =
+          result.prefilledValue(MedicationPhotoFieldKey.frequency);
       if (frequency != null) {
         _selectedFrequency = _frequencyOptions.firstWhere(
           (option) =>
@@ -908,8 +920,9 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
   }
 
   Future<void> _readDetailsAloud() async {
-    String describe(String label, String value) =>
-        value.trim().isEmpty ? '$label: not filled in.' : '$label: ${value.trim()}.';
+    String describe(String label, String value) => value.trim().isEmpty
+        ? '$label: not filled in.'
+        : '$label: ${value.trim()}.';
     final frequency = _selectedFrequency == 'Custom'
         ? _customFrequencyController.text
         : _selectedFrequency;
@@ -975,15 +988,13 @@ class _AddMedicationModalState extends State<AddMedicationModal> {
           if (_notesController.text.isNotEmpty) 'notes': _notesController.text,
         };
 
-
         final response = await ApiService.addPatientMedication(
           patientId,
           medicationData,
         );
-        
-        unawaited(
-          Telemetry.event('feature.medications.add', {'statusCode': response.statusCode})
-        );
+
+        unawaited(Telemetry.event(
+            'feature.medications.add', {'statusCode': response.statusCode}));
 
         if (response.statusCode == 200) {
           // Parse the response to get the created medication
