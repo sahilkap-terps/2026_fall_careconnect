@@ -112,7 +112,8 @@ class MedicareDataService {
     final paid = _money(eob['payment']?['amount']);
     if (paid != null) details.add(RecordDetail('Medicare paid', paid));
     final svc = eob['billablePeriod']?['start'];
-    if (svc is String) details.add(RecordDetail('Service date', _friendlyDate(svc)));
+    if (svc is String)
+      details.add(RecordDetail('Service date', _friendlyDate(svc)));
     return HealthRecord.single(
       id: id,
       source: RecordSource.medicare,
@@ -120,7 +121,8 @@ class MedicareDataService {
       title: title,
       date: date,
       details: details,
-      status: eob['payment']?['amount']?['value'] != null ? 'Paid' : 'Processed',
+      status:
+          eob['payment']?['amount']?['value'] != null ? 'Paid' : 'Processed',
     );
   }
 
@@ -138,12 +140,14 @@ class MedicareDataService {
           : 'Medicare';
       if (payor is String) details.add(RecordDetail('Payer', payor));
       final start = r['period']?['start'];
-      if (start is String) details.add(RecordDetail('Effective', _friendlyDate(start)));
+      if (start is String)
+        details.add(RecordDetail('Effective', _friendlyDate(start)));
       final klass = (r['class'] as List?)
           ?.map((c) => c is Map ? _conceptText(c['type']) : null)
           .whereType<String>()
           .join(', ');
-      if (klass != null && klass.isNotEmpty) details.add(RecordDetail('Plan', klass));
+      if (klass != null && klass.isNotEmpty)
+        details.add(RecordDetail('Plan', klass));
       out.add(HealthRecord.single(
         id: id,
         source: RecordSource.medicare,
@@ -217,7 +221,20 @@ class MedicareDataService {
   String _friendlyDate(String iso) {
     final d = DateTime.tryParse(iso);
     if (d == null) return iso;
-    const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const m = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${m[d.month - 1]} ${d.day}, ${d.year}';
   }
 }

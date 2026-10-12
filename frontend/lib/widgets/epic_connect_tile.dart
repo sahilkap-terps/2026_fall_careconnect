@@ -16,7 +16,8 @@ class EpicConnectTile extends StatefulWidget {
   State<EpicConnectTile> createState() => _EpicConnectTileState();
 }
 
-class _EpicConnectTileState extends State<EpicConnectTile> with WidgetsBindingObserver {
+class _EpicConnectTileState extends State<EpicConnectTile>
+    with WidgetsBindingObserver {
   bool _loading = true;
   bool _connected = false;
   bool _busy = false;
@@ -117,10 +118,14 @@ class _EpicConnectTileState extends State<EpicConnectTile> with WidgetsBindingOb
         ),
         trailing: _busy
             ? const SizedBox(
-                width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2))
             : _connected
-                ? TextButton(onPressed: _disconnect, child: const Text('Disconnect'))
-                : FilledButton(onPressed: _connect, child: const Text('Connect')),
+                ? TextButton(
+                    onPressed: _disconnect, child: const Text('Disconnect'))
+                : FilledButton(
+                    onPressed: _connect, child: const Text('Connect')),
       ),
     );
   }

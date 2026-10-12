@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
@@ -203,24 +202,6 @@ class MessagingService {
     }
   }
 
-  // Generate unique message ID
-  static String _generateMessageId() {
-    return '${DateTime.now().millisecondsSinceEpoch}_${_generateRandomString(8)}';
-  }
-
-  // Generate random string
-  static String _generateRandomString(int length) {
-    const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = Random();
-    return String.fromCharCodes(
-      Iterable.generate(
-        length,
-        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
-      ),
-    );
-  }
-
   // Store message locally
   static Future<void> _storeMessageLocally(
     String senderId,
@@ -248,30 +229,6 @@ class MessagingService {
       await _saveLocalMessages();
     } catch (e) {
       print('Error storing message locally: $e');
-    }
-  }
-
-  // Store message in backend database
-  static Future<void> _storeMessageInDatabase(
-    Map<String, dynamic> messageData,
-  ) async {
-    try {
-      final headers = await AuthTokenManager.getAuthHeaders();
-
-      final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}messages'),
-        headers: {...headers, 'Content-Type': 'application/json'},
-        body: jsonEncode(messageData),
-      );
-
-      if (response.statusCode == 201) {
-        print('✅ Message stored in database');
-      } else {
-        print('❌ Failed to store message: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error storing message: $e');
-      // Don't throw - message is already stored locally
     }
   }
 

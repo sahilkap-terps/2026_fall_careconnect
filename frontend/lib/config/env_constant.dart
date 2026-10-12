@@ -5,11 +5,6 @@ import 'package:flutter/foundation.dart';
 // --- Raw values from --dart-define ---
 // We define all the compile-time variables here
 
-const String _agoraAppId = String.fromEnvironment('AGORA_APP_ID');
-const String _agoraAppCertificate = String.fromEnvironment(
-  'AGORA_APP_CERTIFICATE',
-);
-
 const String _backendBaseUrl = String.fromEnvironment(
   'BACKEND_URL',
   defaultValue: '',
