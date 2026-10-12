@@ -357,7 +357,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
   }
 
-  // TODO(team-b): polling starts alongside the WebSocket and is never
+  // TODO: polling starts alongside the WebSocket and is never
   // stopped once it connects; decide whether to call this on connect.
   // ignore: unused_element
   void _stopPolling() {

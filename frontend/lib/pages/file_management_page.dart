@@ -858,7 +858,7 @@ class _FileManagementPageState extends State<FileManagementPage>
     }
   }
 
-  // TODO(team-b): the inline PopupMenuButton.onSelected replaced this
+  // TODO: the inline PopupMenuButton.onSelected replaced this
   // handler, so download/delete show "coming soon" and preview does
   // nothing although _downloadFile/_previewFile/_deleteFile exist.
   // ignore: unused_element

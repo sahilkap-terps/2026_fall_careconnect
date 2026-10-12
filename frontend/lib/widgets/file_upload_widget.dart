@@ -385,7 +385,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     }
   }
 
-  // TODO(team-b): mobile upload is broken. The button only calls
+  // TODO: mobile upload is broken. The button only calls
   // _uploadFileWeb, which needs bytes, and pickFileForCategory returns
   // null on mobile for document categories. Wire this in with that fix.
   // ignore: unused_element
