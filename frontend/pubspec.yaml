@@ -54,6 +54,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: ^0.20.2 # data formatting
+  clock: ^1.1.2 # testable "now" (package:clock)
   camera: ^0.11.2 # emotion detector use
   pdf: ^3.11.3 # PDF generation
   # emotion detector use
