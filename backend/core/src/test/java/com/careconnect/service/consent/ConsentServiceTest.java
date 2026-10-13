@@ -1,4 +1,4 @@
-package com.careconnect.service;
+package com.careconnect.service.consent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,7 +13,7 @@ import com.careconnect.repository.ConsentGrantRepository;
 import java.time.Instant;
 import java.util.List;
 
-import com.careconnect.service.consent.ConsentService;
+import com.careconnect.service.CaregiverPatientLinkService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
