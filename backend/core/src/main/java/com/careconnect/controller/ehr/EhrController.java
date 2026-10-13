@@ -19,8 +19,9 @@ import java.util.*;
  * {@link MedicareRecordCache}: Blue Button is asked again only when the cached data is a day old.
  * With {@code careconnect.medicare.mode=mock} they are served from {@link MockMedicareSource} instead.
  * <p>
- * With no {@code patientId} a read is the caller's own. With one, a linked caregiver or family member reads
- * that patient's data; anyone else gets a 403 (FR-MCR-16, FR-MCR-17, NFR-SEC-05).
+ * With no {@code patientId} a read is the caller's own. With one, {@link EhrService#requireMedicareAccess}
+ * decides first: the patient, or an assigned caregiver with the patient's {@code MEDICARE_VIEW} consent, reads
+ * that patient's data; anyone else gets the access policy's 404 (FR-MCR-16, FR-MCR-17, BR-02, NFR-DEG-03).
  */
 @RestController
 @Slf4j
@@ -54,8 +55,8 @@ public class EhrController{
 
         // To any other teams, just put your Ehr code in an if block like this.
         if(source.equalsIgnoreCase("medicare")){
-            if (patientId != null && !ehrService.canReadMedicareFor(patientId)) {
-                return forbidden();
+            if (patientId != null) {
+                ehrService.requireMedicareAccess(patientId);
             }
             MedicareSource mock = mockSource();
             if (mock != null) {
@@ -88,8 +89,8 @@ public class EhrController{
 
         // To any other teams, just put your Ehr code in an if block like this.
         if(source.equalsIgnoreCase("medicare")) {
-            if (patientId != null && !ehrService.canReadMedicareFor(patientId)) {
-                return forbidden();
+            if (patientId != null) {
+                ehrService.requireMedicareAccess(patientId);
             }
             MedicareSource mock = mockSource();
             if (mock != null) {
@@ -116,8 +117,8 @@ public class EhrController{
             @RequestParam(required = false) Long patientId) {
         // To any other teams, just put your Ehr code in an if block like this.
         if(source.equalsIgnoreCase("medicare")){
-            if (patientId != null && !ehrService.canReadMedicareFor(patientId)) {
-                return forbidden();
+            if (patientId != null) {
+                ehrService.requireMedicareAccess(patientId);
             }
             MedicareSource mock = mockSource();
             if (mock != null) {
@@ -141,18 +142,12 @@ public class EhrController{
 
     /**
      * The crosswalk to read: the caller's own, or, with {@code patientId}, that patient's. A caller asking
-     * for a patient has already passed {@link EhrService#canReadMedicareFor} (FR-MCR-16, FR-MCR-17).
+     * for a patient has already passed {@link EhrService#requireMedicareAccess} (FR-MCR-16, FR-MCR-17).
      */
     private Optional<EhrPatientCrosswalk> crosswalkFor(final Long patientId) {
         return patientId == null
                 ? ehrService.getCrosswalk(medicareService.getId())
                 : ehrService.getCrosswalkForPatient(patientId, medicareService.getId());
-    }
-
-    /** A caller who is neither the patient nor linked to them as a caregiver or family member (NFR-SEC-05). */
-    private ResponseEntity<Object> forbidden() {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("source", MedicareProperties.SOURCE_MEDICARE, "error", "medicare_forbidden"));
     }
 
     /**

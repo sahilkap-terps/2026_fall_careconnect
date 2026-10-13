@@ -2,7 +2,11 @@ package com.careconnect.controller.ehr;
 
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
+import com.careconnect.exception.AppException;
+import com.careconnect.exception.GlobalExceptionHandler;
 import com.careconnect.model.CaregiverPatientLink;
+import com.careconnect.model.ConsentGrant;
+import com.careconnect.model.FamilyMemberLink;
 import com.careconnect.model.Patient;
 import com.careconnect.model.User;
 import com.careconnect.model.ehr.EhrAuditEvent;
@@ -13,6 +17,8 @@ import com.careconnect.model.ehr.EhrSource;
 import com.careconnect.model.ehr.MedicareProperties;
 import com.careconnect.model.ehr.MedicareStatusGate;
 import com.careconnect.repository.CaregiverPatientLinkRepository;
+import com.careconnect.repository.ConsentGrantRepository;
+import com.careconnect.repository.FamilyMemberLinkRepository;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.repository.ehr.EhrAuditEventRepository;
@@ -22,6 +28,7 @@ import com.careconnect.repository.ehr.EhrRawPayloadRepository;
 import com.careconnect.repository.ehr.EhrSourceIdentityRepository;
 import com.careconnect.repository.ehr.EhrSourceRepository;
 import com.careconnect.repository.ehr.EhrVisitRecordRepository;
+import com.careconnect.security.MedicareAccessPolicy;
 import com.careconnect.security.Role;
 import com.careconnect.service.ehr.EhrAuditLogger;
 import com.careconnect.service.ehr.EhrService;
@@ -30,6 +37,7 @@ import com.careconnect.service.ehr.MedicareRecordCache;
 import com.careconnect.service.ehr.MedicareService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coverage;
 import org.hl7.fhir.r4.model.ExplanationOfBenefit;
@@ -52,10 +60,14 @@ import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -71,6 +83,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
  * The Medicare reads end to end below the HTTP filter chain: the real {@link EhrController},
@@ -84,8 +97,9 @@ import static org.mockito.Mockito.when;
  * round trip is TC-MCR-CACHE-033 on PostgreSQL. The bearer-token filter chain is checked by the boot
  * smoke test in the PR #272 execution record, not here.
  * <p>
- * Test IDs TC-MCR-CACHE-026…032 (Testing Lead, 2026-10-06, PR #272 review) and TC-MCR-AUTHZ-038…040
- * (PR #310 author's, named by the Testing Lead, 2026-10-11) are permanent. Never
+ * Test IDs TC-MCR-CACHE-026…032 (Testing Lead, 2026-10-06, PR #272 review), TC-MCR-AUTHZ-038…040
+ * (PR #310 author's, named by the Testing Lead, 2026-10-11) and TC-MCR-AUTHZ-043…046 (Testing Lead,
+ * 2026-10-11) are permanent. Never
  * renumber, never reuse.
  */
 @DataJpaTest
@@ -93,7 +107,7 @@ import static org.mockito.Mockito.when;
 @ActiveProfiles("test")
 @ImportAutoConfiguration(JacksonAutoConfiguration.class)
 @Import({EhrController.class, EhrService.class, MedicareRecordCache.class, EhrAuditLogger.class,
-        MedicareProperties.class, MedicareStatusGate.class})
+        MedicareProperties.class, MedicareStatusGate.class, MedicareAccessPolicy.class})
 @TestPropertySource(properties = {"careconnect.medicare.mode=live", "careconnect.medicare.sandbox=true"})
 class MedicareReadIntegrationTest {
 
@@ -128,6 +142,10 @@ class MedicareReadIntegrationTest {
     EhrAuditEventRepository auditEvents;
     @Autowired
     CaregiverPatientLinkRepository caregiverLinks;
+    @Autowired
+    FamilyMemberLinkRepository familyLinks;
+    @Autowired
+    ConsentGrantRepository consentGrants;
 
     private Long medicareId;
     private Patient patient1;
@@ -388,10 +406,16 @@ class MedicareReadIntegrationTest {
         return row;
     }
 
-    // Caregiver reads by patientId (FR-MCR-16, FR-MCR-17, NFR-SEC-05) over the real link queries.
+    // Caregiver reads by patientId over the real link and consent queries, through MedicareAccessPolicy:
+    // the patient, or an assigned caregiver holding the patient's MEDICARE_VIEW grant; everyone else gets
+    // the policy's one 404 (FR-MCR-16, FR-MCR-17, BR-02, NFR-DEG-03).
+
+    private User account(final String email, final Role role) {
+        return users.save(User.builder().email(email).password("not-a-real-hash").role(role).build());
+    }
 
     private User caregiver(final String email) {
-        return users.save(User.builder().email(email).password("not-a-real-hash").role(Role.CAREGIVER).build());
+        return account(email, Role.CAREGIVER);
     }
 
     private void caregiverLink(final User caregiver, final Patient p, final CaregiverPatientLink.LinkStatus status,
@@ -403,17 +427,46 @@ class MedicareReadIntegrationTest {
         caregiverLinks.save(l);
     }
 
+    private void grant(final Patient p, final User grantee, final String scope, final Instant expiresAt,
+                       final Instant revokedAt) {
+        final Instant now = Instant.now();
+        consentGrants.save(ConsentGrant.builder()
+                .patientUserId(p.getUser().getId())
+                .granteeUserId(grantee.getId())
+                .granteeRole(grantee.getRole().name())
+                .scope(scope)
+                .status(ConsentGrant.STATUS_ACTIVE)
+                .grantedAt(now.minusSeconds(86_400))
+                .expiresAt(expiresAt)
+                .revokedAt(revokedAt)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    }
+
+    private void medicareView(final Patient p, final User grantee) {
+        grant(p, grantee, MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, null, null);
+    }
+
     private static void signIn(final User u) {
         SecurityContextHolder.setContext(new SecurityContextImpl(
                 new UsernamePasswordAuthenticationToken(u.getEmail(), null, List.of())));
     }
 
+    /** The access policy's refusal: one 404 with one message, whatever the reason. */
+    private static void assertRefused(final ThrowingCallable read, final String who) {
+        assertThatThrownBy(read).as(who)
+                .isInstanceOf(AppException.class)
+                .satisfies(e -> assertThat(((AppException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
     @Test
-    @DisplayName("TC-MCR-AUTHZ-038: a caregiver with an active link reads the patient's coverage, and the audit row names the caregiver")
+    @DisplayName("TC-MCR-AUTHZ-038: a caregiver with an active link and the patient's MEDICARE_VIEW grant reads the patient's coverage, and the audit row names the caregiver")
     void linkedCaregiverReadsPatientCoverage() throws Exception {
         link(patient1, "enc");
         final User cg = caregiver("cg-active@example.test");
         caregiverLink(cg, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        medicareView(patient1, cg);
         signIn(cg);
         blueButtonServesFixtures();
 
@@ -426,8 +479,8 @@ class MedicareReadIntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-MCR-AUTHZ-039: an expired, revoked or missing caregiver link is a 403, and Blue Button is never asked")
-    void inactiveCaregiverLinksAre403() {
+    @DisplayName("TC-MCR-AUTHZ-039: an expired, revoked or missing caregiver link is the policy's 404 even with a MEDICARE_VIEW grant, and Blue Button is never asked")
+    void inactiveCaregiverLinksAreRefused() {
         link(patient1, "enc");
         final User expired = caregiver("cg-expired@example.test");
         caregiverLink(expired, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, LocalDateTime.now().minusDays(1));
@@ -437,22 +490,96 @@ class MedicareReadIntegrationTest {
         caregiverLink(stranger, patient2, CaregiverPatientLink.LinkStatus.ACTIVE, null);
 
         for (final User u : List.of(expired, revoked, stranger)) {
+            medicareView(patient1, u);
             signIn(u);
-            assertThat(controller.fetchVisits("medicare", patient1.getId()).getStatusCode())
-                    .as(u.getEmail()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertRefused(() -> controller.fetchVisits("medicare", patient1.getId()), u.getEmail());
         }
         verifyNoInteractions(medicare);
     }
 
     @Test
-    @DisplayName("TC-MCR-AUTHZ-040: a patient asking for another patient's id is a 403, while their own id reads normally")
+    @DisplayName("TC-MCR-AUTHZ-040: a patient asking for another patient's id gets the policy's 404, while their own id reads")
     void patientCannotReadAnotherPatient() {
         link(patient1, "enc");
         link(patient2, "enc");
         signIn(patient2);
         blueButtonServesFixtures();
 
-        assertThat(controller.fetchCoverage("medicare", patient1.getId()).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertRefused(() -> controller.fetchCoverage("medicare", patient1.getId()), "patient2 asking for patient1");
         assertThat(controller.fetchCoverage("medicare", patient2.getId()).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-043: a caregiver with an active link but no live MEDICARE_VIEW grant (none, revoked, expired, or another scope's) gets the 404, and Blue Button is never asked (DEF-MCR-25)")
+    void linkWithoutMedicareConsentIsRefused() {
+        link(patient1, "enc");
+        final User none = caregiver("cg-no-grant@example.test");
+        final User revoked = caregiver("cg-grant-revoked@example.test");
+        final User expired = caregiver("cg-grant-expired@example.test");
+        final User otherScope = caregiver("cg-ai-only@example.test");
+        for (final User u : List.of(none, revoked, expired, otherScope)) {
+            caregiverLink(u, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        }
+        grant(patient1, revoked, MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, null, Instant.now().minusSeconds(60));
+        grant(patient1, expired, MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, Instant.now().minusSeconds(60), null);
+        grant(patient1, otherScope, ConsentGrant.SCOPE_AI_RETRIEVAL, null, null);
+
+        for (final User u : List.of(none, revoked, expired, otherScope)) {
+            signIn(u);
+            assertRefused(() -> controller.fetchCoverage("medicare", patient1.getId()), u.getEmail());
+        }
+        verifyNoInteractions(medicare);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-044: a family member with an active link, even holding a MEDICARE_VIEW grant, gets the 404 (characterization pending OQ-11; DEF-MCR-26)")
+    void linkedFamilyMemberIsRefused() {
+        link(patient1, "enc");
+        final User family = account("family-linked@example.test", Role.FAMILY_MEMBER);
+        familyLinks.save(new FamilyMemberLink(family, patient1.getUser(), patient1.getUser(), "Daughter"));
+        medicareView(patient1, family);
+        signIn(family);
+        blueButtonServesFixtures();
+
+        assertRefused(() -> controller.fetchIdentity("medicare", patient1.getId()), "linked family member");
+        verifyNoInteractions(medicare);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-045: an administrator gets the 404 for a patient's Medicare data, and Blue Button is never asked")
+    void administratorIsRefused() {
+        link(patient1, "enc");
+        signIn(account("admin@example.test", Role.ADMIN));
+
+        assertRefused(() -> controller.fetchVisits("medicare", patient1.getId()), "administrator");
+        verifyNoInteractions(medicare);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-046: over HTTP every refusal, including a patient id that does not exist, is the same 404 and body with no Medicare field (DEF-MCR-27)")
+    void refusalsAreIndistinguishableOverHttp() throws Exception {
+        link(patient1, "enc");
+        final MockMvc mvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+        final User stranger = caregiver("cg-stranger-http@example.test");
+        final User admin = account("admin-http@example.test", Role.ADMIN);
+        final String patient = patient1.getId().toString();
+
+        final List<MvcResult> refusals = new ArrayList<>();
+        signIn(stranger);
+        refusals.add(mvc.perform(get("/v1/api/medicare/coverage").param("patientId", patient)).andReturn());
+        signIn(patient2);
+        refusals.add(mvc.perform(get("/v1/api/medicare/visits").param("patientId", patient)).andReturn());
+        signIn(admin);
+        refusals.add(mvc.perform(get("/v1/api/medicare/patient").param("patientId", patient)).andReturn());
+        signIn(stranger);
+        refusals.add(mvc.perform(get("/v1/api/medicare/coverage").param("patientId", "987654321")).andReturn());
+
+        assertThat(refusals).allSatisfy(r -> assertThat(r.getResponse().getStatus()).isEqualTo(404));
+        final String first = refusals.get(0).getResponse().getContentAsString();
+        assertThat(refusals).extracting(r -> r.getResponse().getContentAsString()).containsOnly(first);
+        assertThat(objectMapper.readTree(first).has("resources")).isFalse();
+        verifyNoInteractions(medicare);
     }
 }

@@ -1,5 +1,6 @@
 package com.careconnect.controller.ehr;
 
+import com.careconnect.exception.AppException;
 import com.careconnect.model.ehr.EhrPatientCrosswalk;
 import com.careconnect.model.ehr.MedicareEnvelope;
 import com.careconnect.model.ehr.MedicareProperties;
@@ -24,12 +25,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -39,8 +41,8 @@ import static org.mockito.Mockito.when;
  * The Medicare reads in live mode, the default: a linked patient gets FHIR from the cache in an
  * envelope, with the status gate applied, and anything else is a 404. Mock mode is
  * {@code EhrControllerMockModeTest}; the real cache and JPA layer underneath are
- * {@code MedicareReadIntegrationTest}. A {@code patientId} read is a caregiver or family member reading their
- * patient's data (FR-MCR-16, FR-MCR-17).
+ * {@code MedicareReadIntegrationTest}. A {@code patientId} read asks {@code EhrService.requireMedicareAccess}
+ * first, which refuses with the access policy's 404 (FR-MCR-16, FR-MCR-17).
  * <p>
  * Test IDs TC-MCR-CACHE-035..042 and TC-MCR-AUTHZ-031..036 are permanent. Never renumber, never reuse.
  */
@@ -197,8 +199,17 @@ class EhrControllerTest {
     private static final long PATIENT = 2L;
     private static final long CAREGIVER = 12L;
 
+    /** The access policy's refusal, as {@code EhrService.requireMedicareAccess} throws it. */
+    private void refused() {
+        doThrow(new AppException(HttpStatus.NOT_FOUND, "Medicare data not found")).when(ehrService).requireMedicareAccess(PATIENT);
+    }
+
+    private static void assertRefused(final org.assertj.core.api.ThrowableAssert.ThrowingCallable read) {
+        assertThatThrownBy(read).isInstanceOf(AppException.class)
+                .satisfies(e -> assertThat(((AppException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
     private void caregiverAllowed() {
-        when(ehrService.canReadMedicareFor(PATIENT)).thenReturn(true);
         when(medicareService.getId()).thenReturn(MEDICARE);
         when(ehrService.getCrosswalkForPatient(PATIENT, MEDICARE)).thenReturn(Optional.of(crosswalk));
         when(ehrService.currentUserId()).thenReturn(Optional.of(CAREGIVER));
@@ -214,6 +225,7 @@ class EhrControllerTest {
         final MedicareEnvelope body = envelope(controller.fetchCoverage("medicare", PATIENT));
 
         assertThat(body.resources()).containsExactly(active);
+        verify(ehrService).requireMedicareAccess(PATIENT);
         verify(ehrService, never()).getCrosswalk(anyLong());
     }
 
@@ -231,17 +243,13 @@ class EhrControllerTest {
     }
 
     @Test
-    @DisplayName("TC-MCR-AUTHZ-033: a caller without access to the patient gets a 403 on every read, and nothing is looked up or retrieved")
-    void noAccessIs403() {
-        when(ehrService.canReadMedicareFor(PATIENT)).thenReturn(false);
+    @DisplayName("TC-MCR-AUTHZ-033: a caller the access policy refuses gets its 404 on every read, and nothing is looked up or retrieved (DEF-MCR-27)")
+    void noAccessIs404() {
+        refused();
 
-        for (final ResponseEntity<Object> response : List.of(
-                controller.fetchIdentity("medicare", PATIENT),
-                controller.fetchCoverage("medicare", PATIENT),
-                controller.fetchVisits("medicare", PATIENT))) {
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-            assertThat(response.getBody()).isEqualTo(Map.of("source", MedicareProperties.SOURCE_MEDICARE, "error", "medicare_forbidden"));
-        }
+        assertRefused(() -> controller.fetchIdentity("medicare", PATIENT));
+        assertRefused(() -> controller.fetchCoverage("medicare", PATIENT));
+        assertRefused(() -> controller.fetchVisits("medicare", PATIENT));
         verify(ehrService, never()).getCrosswalkForPatient(anyLong(), anyLong());
         verifyNoInteractions(cache, medicareService);
     }
@@ -249,7 +257,6 @@ class EhrControllerTest {
     @Test
     @DisplayName("TC-MCR-AUTHZ-034: an allowed caregiver whose patient never connected Medicare gets a 404, as the patient would")
     void allowedButPatientNotConnectedIs404() {
-        when(ehrService.canReadMedicareFor(PATIENT)).thenReturn(true);
         when(medicareService.getId()).thenReturn(MEDICARE);
         when(ehrService.getCrosswalkForPatient(PATIENT, MEDICARE)).thenReturn(Optional.empty());
 
@@ -264,16 +271,16 @@ class EhrControllerTest {
 
         controller.fetchVisits("medicare", null);
 
-        verify(ehrService, never()).canReadMedicareFor(any());
+        verify(ehrService, never()).requireMedicareAccess(any());
     }
 
     @Test
-    @DisplayName("TC-MCR-AUTHZ-036: mock mode still refuses a caller without access to the patient, before serving any fixture")
+    @DisplayName("TC-MCR-AUTHZ-036: mock mode still refuses a caller the access policy refuses, with its 404, before serving any fixture")
     void mockModeStillChecksAccess() {
         ReflectionTestUtils.setField(properties, "mode", MedicareProperties.MODE_MOCK);
-        when(ehrService.canReadMedicareFor(PATIENT)).thenReturn(false);
+        refused();
 
-        assertThat(controller.fetchCoverage("medicare", PATIENT).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertRefused(() -> controller.fetchCoverage("medicare", PATIENT));
         verifyNoInteractions(sources);
     }
 }

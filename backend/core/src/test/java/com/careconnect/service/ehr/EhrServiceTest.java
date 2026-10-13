@@ -6,14 +6,13 @@ import com.careconnect.model.User;
 import com.careconnect.model.ehr.EhrCoverageRecord;
 import com.careconnect.model.ehr.EhrPatientCrosswalk;
 import com.careconnect.model.ehr.EhrVisitRecord;
-import com.careconnect.repository.CaregiverPatientLinkRepository;
-import com.careconnect.repository.FamilyMemberLinkRepository;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.repository.ehr.EhrCoverageRecordRepository;
 import com.careconnect.repository.ehr.EhrPatientCrosswalkRepository;
 import com.careconnect.repository.ehr.EhrVisitRecordRepository;
-import com.careconnect.security.Role;
+import com.careconnect.exception.AppException;
+import com.careconnect.security.MedicareAccessPolicy;
 import org.hl7.fhir.r4.model.Coverage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.context.SecurityContextImpl;
@@ -32,9 +32,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -43,7 +42,7 @@ import static org.mockito.Mockito.when;
  * {@code EhrService}: finding the signed-in patient's linked Medicare row, the acting user for the audit
  * log, upserting coverage and visit rows, and the shared FHIR context's HTTP client setup (DEF-MCR-06).
  * <p>
- * Test IDs TC-MCR-CACHE-043..052 and TC-MCR-AUTHZ-037 are permanent. Never renumber, never reuse.
+ * Test IDs TC-MCR-CACHE-043..052 and TC-MCR-AUTHZ-037, 041, 042 are permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
 class EhrServiceTest {
@@ -62,9 +61,7 @@ class EhrServiceTest {
     @Mock
     EhrVisitRecordRepository visits;
     @Mock
-    CaregiverPatientLinkRepository caregiverLinks;
-    @Mock
-    FamilyMemberLinkRepository familyLinks;
+    MedicareAccessPolicy accessPolicy;
     @InjectMocks
     EhrService service;
 
@@ -228,81 +225,31 @@ class EhrServiceTest {
                 .isNotExactlyInstanceOf(ApacheRestfulClientFactory.class);
     }
 
-    // FR-MCR-16, FR-MCR-17, NFR-SEC-05: who may read a patient's Medicare data by patient id.
+    // FR-MCR-16, FR-MCR-17, BR-02: who may read a patient's Medicare data by patient id is
+    // MedicareAccessPolicy's decision (TC-MCR-AUTHZ-001…030); EhrService only hands it the signed-in caller.
 
-    private static final long PATIENT_USER = 6L;
-
-    private void callerIs(final long id, final Role role) {
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-041: the signed-in caller, loaded by the token's email, and the patient id go to the access policy")
+    void requireMedicareAccessAsksThePolicy() {
         signIn();
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(User.builder().id(id).email(EMAIL).role(role).build()));
-        when(patientRepository.findById(2L)).thenReturn(Optional.of(patientRecord()));
+        final User caller = User.builder().id(12L).email(EMAIL).build();
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(caller));
+
+        service.requireMedicareAccess(2L);
+
+        verify(accessPolicy).requireMedicareAccess(caller, 2L);
     }
 
     @Test
-    @DisplayName("a patient may read their own Medicare data by patient id")
-    void patientReadsOwn() {
-        callerIs(PATIENT_USER, Role.PATIENT);
+    @DisplayName("TC-MCR-AUTHZ-042: signed out, the policy is asked with no caller, nothing is looked up, and its 404 reaches the caller")
+    void signedOutIsRefusedByThePolicy() {
+        doThrow(new AppException(HttpStatus.NOT_FOUND, "Medicare data not found"))
+                .when(accessPolicy).requireMedicareAccess(null, 2L);
 
-        assertThat(service.canReadMedicareFor(2L)).isTrue();
-    }
-
-    @Test
-    @DisplayName("a patient may not read another patient's Medicare data")
-    void patientCannotReadAnother() {
-        callerIs(7L, Role.PATIENT);
-
-        assertThat(service.canReadMedicareFor(2L)).isFalse();
-        verifyNoInteractions(caregiverLinks, familyLinks);
-    }
-
-    @Test
-    @DisplayName("a caregiver with an active, unexpired link may read; the link is checked by user ids")
-    void linkedCaregiverMayRead() {
-        callerIs(12L, Role.CAREGIVER);
-        when(caregiverLinks.existsActiveNonExpiredLinkByUserIds(eq(12L),
-                eq(PATIENT_USER), any())).thenReturn(true);
-
-        assertThat(service.canReadMedicareFor(2L)).isTrue();
-    }
-
-    @Test
-    @DisplayName("a caregiver with no active link (none, expired or revoked) may not read")
-    void unlinkedCaregiverMayNotRead() {
-        callerIs(12L, Role.CAREGIVER);
-        when(caregiverLinks.existsActiveNonExpiredLinkByUserIds(anyLong(), anyLong(), any())).thenReturn(false);
-
-        assertThat(service.canReadMedicareFor(2L)).isFalse();
-    }
-
-    @Test
-    @DisplayName("a family member with an active link may read")
-    void linkedFamilyMemberMayRead() {
-        callerIs(14L, Role.FAMILY_MEMBER);
-        when(familyLinks.existsActiveNonExpiredLink(any(), any(), any())).thenReturn(true);
-
-        assertThat(service.canReadMedicareFor(2L)).isTrue();
-    }
-
-    @Test
-    @DisplayName("an admin is refused: Medicare data is shared only with the patient and their linked caregivers")
-    void adminIsRefused() {
-        callerIs(1L, Role.ADMIN);
-
-        assertThat(service.canReadMedicareFor(2L)).isFalse();
-        verifyNoInteractions(caregiverLinks, familyLinks);
-    }
-
-    @Test
-    @DisplayName("signed out, an unknown patient id or no patient id is refused")
-    void unknownCallerOrPatientIsRefused() {
-        assertThat(service.canReadMedicareFor(2L)).isFalse();
-
-        signIn();
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(User.builder().id(12L).email(EMAIL).role(Role.CAREGIVER).build()));
-        when(patientRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThat(service.canReadMedicareFor(99L)).isFalse();
-        assertThat(service.canReadMedicareFor(null)).isFalse();
-        verifyNoInteractions(caregiverLinks);
+        assertThatThrownBy(() -> service.requireMedicareAccess(2L))
+                .isInstanceOf(AppException.class)
+                .satisfies(e -> assertThat(((AppException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
+        verifyNoInteractions(userRepository);
     }
 
     @Test

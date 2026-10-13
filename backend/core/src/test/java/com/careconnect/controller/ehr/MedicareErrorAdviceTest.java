@@ -175,7 +175,6 @@ class MedicareErrorAdviceTest {
         final EhrPatientCrosswalk crosswalk = new EhrPatientCrosswalk();
         crosswalk.setPatientId(patientRecord);
         crosswalk.setSourceId(medicare);
-        when(ehrService.canReadMedicareFor(patientRecord)).thenReturn(true);
         when(medicareService.getId()).thenReturn(medicare);
         when(ehrService.getCrosswalkForPatient(patientRecord, medicare)).thenReturn(Optional.of(crosswalk));
         when(cache.coverage(eq(crosswalk), any())).thenThrow(new AuthenticationException("HTTP 401 from Blue Button"));

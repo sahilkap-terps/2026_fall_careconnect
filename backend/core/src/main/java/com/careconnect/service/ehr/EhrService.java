@@ -7,13 +7,12 @@ import com.careconnect.model.User;
 import com.careconnect.model.ehr.EhrCoverageRecord;
 import com.careconnect.model.ehr.EhrPatientCrosswalk;
 import com.careconnect.model.ehr.EhrVisitRecord;
-import com.careconnect.repository.CaregiverPatientLinkRepository;
-import com.careconnect.repository.FamilyMemberLinkRepository;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.repository.ehr.EhrCoverageRecordRepository;
 import com.careconnect.repository.ehr.EhrPatientCrosswalkRepository;
 import com.careconnect.repository.ehr.EhrVisitRecordRepository;
+import com.careconnect.security.MedicareAccessPolicy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +27,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -50,10 +48,7 @@ public class EhrService {
     private PatientRepository patientRepository;
 
     @Autowired
-    private CaregiverPatientLinkRepository caregiverPatientLinkRepository;
-
-    @Autowired
-    private FamilyMemberLinkRepository familyMemberLinkRepository;
+    private MedicareAccessPolicy medicareAccessPolicy;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -135,35 +130,24 @@ public class EhrService {
     }
 
     /**
-     * Whether the signed-in user may read this patient's Medicare data (FR-MCR-16, FR-MCR-17, NFR-SEC-05):
-     * the patient themself, or a caregiver or family member with an active, unexpired link to them.
-     * Anyone else is refused, including an admin and a patient asking for another patient.
+     * Refuses a signed-in user who may not read this patient's Medicare data. {@link MedicareAccessPolicy}
+     * decides (FR-MCR-16, FR-MCR-17, BR-02): the patient themself, or an assigned caregiver holding the
+     * patient's {@code MEDICARE_VIEW} consent. Everyone else, family members and administrators included,
+     * gets the policy's one 404, whatever the reason.
      *
      * @param patientId the {@code patient.id} asked for, not a user id
+     * @throws com.careconnect.exception.AppException with status 404 for every refusal
      */
-    public boolean canReadMedicareFor(Long patientId) {
+    public void requireMedicareAccess(Long patientId) {
         Authentication currentUserAuth = SecurityContextHolder.getContext().getAuthentication();
-        if (currentUserAuth == null || patientId == null) {
-            return false;
-        }
-        Optional<User> caller = userRepository.findByEmail(currentUserAuth.getName());
-        Optional<User> patientUser = patientRepository.findById(patientId).map(com.careconnect.model.Patient::getUser);
-        if (caller.isEmpty() || patientUser.isEmpty() || caller.get().getRole() == null) {
-            return false;
-        }
-        User user = caller.get();
-        LocalDateTime now = LocalDateTime.now();
-        return switch (user.getRole()) {
-            case PATIENT -> user.getId().equals(patientUser.get().getId());
-            case CAREGIVER -> caregiverPatientLinkRepository.existsActiveNonExpiredLinkByUserIds(
-                    user.getId(), patientUser.get().getId(), now);
-            case FAMILY_MEMBER -> familyMemberLinkRepository.existsActiveNonExpiredLink(user, patientUser.get(), now);
-            default -> false;
-        };
+        User caller = currentUserAuth == null
+                ? null
+                : userRepository.findByEmail(currentUserAuth.getName()).orElse(null);
+        medicareAccessPolicy.requireMedicareAccess(caller, patientId);
     }
 
     /**
-     * That patient's <em>linked</em> crosswalk row for this source, for a caller {@link #canReadMedicareFor}
+     * That patient's <em>linked</em> crosswalk row for this source, for a caller {@link #requireMedicareAccess}
      * has already allowed. Empty when the patient has not connected the source or the link is still pending.
      */
     public Optional<EhrPatientCrosswalk> getCrosswalkForPatient(Long patientId, Long sourceId) {
