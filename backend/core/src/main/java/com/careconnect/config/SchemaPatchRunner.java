@@ -393,6 +393,7 @@ public class SchemaPatchRunner implements CommandLineRunner {
         applyEhrIdentityReconciliationPatches();
         applyPatientAuditTimestampBackfill();
         applyEhrAuditTimestampZonePatches();
+        applyEmergencyPassportPatches();
         seedDemoScheduledVisits();
     }
 
@@ -727,6 +728,63 @@ public class SchemaPatchRunner implements CommandLineRunner {
                 "V2610041200a - ehr_patient_crosswalk.external_patient_id nullable while a link is pending",
                 "ALTER TABLE ehr_patient_crosswalk ALTER COLUMN external_patient_id DROP NOT NULL"
         );
+    }
+
+    /**
+     * CC-12 Increment 1 — Emergency Care Passport storage: {@code emergency_passport_profile} and
+     * {@code emergency_passport_field_visibility}. Mirrors db/migration
+     * V2610131200__create_emergency_passport_tables.sql.
+     * <p>
+     * Hibernate {@code ddl-auto=update} creates both tables from their entities; this supplies what
+     * it will not. The foreign keys are applied here because the entities store bare {@code Long}
+     * ids, and cascade so a deleted patient leaves no passport data behind. The unique indexes are a
+     * safety net, as for the EHR tables.
+     * <p>
+     * {@code is_public} gets a database default of {@code FALSE} so a row inserted outside JPA is
+     * hidden, matching the entity default. The timestamps are made {@code TIMESTAMPTZ} for the
+     * reason {@link #applyEhrAuditTimestampZonePatches()} gives.
+     */
+    private void applyEmergencyPassportPatches() {
+        if (!isPostgreSql()) {
+            log.info("Skipping PostgreSQL emergency passport patches for non-PostgreSQL datasource");
+            return;
+        }
+
+        applyRequiredPatch(
+                "V2610131200a - unique emergency_passport_profile(patient_id)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_profile_patient "
+                        + "ON emergency_passport_profile (patient_id)"
+        );
+        applyRequiredPatch(
+                "V2610131200b - unique emergency_passport_field_visibility(patient_id, field_key)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_visibility_patient_field "
+                        + "ON emergency_passport_field_visibility (patient_id, field_key)"
+        );
+        applyRequiredPatch(
+                "V2610131200c - FK emergency_passport_profile.patient_id -> patient.id",
+                foreignKeyIfMissing("fk_emergency_passport_profile_patient", "emergency_passport_profile",
+                        "patient_id", "patient", "id", " ON DELETE CASCADE")
+        );
+        applyRequiredPatch(
+                "V2610131200d - FK emergency_passport_field_visibility.patient_id -> patient.id",
+                foreignKeyIfMissing("fk_emergency_passport_visibility_patient", "emergency_passport_field_visibility",
+                        "patient_id", "patient", "id", " ON DELETE CASCADE")
+        );
+        applyRequiredPatch(
+                "V2610131200e - emergency_passport_field_visibility.is_public defaults to FALSE",
+                "ALTER TABLE emergency_passport_field_visibility ALTER COLUMN is_public SET DEFAULT FALSE"
+        );
+
+        for (final String table : new String[]{
+                "emergency_passport_profile",
+                "emergency_passport_field_visibility"}) {
+            for (final String column : new String[]{"created_at", "updated_at"}) {
+                applyRequiredPatch(
+                        "V2610131200f - " + table + "." + column + " is TIMESTAMPTZ",
+                        timestamptzIfZoneless(table, column)
+                );
+            }
+        }
     }
 
     /**
