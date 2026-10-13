@@ -14,7 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -33,14 +33,16 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.http.Cookie;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -68,7 +70,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * #extractPatientIdFromEmergencyId), so it is guessable, and the PDF holds the patient's name,
  * date of birth, medications and family contacts.
  *
- * <p>Test Plan IDs are not assigned yet; the Testing Lead will name them.
+ * <p>Test Plan IDs: TC-EMG-001...014 (Test Plan section 3.22). Defects: DEF-EMG-01 (GAP 1), DEF-EMG-02
+ * (GAP 2) and DEF-EMG-03 (GAP 3).
  */
 @WebMvcTest(controllers = EmergencyController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
@@ -101,8 +104,9 @@ class EmergencyAccessControlTest {
     @BeforeEach
     void setUp() throws Exception {
         // @MockitoBean mocks are not reset between the @Nested classes' tests, so earlier calls
-        // would otherwise count against the never()/times() checks below.
-        clearInvocations(vialOfLifePdfService, jwtTokenProvider);
+        // would otherwise count against the never()/times() checks below, and a stub set by one test
+        // (GAP 3's thenThrow) would stay in place for the next. Reset calls and stubs, then stub again.
+        reset(vialOfLifePdfService, jwtTokenProvider, userDetailsService, claims);
         lenient().when(vialOfLifePdfService.generateVialOfLifePdf(anyString()))
                 .thenReturn("%PDF-synthetic".getBytes(StandardCharsets.US_ASCII));
 
@@ -131,16 +135,19 @@ class EmergencyAccessControlTest {
     @DisplayName("Already secure (regression guards)")
     class AlreadySecure {
 
-        @ParameterizedTest(name = "anonymous GET {0} is 401 and generates nothing")
-        @ValueSource(strings = {"/v1/api/emergency/VIAL1.pdf", "/v1/api/emergency/download/VIAL1.pdf",
-                "/v1/api/emergency/debug/VIAL1", "/v1/api/emergency/health"})
-        void anonymousIsRefused(final String path) throws Exception {
+        @ParameterizedTest(name = "{0}: anonymous GET {1} is 401 and generates nothing")
+        @CsvSource({
+                "TC-EMG-001, /v1/api/emergency/VIAL1.pdf",
+                "TC-EMG-002, /v1/api/emergency/download/VIAL1.pdf",
+                "TC-EMG-003, /v1/api/emergency/debug/VIAL1",
+                "TC-EMG-004, /v1/api/emergency/health"})
+        void anonymousIsRefused(final String id, final String path) throws Exception {
             mvc.perform(get(path)).andExpect(status().isUnauthorized());
             verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
         }
 
         @Test
-        @DisplayName("a token that does not validate is 401 and generates nothing")
+        @DisplayName("TC-EMG-005: a bearer token that does not validate is 401 and generates nothing")
         void invalidTokenIsRefused() throws Exception {
             mvc.perform(get(PATIENT_ONE_PDF).header(HttpHeaders.AUTHORIZATION, "Bearer not-a-real-token"))
                     .andExpect(status().isUnauthorized());
@@ -148,7 +155,7 @@ class EmergencyAccessControlTest {
         }
 
         @Test
-        @DisplayName("wrong Basic credentials are 401 and generate nothing")
+        @DisplayName("TC-EMG-006: wrong Basic credentials are 401 and generate nothing")
         void wrongBasicCredentialsAreRefused() throws Exception {
             final String credentials = Base64.getEncoder()
                     .encodeToString((OTHER_USER + ":wrong").getBytes(StandardCharsets.UTF_8));
@@ -162,9 +169,11 @@ class EmergencyAccessControlTest {
     @DisplayName("Current gaps (characterization; each fails once its gap is fixed)")
     class CurrentGaps {
 
-        @ParameterizedTest(name = "GAP 1: another patient signed in with Basic auth gets 200 from {0}")
-        @ValueSource(strings = {"/v1/api/emergency/VIAL1.pdf", "/v1/api/emergency/download/VIAL1.pdf"})
-        void anyAccountReadsAnyPatientsPdf(final String path) throws Exception {
+        @ParameterizedTest(name = "{0}: GAP 1 (DEF-EMG-01): another patient signed in with Basic auth gets 200 from {1}")
+        @CsvSource({
+                "TC-EMG-007, /v1/api/emergency/VIAL1.pdf",
+                "TC-EMG-008, /v1/api/emergency/download/VIAL1.pdf"})
+        void anyAccountReadsAnyPatientsPdf(final String id, final String path) throws Exception {
             mvc.perform(asOtherPatientViaBasic(path))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType("application/pdf"));
@@ -172,15 +181,25 @@ class EmergencyAccessControlTest {
         }
 
         @Test
-        @DisplayName("GAP 2: a valid sign-in token is ignored on emergency paths, so even the patient gets 401")
+        @DisplayName("TC-EMG-009: GAP 2 (DEF-EMG-02): a valid sign-in token is ignored on emergency paths, so even the patient gets 401")
         void validTokenIsIgnored() throws Exception {
             mvc.perform(get(PATIENT_ONE_PDF).header(HttpHeaders.AUTHORIZATION, "Bearer " + VALID_TOKEN))
                     .andExpect(status().isUnauthorized());
             verify(jwtTokenProvider, never()).validateToken(anyString());
+            verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
         }
 
         @Test
-        @DisplayName("GAP 3: the debug endpoint returns internal exception details to any signed-in account")
+        @DisplayName("TC-EMG-013: GAP 2 (DEF-EMG-02): a valid sign-in cookie (AUTH) is ignored on emergency paths too")
+        void validCookieIsIgnored() throws Exception {
+            mvc.perform(get(PATIENT_ONE_PDF).cookie(new Cookie("AUTH", VALID_TOKEN)))
+                    .andExpect(status().isUnauthorized());
+            verify(jwtTokenProvider, never()).validateToken(anyString());
+            verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+        }
+
+        @Test
+        @DisplayName("TC-EMG-010: GAP 3 (DEF-EMG-03): the debug endpoint returns internal exception details to any signed-in account")
         void debugEndpointLeaksErrors() throws Exception {
             when(vialOfLifePdfService.generateVialOfLifePdf("VIAL1"))
                     .thenThrow(new IllegalStateException("synthetic internal detail"));
@@ -196,7 +215,7 @@ class EmergencyAccessControlTest {
 
         @Test
         @Disabled("CR-1 Increment 2: another patient must not read patient 1's emergency data (GAP 1)")
-        @DisplayName("another signed-in patient is refused patient 1's PDF and nothing is generated")
+        @DisplayName("TC-EMG-011: another signed-in patient is refused patient 1's PDF and nothing is generated")
         void otherPatientIsRefused() throws Exception {
             mvc.perform(asOtherPatientViaBasic(PATIENT_ONE_PDF))
                     .andExpect(status().isNotFound());
@@ -205,10 +224,20 @@ class EmergencyAccessControlTest {
 
         @Test
         @Disabled("CR-1 Increment 2: debug endpoint removed or admin-only, with no internal details (GAP 3)")
-        @DisplayName("the debug endpoint is not reachable by a patient account")
+        @DisplayName("TC-EMG-012: the debug endpoint is not reachable by a patient account")
         void debugEndpointIsClosed() throws Exception {
             mvc.perform(asOtherPatientViaBasic("/v1/api/emergency/debug/VIAL1"))
                     .andExpect(status().is4xxClientError());
+            verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+        }
+
+        @Test
+        @Disabled("CR-1 Increment 2: once the sign-in token is read on these paths (GAP 2), "
+                + "another patient's token must still be refused (GAP 1)")
+        @DisplayName("TC-EMG-014: another patient's valid sign-in token is refused patient 1's PDF and nothing is generated")
+        void otherPatientsTokenIsRefused() throws Exception {
+            mvc.perform(get(PATIENT_ONE_PDF).header(HttpHeaders.AUTHORIZATION, "Bearer " + VALID_TOKEN))
+                    .andExpect(status().isNotFound());
             verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
         }
     }
