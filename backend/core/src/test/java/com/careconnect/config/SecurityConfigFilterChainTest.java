@@ -30,6 +30,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -141,6 +142,33 @@ class SecurityConfigFilterChainTest {
         // rather than 401 (security rejection).
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isNotFound());
+    }
+
+    // -------------------------------------------------
+    // 6. CC-12 passport scan: only GET on one segment is public
+    // -------------------------------------------------
+
+    @Test
+    void passportScan_IsPermittedBySecurityNotBlocked() throws Exception {
+        // No handler is registered in this slice, so a permitted request is 404, not 401.
+        mockMvc.perform(get("/v1/api/passport/scan/someCode"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void passportOwnerEndpoints_RequireAuthentication() throws Exception {
+        mockMvc.perform(get("/v1/api/passport"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/v1/api/passport/token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void passportScan_OtherMethodsAndDeeperPaths_RequireAuthentication() throws Exception {
+        mockMvc.perform(post("/v1/api/passport/scan/someCode"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/v1/api/passport/scan/someCode/extra"))
+                .andExpect(status().isUnauthorized());
     }
 
     // -------------------------------------------------

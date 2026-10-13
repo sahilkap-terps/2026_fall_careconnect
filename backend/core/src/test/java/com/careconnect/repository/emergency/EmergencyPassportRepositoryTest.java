@@ -3,6 +3,7 @@ package com.careconnect.repository.emergency;
 import com.careconnect.model.emergency.BloodType;
 import com.careconnect.model.emergency.EmergencyPassportFieldVisibility;
 import com.careconnect.model.emergency.EmergencyPassportProfile;
+import com.careconnect.model.emergency.EmergencyPassportToken;
 import com.careconnect.model.emergency.PassportField;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class EmergencyPassportRepositoryTest {
 
     @Autowired
     private EmergencyPassportFieldVisibilityRepository visibilityRepository;
+
+    @Autowired
+    private EmergencyPassportTokenRepository tokenRepository;
 
     @Test
     @DisplayName("TC-EMG-029: a profile round-trips every field, blood type stored by enum name")
@@ -208,6 +212,39 @@ class EmergencyPassportRepositoryTest {
         assertThat(profileRepository.findByPatientId(113L)).isEmpty();
         assertThat(profileRepository.findByPatientId(112L)).get()
                 .extracting(EmergencyPassportProfile::getPatientId).isEqualTo(112L);
+    }
+
+    // ---- Increment 2: emergency_passport_token ----
+
+    @Test
+    @DisplayName("a code is found by its lookup prefix, and active codes by patient")
+    void tokenLookupAndActiveQuery() {
+        tokenRepository.saveAndFlush(token(110L, "lookup-0000-0001", EmergencyPassportToken.Status.REVOKED));
+        tokenRepository.saveAndFlush(token(110L, "lookup-0000-0002", EmergencyPassportToken.Status.ACTIVE));
+
+        assertThat(tokenRepository.findByTokenLookup("lookup-0000-0002")).get()
+                .extracting(EmergencyPassportToken::getPatientId).isEqualTo(110L);
+        assertThat(tokenRepository.findByPatientIdAndStatus(110L, EmergencyPassportToken.Status.ACTIVE))
+                .extracting(EmergencyPassportToken::getTokenLookup).containsExactly("lookup-0000-0002");
+    }
+
+    @Test
+    @DisplayName("two codes cannot share a lookup prefix")
+    void duplicateLookupIsRejected() {
+        tokenRepository.saveAndFlush(token(111L, "lookup-dup-00001", EmergencyPassportToken.Status.ACTIVE));
+
+        assertThatThrownBy(() -> tokenRepository.saveAndFlush(
+                token(112L, "lookup-dup-00001", EmergencyPassportToken.Status.ACTIVE)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private static EmergencyPassportToken token(long patientId, String lookup, EmergencyPassportToken.Status status) {
+        return EmergencyPassportToken.builder()
+                .patientId(patientId)
+                .tokenLookup(lookup)
+                .tokenHash("not-a-real-hash")
+                .status(status)
+                .build();
     }
 
     private void save(long patientId, PassportField field, boolean isPublic) {
