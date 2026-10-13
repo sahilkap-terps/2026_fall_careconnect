@@ -491,4 +491,177 @@ class ConsentServiceTest {
         assertThat(service.revokeMedicareViewConsent(PATIENT_USER_ID, null)).isZero();
         verifyNoInteractions(consentGrantRepository);
     }
+
+    // ===== EHR-import self-consent and AI-retrieval edge paths (coverage gate, PR #325) =====
+    // Characterize inherited behaviour of ConsentService, which PR #325 moved. Test IDs TC-CONSENT-014 to 019
+    // and 042 to 046, Software Test Plan §3.20.
+
+    private ConsentGrant grant(final Long id, final String scope, final Instant expiresAt) {
+        return ConsentGrant.builder()
+                .id(id)
+                .patientUserId(PATIENT_USER_ID)
+                .granteeUserId(CAREGIVER_USER_ID)
+                .granteeRole("CAREGIVER")
+                .scope(scope)
+                .status(ConsentGrant.STATUS_ACTIVE)
+                .grantedAt(Instant.parse("2026-01-01T00:00:00Z"))
+                .expiresAt(expiresAt)
+                .build();
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-014 EHR import: recording self-consent without a patient id throws and writes nothing")
+    void recordEhrImportConsent_requiresPatient() {
+        assertThatThrownBy(() -> service.recordEhrImportConsent(null)).isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(consentGrantRepository);
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-015 EHR import: the first self-consent is one ACTIVE EHR_IMPORT row with the patient as grantee")
+    void recordEhrImportConsent_persistsSelfGrant() {
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(PATIENT_USER_ID), eq(ConsentGrant.SCOPE_EHR_IMPORT), any(Instant.class)))
+                .thenReturn(List.of());
+        when(consentGrantRepository.save(any(ConsentGrant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        final ConsentGrant grant = service.recordEhrImportConsent(PATIENT_USER_ID);
+
+        assertThat(grant.getPatientUserId()).isEqualTo(PATIENT_USER_ID);
+        assertThat(grant.getGranteeUserId()).isEqualTo(PATIENT_USER_ID);
+        assertThat(grant.getGranteeRole()).isEqualTo("PATIENT");
+        assertThat(grant.getScope()).isEqualTo(ConsentGrant.SCOPE_EHR_IMPORT);
+        assertThat(grant.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        assertThat(grant.getGrantedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-016 EHR import: recording again refreshes the existing ACTIVE self-grant instead of inserting")
+    void recordEhrImportConsent_refreshesExisting() {
+        final ConsentGrant existing = grant(70L, ConsentGrant.SCOPE_EHR_IMPORT, null);
+        existing.setRevokedAt(Instant.parse("2026-02-01T00:00:00Z"));
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(PATIENT_USER_ID), eq(ConsentGrant.SCOPE_EHR_IMPORT), any(Instant.class)))
+                .thenReturn(List.of(existing));
+        when(consentGrantRepository.save(existing)).thenReturn(existing);
+
+        final ConsentGrant grant = service.recordEhrImportConsent(PATIENT_USER_ID);
+
+        assertThat(grant).isSameAs(existing);
+        assertThat(grant.getRevokedAt()).isNull();
+        assertThat(grant.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        assertThat(grant.getGrantedAt()).isAfter(Instant.parse("2026-01-01T00:00:00Z"));
+        verify(consentGrantRepository, times(1)).save(existing);
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-017 EHR import: revoking without a patient id returns 0 and queries nothing")
+    void revokeEhrImportConsent_returnsZeroWhenIdMissing() {
+        assertThat(service.revokeEhrImportConsent(null)).isZero();
+        verifyNoInteractions(consentGrantRepository);
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-018 EHR import: revoking sets every active self-grant to REVOKED and returns the count")
+    void revokeEhrImportConsent_revokesActive() {
+        final ConsentGrant active = grant(71L, ConsentGrant.SCOPE_EHR_IMPORT, null);
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(PATIENT_USER_ID), eq(ConsentGrant.SCOPE_EHR_IMPORT), any(Instant.class)))
+                .thenReturn(List.of(active));
+
+        assertThat(service.revokeEhrImportConsent(PATIENT_USER_ID)).isEqualTo(1);
+
+        assertThat(active.getStatus()).isEqualTo(ConsentGrant.STATUS_REVOKED);
+        assertThat(active.getRevokedAt()).isNotNull();
+        verify(consentGrantRepository).saveAll(List.of(active));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-019 EHR import: revoking with nothing active returns 0 and writes nothing")
+    void revokeEhrImportConsent_nothingActive() {
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(PATIENT_USER_ID), eq(ConsentGrant.SCOPE_EHR_IMPORT), any(Instant.class)))
+                .thenReturn(List.of());
+
+        assertThat(service.revokeEhrImportConsent(PATIENT_USER_ID)).isZero();
+
+        verify(consentGrantRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-042 AI retrieval: a soft-expired ACTIVE row is revoked before a new grant is inserted; an unexpired one is kept")
+    void grantAiRetrievalConsent_revokesSoftExpiredRowFirst() {
+        when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID)).thenReturn(true);
+        final ConsentGrant expired = grant(80L, ConsentGrant.SCOPE_AI_RETRIEVAL, Instant.now().minusSeconds(60));
+        final ConsentGrant live = grant(81L, ConsentGrant.SCOPE_AI_RETRIEVAL, Instant.now().plusSeconds(3600));
+        when(consentGrantRepository.findStatusActiveGrants(PATIENT_USER_ID, CAREGIVER_USER_ID, "AI_RETRIEVAL"))
+                .thenReturn(List.of(expired, live));
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
+                .thenReturn(List.of());
+        when(consentGrantRepository.save(any(ConsentGrant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.grantAiRetrievalConsent(PATIENT_USER_ID, CAREGIVER_USER_ID, "CAREGIVER", null);
+
+        assertThat(expired.getStatus()).isEqualTo(ConsentGrant.STATUS_REVOKED);
+        assertThat(live.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        final ArgumentCaptor<List<ConsentGrant>> captor = ArgumentCaptor.forClass(List.class);
+        verify(consentGrantRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).containsExactly(expired);
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-043 AI retrieval: granting again with duplicate ACTIVE rows keeps the first and revokes the rest")
+    void grantAiRetrievalConsent_revokesDuplicateActiveRows() {
+        when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID)).thenReturn(true);
+        final ConsentGrant primary = grant(90L, ConsentGrant.SCOPE_AI_RETRIEVAL, null);
+        final ConsentGrant duplicate = grant(91L, ConsentGrant.SCOPE_AI_RETRIEVAL, null);
+        when(consentGrantRepository.findStatusActiveGrants(PATIENT_USER_ID, CAREGIVER_USER_ID, "AI_RETRIEVAL"))
+                .thenReturn(List.of(primary, duplicate));
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
+                .thenReturn(List.of(primary, duplicate));
+        when(consentGrantRepository.save(any(ConsentGrant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        final ConsentGrant grant = service.grantAiRetrievalConsent(PATIENT_USER_ID, CAREGIVER_USER_ID, "CAREGIVER", null);
+
+        assertThat(grant.getId()).isEqualTo(90L);
+        assertThat(duplicate.getStatus()).isEqualTo(ConsentGrant.STATUS_REVOKED);
+        assertThat(duplicate.getRevokedAt()).isNotNull();
+        verify(consentGrantRepository).saveAll(List.of(duplicate));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-044 AI retrieval: grant history is false for a missing id and queries nothing")
+    void hasAnyAiRetrievalGrantHistory_falseWhenIdsMissing() {
+        assertThat(service.hasAnyAiRetrievalGrantHistory(null, PATIENT_USER_ID)).isFalse();
+        assertThat(service.hasAnyAiRetrievalGrantHistory(CAREGIVER_USER_ID, null)).isFalse();
+        verifyNoInteractions(consentGrantRepository);
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-045 AI retrieval: effective consent is false for a missing id and asks nothing")
+    void isEffectiveAiRetrievalConsent_falseWhenIdsMissing() {
+        assertThat(service.isEffectiveAiRetrievalConsent(null, PATIENT_USER_ID)).isFalse();
+        assertThat(service.isEffectiveAiRetrievalConsent(CAREGIVER_USER_ID, null)).isFalse();
+        verifyNoInteractions(consentGrantRepository, caregiverPatientLinkService);
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-046 AI retrieval: revoking with nothing active but grant history returns 0 and writes no sentinel")
+    void revokeAiRetrievalConsent_historyWithoutActiveWritesNothing() {
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
+                .thenReturn(List.of());
+        when(consentGrantRepository.existsByPatientUserIdAndGranteeUserIdAndScope(
+                PATIENT_USER_ID, CAREGIVER_USER_ID, ConsentGrant.SCOPE_AI_RETRIEVAL))
+                .thenReturn(true);
+
+        assertThat(service.revokeAiRetrievalConsent(PATIENT_USER_ID, CAREGIVER_USER_ID)).isZero();
+
+        verify(consentGrantRepository, never()).save(any());
+        verify(consentGrantRepository, never()).saveAll(any());
+    }
 }
