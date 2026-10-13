@@ -278,8 +278,8 @@ void main() {
       'Medicare',
       'Saint Agnes Hospital',
       'Pneumonia, unspecified organism',
-      r'$14320.55',
-      r'$9861.13',
+      r'$14,320.55',
+      r'$9,861.13',
     ]) {
       expect(find.text(text), findsWidgets, reason: text);
     }

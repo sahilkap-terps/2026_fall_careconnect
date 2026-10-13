@@ -108,8 +108,9 @@ class _MedicareConnectTileState extends State<MedicareConnectTile>
       builder: (ctx) => AlertDialog(
         title: const Text('Disconnect Medicare?'),
         content: const Text(
-          'CareConnect will stop getting new information from your Medicare '
-          'account. You can connect again anytime.',
+          'CareConnect will stop getting information from your Medicare '
+          'account and will delete the Medicare records it saved. '
+          'You can connect again anytime.',
           style: TextStyle(fontSize: 16, height: 1.4),
         ),
         actions: [

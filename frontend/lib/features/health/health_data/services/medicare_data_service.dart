@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../services/api_client.dart';
 import '../models/health_record.dart';
@@ -111,8 +112,6 @@ class MedicareDataService {
     if (submitted != null) details.add(RecordDetail('Amount', submitted));
     final paid = _money(eob['payment']?['amount']);
     if (paid != null) details.add(RecordDetail('Medicare paid', paid));
-    final svc = eob['billablePeriod']?['start'];
-    if (svc is String) details.add(RecordDetail('Service date', _friendlyDate(svc)));
     return HealthRecord.single(
       id: id,
       source: RecordSource.medicare,
@@ -203,11 +202,13 @@ class MedicareDataService {
     return null;
   }
 
+  static final _usd = NumberFormat.currency(locale: 'en_US', symbol: r'$');
+
   String? _money(dynamic amount) {
     if (amount is Map && amount['value'] != null) {
       final v = amount['value'];
       final num? n = v is num ? v : num.tryParse(v.toString());
-      if (n != null) return '\$${n.toStringAsFixed(2)}';
+      if (n != null) return _usd.format(n);
     }
     return null;
   }

@@ -44,9 +44,8 @@ void main() {
       'Provider=Saint Agnes Hospital',
       'Facility=Saint Agnes Hospital',
       'Diagnosis=Pneumonia, unspecified organism',
-      r'Amount=$14320.55',
-      r'Medicare paid=$9861.13',
-      'Service date=Apr 18, 2026',
+      r'Amount=$14,320.55',
+      r'Medicare paid=$9,861.13',
     ]);
   });
 
