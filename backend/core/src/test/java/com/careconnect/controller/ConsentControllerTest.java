@@ -15,7 +15,7 @@ import com.careconnect.exception.GlobalExceptionHandler;
 import com.careconnect.model.ConsentGrant;
 import com.careconnect.model.User;
 import com.careconnect.security.Role;
-import com.careconnect.service.ConsentService;
+import com.careconnect.service.consent.ConsentService;
 import com.careconnect.util.SecurityUtil;
 
 import java.time.Instant;

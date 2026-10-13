@@ -42,6 +42,11 @@ public class ConsentGrant {
     public static final String SCOPE_AI_RETRIEVAL = "AI_RETRIEVAL";
 
     /**
+     * Default scope used for Caregiver retrieval consent grants.
+     */
+    public static final String SCOPE_MEDICARE_VIEW = "MEDICARE_VIEW";
+
+    /**
      * Scope for a patient consenting to import their own external EHR (Epic/MyChart) records
      * (Epic Phase 0). Self-grant: patient and grantee are the same connecting user.
      */

@@ -7,6 +7,7 @@ import com.careconnect.dto.MedicationDTO;
 import com.careconnect.dto.MedicationPhotoExtractionResponse;
 import com.careconnect.service.MedicationPhotoExtractionService;
 import com.careconnect.service.MedicationService;
+import com.careconnect.service.PatientService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -44,13 +45,17 @@ public class MedicationController {
     @Autowired
     private AuthorizationService authorizationService;
 
+    @Autowired
+    private PatientService patientService;
+
     // ================================================================
     // 1. Fetch all medications for a patient
     // ================================================================
     @GetMapping("/{patientId}/medications")
     public ResponseEntity<List<MedicationDTO>> getAllMedications(@PathVariable Long patientId) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         List<MedicationDTO> allMeds = medicationService.getAllMedicationsForPatient(patientId);
         return ResponseEntity.ok(allMeds);
     }
@@ -61,7 +66,8 @@ public class MedicationController {
     @GetMapping("/{patientId}/medications/active")
     public ResponseEntity<List<MedicationDTO>> getActiveMedications(@PathVariable Long patientId) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         List<MedicationDTO> activeMeds = medicationService.getActiveMedicationsForPatient(patientId);
         return ResponseEntity.ok(activeMeds);
     }
@@ -72,7 +78,8 @@ public class MedicationController {
     @GetMapping("/{patientId}/medications/pending")
     public ResponseEntity<List<MedicationDTO>> getPendingMedications(@PathVariable Long patientId) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         List<MedicationDTO> pending = medicationService.getPendingMedications(patientId);
         return ResponseEntity.ok(pending);
     }
@@ -86,9 +93,9 @@ public class MedicationController {
     public ResponseEntity<MedicationDTO> addMedication(
             @PathVariable Long patientId,
             @RequestBody MedicationDTO newMedication) throws UnauthorizedException {
-
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         MedicationDTO createdMedication = medicationService.addMedication(patientId, newMedication);
         return ResponseEntity.ok(createdMedication);
     }
@@ -103,9 +110,9 @@ public class MedicationController {
     public ResponseEntity<?> extractMedicationPhoto(
             @PathVariable Long patientId,
             @RequestParam("image") MultipartFile image) throws UnauthorizedException {
-
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         if (image == null || image.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "message", "Please provide a photo of the medication label."
@@ -143,9 +150,9 @@ public class MedicationController {
     public ResponseEntity<?> approveMedication(
             @PathVariable Long patientId,
             @PathVariable Long medicationId) throws UnauthorizedException {
-
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         MedicationDTO approvedMedication = medicationService.approveMedication(patientId, medicationId);
         return ResponseEntity.ok(Map.of(
                 "message", "Medication approved successfully",
@@ -162,9 +169,9 @@ public class MedicationController {
     public ResponseEntity<?> deleteMedication(
             @PathVariable Long patientId,
             @PathVariable Long medicationId) throws UnauthorizedException {
-
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         medicationService.deactivateMedication(patientId, medicationId);
         return ResponseEntity.ok(Map.of(
                 "message", "Medication removed and notification sent"
@@ -181,9 +188,9 @@ public class MedicationController {
             @PathVariable Long patientId,
             @PathVariable Long medicationId,
             @PathVariable Long caregiverId) throws UnauthorizedException {
-
+        long patientUserId = patientService.getPatientById(patientId).getUser().getId();
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        authorizationService.requirePatientAccess(currentUser, patientUserId);
         medicationService.hardDeleteMedication(patientId, medicationId, caregiverId);
         return ResponseEntity.ok(Map.of(
                 "message", "Medication deleted successfully"

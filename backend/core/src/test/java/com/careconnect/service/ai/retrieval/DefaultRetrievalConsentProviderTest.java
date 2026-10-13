@@ -1,6 +1,6 @@
 package com.careconnect.service.ai.retrieval;
 
-import com.careconnect.service.ConsentService;
+import com.careconnect.service.consent.ConsentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
