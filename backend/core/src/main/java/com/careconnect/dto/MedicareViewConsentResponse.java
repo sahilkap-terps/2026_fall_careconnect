@@ -5,13 +5,13 @@ import com.careconnect.model.ConsentGrant;
 import java.time.Instant;
 
 /**
- * API view of an {@link ConsentGrant} for Caregiver-retrieval consent.
+ * API view of a {@link ConsentGrant} for Medicare View consent.
  *
  * @param id            grant id
  * @param patientUserId patient who granted consent
- * @param granteeUserId caregiver (or other) who received consent
+ * @param granteeUserId caregiver who received consent
  * @param granteeRole   role label recorded on the grant
- * @param scope         consent scope (always {@code CAREGIVER_RETRIEVAL} for this API)
+ * @param scope         consent scope (always {@code MEDICARE_VIEW} for this API)
  * @param status        {@code ACTIVE} or {@code REVOKED}
  * @param grantedAt     when the grant became active
  * @param expiresAt     optional expiry

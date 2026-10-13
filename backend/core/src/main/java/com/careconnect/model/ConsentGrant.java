@@ -42,7 +42,8 @@ public class ConsentGrant {
     public static final String SCOPE_AI_RETRIEVAL = "AI_RETRIEVAL";
 
     /**
-     * Default scope used for Caregiver retrieval consent grants.
+     * Scope for a patient consenting to a linked caregiver viewing their Medicare data (SRS BR-02,
+     * FR-MCR-16). Must equal {@code MedicareAccessPolicy.SCOPE_MEDICARE_VIEW}.
      */
     public static final String SCOPE_MEDICARE_VIEW = "MEDICARE_VIEW";
 

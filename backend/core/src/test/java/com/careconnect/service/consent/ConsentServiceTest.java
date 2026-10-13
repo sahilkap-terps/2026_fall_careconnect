@@ -1,12 +1,17 @@
 package com.careconnect.service.consent;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.careconnect.exception.AppException;
 import com.careconnect.model.ConsentGrant;
 import com.careconnect.repository.ConsentGrantRepository;
 
@@ -14,6 +19,7 @@ import java.time.Instant;
 import java.util.List;
 
 import com.careconnect.service.CaregiverPatientLinkService;
+import org.springframework.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,14 +49,14 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("returns false when either id is null")
+    @DisplayName("TC-CONSENT-001 AI retrieval: the grant check is false when either id is null")
     void isAiRetrievalConsentGranted_falseWhenIdsMissing() {
         assertThat(service.isAiRetrievalConsentGranted(null, PATIENT_USER_ID)).isFalse();
         assertThat(service.isAiRetrievalConsentGranted(CAREGIVER_USER_ID, null)).isFalse();
     }
 
     @Test
-    @DisplayName("delegates to repository for active grant lookup")
+    @DisplayName("TC-CONSENT-002 AI retrieval: the grant check asks the repository for an active AI_RETRIEVAL grant")
     void isAiRetrievalConsentGranted_delegatesToRepository() {
         when(consentGrantRepository.existsActiveGrant(
                 eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
@@ -65,7 +71,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("hasAnyAiRetrievalGrantHistory delegates to existsBy...")
+    @DisplayName("TC-CONSENT-003 AI retrieval: grant history delegates to existsByPatientUserIdAndGranteeUserIdAndScope")
     void hasAnyAiRetrievalGrantHistory_delegates() {
         when(consentGrantRepository.existsByPatientUserIdAndGranteeUserIdAndScope(
                 PATIENT_USER_ID, CAREGIVER_USER_ID, ConsentGrant.SCOPE_AI_RETRIEVAL))
@@ -76,7 +82,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("effective consent is true when an active grant exists")
+    @DisplayName("TC-CONSENT-004 AI retrieval: effective consent is true when an active grant exists")
     void isEffectiveAiRetrievalConsent_trueWhenExplicitGrant() {
         when(consentGrantRepository.existsActiveGrant(
                 eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
@@ -87,7 +93,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("effective consent falls back to care-circle when no grant history")
+    @DisplayName("TC-CONSENT-005 AI retrieval: effective consent falls back to the care-circle link when there is no grant history")
     void isEffectiveAiRetrievalConsent_fallsBackToCareCircle() {
         when(consentGrantRepository.existsActiveGrant(
                 eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
@@ -103,7 +109,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("effective consent stays false after revoke history despite link")
+    @DisplayName("TC-CONSENT-006 AI retrieval: effective consent stays false after a revoke, despite the link")
     void isEffectiveAiRetrievalConsent_falseAfterRevokeHistory() {
         when(consentGrantRepository.existsActiveGrant(
                 eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
@@ -117,7 +123,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("grants consent and persists an ACTIVE row when none exists")
+    @DisplayName("TC-CONSENT-007 AI retrieval: granting persists an ACTIVE row when none exists")
     void grantAiRetrievalConsent_persistsActiveGrant() {
         when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
                 .thenReturn(true);
@@ -139,7 +145,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("rejects grant when caregiver has no active care-circle link")
+    @DisplayName("TC-CONSENT-008 AI retrieval: a grant is rejected when the caregiver has no active care-circle link")
     void grantAiRetrievalConsent_requiresCareCircleLink() {
         when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
                 .thenReturn(false);
@@ -153,7 +159,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("refresh existing ACTIVE grant instead of inserting a duplicate")
+    @DisplayName("TC-CONSENT-009 AI retrieval: granting again refreshes the ACTIVE grant instead of inserting a duplicate")
     void grantAiRetrievalConsent_refreshesExistingActiveGrant() {
         when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
                 .thenReturn(true);
@@ -183,7 +189,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("throws when granting without required ids")
+    @DisplayName("TC-CONSENT-010 AI retrieval: granting without the required ids throws")
     void grantAiRetrievalConsent_throwsWhenIdsMissing() {
         org.assertj.core.api.Assertions.assertThatThrownBy(
                         () -> service.grantAiRetrievalConsent(null, CAREGIVER_USER_ID, "CAREGIVER", null))
@@ -191,7 +197,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("revokes all active grants for the tuple")
+    @DisplayName("TC-CONSENT-011 AI retrieval: revoking revokes every active grant for the pair")
     void revokeAiRetrievalConsent_revokesActiveGrants() {
         final ConsentGrant active = ConsentGrant.builder()
                 .id(1L)
@@ -219,7 +225,7 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("writes REVOKED sentinel to end grandfather when no grant history")
+    @DisplayName("TC-CONSENT-012 AI retrieval: revoking with no grant history writes a REVOKED sentinel to end the care-circle fallback")
     void revokeAiRetrievalConsent_writesSentinelWhenNoHistory() {
         when(consentGrantRepository.findActiveGrants(
                 eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("AI_RETRIEVAL"), any(Instant.class)))
@@ -241,9 +247,248 @@ class ConsentServiceTest {
     }
 
     @Test
-    @DisplayName("returns zero when revoking without required ids")
+    @DisplayName("TC-CONSENT-013 AI retrieval: revoking without the required ids returns zero")
     void revokeAiRetrievalConsent_returnsZeroWhenIdsMissing() {
         assertThat(service.revokeAiRetrievalConsent(null, CAREGIVER_USER_ID)).isZero();
         assertThat(service.revokeAiRetrievalConsent(PATIENT_USER_ID, null)).isZero();
+    }
+
+    // ===== Medicare View (MEDICARE_VIEW) consent, PR #325 / WBS 6.2.56 =====
+    // Test IDs TC-MCR-CONSENT-001 to 014, Software Test Plan §3.20.
+
+    private ConsentGrant medicareGrant(final Long id, final Instant expiresAt) {
+        return ConsentGrant.builder()
+                .id(id)
+                .patientUserId(PATIENT_USER_ID)
+                .granteeUserId(CAREGIVER_USER_ID)
+                .granteeRole("CAREGIVER")
+                .scope(ConsentGrant.SCOPE_MEDICARE_VIEW)
+                .status(ConsentGrant.STATUS_ACTIVE)
+                .grantedAt(Instant.parse("2026-01-01T00:00:00Z"))
+                .expiresAt(expiresAt)
+                .build();
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-001 Medicare View check is false for a missing id and queries nothing")
+    void isMedicareViewConsentGranted_falseWhenIdsMissing() {
+        assertThat(service.isMedicareViewConsentGranted(null, PATIENT_USER_ID)).isFalse();
+        assertThat(service.isMedicareViewConsentGranted(CAREGIVER_USER_ID, null)).isFalse();
+        verifyNoInteractions(consentGrantRepository);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-002 Medicare View check asks for an active MEDICARE_VIEW grant from the patient to the caregiver, never AI_RETRIEVAL")
+    void isMedicareViewConsentGranted_queriesMedicareViewScope() {
+        when(consentGrantRepository.existsActiveGrant(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(true);
+
+        assertThat(service.isMedicareViewConsentGranted(CAREGIVER_USER_ID, PATIENT_USER_ID)).isTrue();
+        verify(consentGrantRepository, never()).existsActiveGrant(
+                any(), any(), eq(ConsentGrant.SCOPE_AI_RETRIEVAL), any());
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-003 a linked caregiver with no MEDICARE_VIEW grant is not consented: no care-circle fallback (BR-02, DEF-MCR-29)")
+    void isEffectiveMedicareViewConsent_noCareCircleFallback() {
+        lenient().when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
+                .thenReturn(true);
+        when(consentGrantRepository.existsActiveGrant(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(false);
+
+        assertThat(service.isEffectiveMedicareViewConsent(CAREGIVER_USER_ID, PATIENT_USER_ID)).isFalse();
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-004 Medicare View effective consent is true with an active explicit grant")
+    void isEffectiveMedicareViewConsent_trueWithExplicitGrant() {
+        when(consentGrantRepository.existsActiveGrant(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(true);
+
+        assertThat(service.isEffectiveMedicareViewConsent(CAREGIVER_USER_ID, PATIENT_USER_ID)).isTrue();
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-005 granting persists one ACTIVE MEDICARE_VIEW row for the linked caregiver, role CAREGIVER")
+    void grantMedicareViewConsent_persistsActiveGrant() {
+        when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
+                .thenReturn(true);
+        when(consentGrantRepository.findStatusActiveGrants(PATIENT_USER_ID, CAREGIVER_USER_ID, "MEDICARE_VIEW"))
+                .thenReturn(List.of());
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(List.of());
+        when(consentGrantRepository.save(any(ConsentGrant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        final Instant expiresAt = Instant.now().plusSeconds(3600);
+        final ConsentGrant grant = service.grantMedicareViewConsent(
+                PATIENT_USER_ID, CAREGIVER_USER_ID, null, expiresAt);
+
+        assertThat(grant.getPatientUserId()).isEqualTo(PATIENT_USER_ID);
+        assertThat(grant.getGranteeUserId()).isEqualTo(CAREGIVER_USER_ID);
+        assertThat(grant.getGranteeRole()).isEqualTo("CAREGIVER");
+        assertThat(grant.getScope()).isEqualTo(ConsentGrant.SCOPE_MEDICARE_VIEW);
+        assertThat(grant.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        assertThat(grant.getExpiresAt()).isEqualTo(expiresAt);
+        assertThat(grant.getGrantedAt()).isNotNull();
+        verify(consentGrantRepository, times(1)).save(any(ConsentGrant.class));
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-006 granting to a user with no active caregiver link is refused with 400 and writes nothing")
+    void grantMedicareViewConsent_requiresCaregiverLink() {
+        when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.grantMedicareViewConsent(
+                PATIENT_USER_ID, CAREGIVER_USER_ID, "CAREGIVER", null))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getStatus())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        verify(consentGrantRepository, never()).save(any());
+        verify(consentGrantRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-007 granting again refreshes the ACTIVE grant in place and revokes duplicate ACTIVE rows")
+    void grantMedicareViewConsent_refreshesAndRevokesDuplicates() {
+        when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
+                .thenReturn(true);
+        final ConsentGrant primary = medicareGrant(55L, null);
+        final ConsentGrant duplicate = medicareGrant(56L, null);
+        when(consentGrantRepository.findStatusActiveGrants(PATIENT_USER_ID, CAREGIVER_USER_ID, "MEDICARE_VIEW"))
+                .thenReturn(List.of(primary, duplicate));
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(List.of(primary, duplicate));
+        when(consentGrantRepository.save(any(ConsentGrant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        final Instant expiresAt = Instant.now().plusSeconds(86_400);
+        final ConsentGrant grant = service.grantMedicareViewConsent(
+                PATIENT_USER_ID, CAREGIVER_USER_ID, "CAREGIVER", expiresAt);
+
+        assertThat(grant.getId()).isEqualTo(55L);
+        assertThat(grant.getExpiresAt()).isEqualTo(expiresAt);
+        assertThat(grant.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        assertThat(duplicate.getStatus()).isEqualTo(ConsentGrant.STATUS_REVOKED);
+        assertThat(duplicate.getRevokedAt()).isNotNull();
+        verify(consentGrantRepository).save(primary);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-008 a soft-expired ACTIVE row is revoked before a new grant is inserted")
+    void grantMedicareViewConsent_revokesSoftExpiredRowFirst() {
+        when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
+                .thenReturn(true);
+        final ConsentGrant expired = medicareGrant(60L, Instant.now().minusSeconds(60));
+        when(consentGrantRepository.findStatusActiveGrants(PATIENT_USER_ID, CAREGIVER_USER_ID, "MEDICARE_VIEW"))
+                .thenReturn(List.of(expired));
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(List.of());
+        when(consentGrantRepository.save(any(ConsentGrant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        final ConsentGrant grant = service.grantMedicareViewConsent(
+                PATIENT_USER_ID, CAREGIVER_USER_ID, null, null);
+
+        assertThat(expired.getStatus()).isEqualTo(ConsentGrant.STATUS_REVOKED);
+        assertThat(expired.getRevokedAt()).isNotNull();
+        assertThat(grant.getId()).isNull();
+        assertThat(grant.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        final ArgumentCaptor<List<ConsentGrant>> captor = ArgumentCaptor.forClass(List.class);
+        verify(consentGrantRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).containsExactly(expired);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-009 a grant whose expiry is not in the future is refused with 400 and writes nothing (DEF-MCR-30)")
+    void grantMedicareViewConsent_rejectsPastExpiry() {
+        lenient().when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.grantMedicareViewConsent(
+                PATIENT_USER_ID, CAREGIVER_USER_ID, "CAREGIVER", Instant.now().minusSeconds(3600)))
+                .isInstanceOf(AppException.class)
+                .hasMessage("expiresAt must be in the future")
+                .extracting(e -> ((AppException) e).getStatus())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        verify(consentGrantRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-010 a grantee role other than CAREGIVER is refused with 400 and writes nothing (DEF-MCR-30)")
+    void grantMedicareViewConsent_rejectsOtherRoles() {
+        lenient().when(caregiverPatientLinkService.hasAccessToPatient(CAREGIVER_USER_ID, PATIENT_USER_ID))
+                .thenReturn(true);
+
+        for (final String role : List.of("ADMIN", "FAMILY_MEMBER", "caregiver", "C".repeat(40))) {
+            assertThatThrownBy(() -> service.grantMedicareViewConsent(
+                    PATIENT_USER_ID, CAREGIVER_USER_ID, role, null))
+                    .isInstanceOf(AppException.class)
+                    .hasMessage("granteeRole must be CAREGIVER")
+                    .extracting(e -> ((AppException) e).getStatus())
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        verify(consentGrantRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-011 granting Medicare View without a patient or grantee id throws")
+    void grantMedicareViewConsent_throwsWhenIdsMissing() {
+        assertThatThrownBy(() -> service.grantMedicareViewConsent(null, CAREGIVER_USER_ID, null, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.grantMedicareViewConsent(PATIENT_USER_ID, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(consentGrantRepository);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-012 revoking sets every active MEDICARE_VIEW grant for the pair to REVOKED and returns the count")
+    void revokeMedicareViewConsent_revokesActiveGrants() {
+        final ConsentGrant active = medicareGrant(1L, null);
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(List.of(active));
+
+        assertThat(service.revokeMedicareViewConsent(PATIENT_USER_ID, CAREGIVER_USER_ID)).isEqualTo(1);
+
+        assertThat(active.getStatus()).isEqualTo(ConsentGrant.STATUS_REVOKED);
+        assertThat(active.getRevokedAt()).isNotNull();
+        final ArgumentCaptor<List<ConsentGrant>> captor = ArgumentCaptor.forClass(List.class);
+        verify(consentGrantRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).containsExactly(active);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-013 revoking when nothing is active returns 0 and writes no sentinel row (DEF-MCR-29)")
+    void revokeMedicareViewConsent_nothingActiveWritesNothing() {
+        when(consentGrantRepository.findActiveGrants(
+                eq(PATIENT_USER_ID), eq(CAREGIVER_USER_ID), eq("MEDICARE_VIEW"), any(Instant.class)))
+                .thenReturn(List.of());
+        lenient().when(consentGrantRepository.existsByPatientUserIdAndGranteeUserIdAndScope(
+                PATIENT_USER_ID, CAREGIVER_USER_ID, ConsentGrant.SCOPE_MEDICARE_VIEW))
+                .thenReturn(false);
+
+        assertThat(service.revokeMedicareViewConsent(PATIENT_USER_ID, CAREGIVER_USER_ID)).isZero();
+
+        verify(consentGrantRepository, never()).save(any());
+        verify(consentGrantRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CONSENT-014 revoking Medicare View without a patient or grantee id returns 0 and queries nothing")
+    void revokeMedicareViewConsent_returnsZeroWhenIdsMissing() {
+        assertThat(service.revokeMedicareViewConsent(null, CAREGIVER_USER_ID)).isZero();
+        assertThat(service.revokeMedicareViewConsent(PATIENT_USER_ID, null)).isZero();
+        verifyNoInteractions(consentGrantRepository);
     }
 }

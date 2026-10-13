@@ -4,6 +4,7 @@ import com.careconnect.model.Patient;
 import com.careconnect.model.User;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.service.CaregiverPatientLinkService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -47,6 +48,7 @@ class ConsentBackedCaregiverVisibilityServiceTest {
     }
 
     @Test
+    @DisplayName("TC-CONSENT-030 caregiver summary visibility is GRANTED only when AI-retrieval consent and the visibility record both pass")
     void granted_onlyWhenConsentAndVisibilityBothPass() {
         stubLinkedPatient();
         when(consentService.isEffectiveAiRetrievalConsent(CG, PATIENT_USER)).thenReturn(true);
@@ -59,6 +61,7 @@ class ConsentBackedCaregiverVisibilityServiceTest {
     }
 
     @Test
+    @DisplayName("TC-CONSENT-031 caregiver summary visibility is blocked with consent but no visibility record")
     void blocked_whenConsentEffectiveButNoVisibilityRecord() {
         stubLinkedPatient();
         when(consentService.isEffectiveAiRetrievalConsent(CG, PATIENT_USER)).thenReturn(true);
@@ -71,6 +74,7 @@ class ConsentBackedCaregiverVisibilityServiceTest {
     }
 
     @Test
+    @DisplayName("TC-CONSENT-032 caregiver summary visibility is blocked with a visibility record but no consent")
     void blocked_whenVisibilityGrantedButNoConsent() {
         stubLinkedPatient();
         when(consentService.isEffectiveAiRetrievalConsent(CG, PATIENT_USER)).thenReturn(false);
