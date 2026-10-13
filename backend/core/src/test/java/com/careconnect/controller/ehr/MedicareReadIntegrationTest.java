@@ -582,4 +582,55 @@ class MedicareReadIntegrationTest {
         assertThat(objectMapper.readTree(first).has("resources")).isFalse();
         verifyNoInteractions(medicare);
     }
+
+    @Test
+    @DisplayName("#324 (WBS 6.3.9, for TC-24.1…24.3): over HTTP, coverage and visits are the same 404 with no Medicare field for no link, no consent, revoked consent, another patient's caregiver and a family member, while a linked caregiver with consent reads both")
+    void caregiverVerificationCasesOverHttp() throws Exception {
+        link(patient1, "enc");
+        link(patient2, "enc");
+        final MockMvc mvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+
+        final User noLink = caregiver("v324-no-link@example.test");
+        medicareView(patient1, noLink);
+        final User noConsent = caregiver("v324-no-consent@example.test");
+        caregiverLink(noConsent, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        final User revokedConsent = caregiver("v324-revoked@example.test");
+        caregiverLink(revokedConsent, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        grant(patient1, revokedConsent, MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, null, Instant.now().minusSeconds(60));
+        final User otherPatientsCaregiver = caregiver("v324-wrong-patient@example.test");
+        caregiverLink(otherPatientsCaregiver, patient2, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        medicareView(patient2, otherPatientsCaregiver);
+        final User family = account("v324-family@example.test", Role.FAMILY_MEMBER);
+        familyLinks.save(new FamilyMemberLink(family, patient1.getUser(), patient1.getUser(), "Son"));
+        medicareView(patient1, family);
+
+        final String patient = patient1.getId().toString();
+        final List<MvcResult> refusals = new ArrayList<>();
+        for (final User u : List.of(noLink, noConsent, revokedConsent, otherPatientsCaregiver, family)) {
+            signIn(u);
+            for (final String read : List.of("coverage", "visits")) {
+                refusals.add(mvc.perform(get("/v1/api/medicare/" + read).param("patientId", patient)).andReturn());
+            }
+        }
+        assertThat(refusals).hasSize(10)
+                .allSatisfy(r -> assertThat(r.getResponse().getStatus()).isEqualTo(404));
+        final String first = refusals.get(0).getResponse().getContentAsString();
+        assertThat(refusals).extracting(r -> r.getResponse().getContentAsString()).containsOnly(first);
+        assertThat(objectMapper.readTree(first).has("resources")).isFalse();
+        verifyNoInteractions(medicare);
+
+        // The control: the same requests succeed for an assigned caregiver holding the patient's consent,
+        // so the refusals above come from the policy and not from the setup.
+        final User allowed = caregiver("v324-allowed@example.test");
+        caregiverLink(allowed, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        medicareView(patient1, allowed);
+        signIn(allowed);
+        blueButtonServesFixtures();
+        for (final String read : List.of("coverage", "visits")) {
+            assertThat(mvc.perform(get("/v1/api/medicare/" + read).param("patientId", patient))
+                    .andReturn().getResponse().getStatus()).as(read).isEqualTo(200);
+        }
+    }
 }
