@@ -4,6 +4,8 @@ Prepared October 13, 2026, Eastern Time, for Terence Boyce.
 
 The source is the connected `Team_Charlie_Integrated_Work_Plan_and_EVM.xlsx` workbook. `WBS & Assignments` is authoritative. Both WBS tabs list the same 11 personal tasks and the same completion values. Review baseline: `team-c-develop` at `4e5266e925c3e9cb764958fa415ec32372b9442e`.
 
+Review code and documents are in [PR #331](https://github.com/umgc/2026_fall_careconnect/pull/331), a draft against `team-c-develop`. The separate Cerner fixes are in PR #330. Neither PR is merged.
+
 ## Work completed for review
 
 The saved language-switch test is now in this review branch. It uses the real locale provider and language picker. It switches the same mounted screen from English to Spanish, back to English, then to the system locale. It checks visible text, saved preferences, and the absence of widget exceptions. Mock preferences keep the test offline. The three focused localization suites passed all 89 tests on October 13.
@@ -80,9 +82,9 @@ The workbook Dashboard was set to Week 7 at the read. Submission Check reported 
 ## Validation report
 
 - Focused localization: 89 passed, including visible-text switching on the same mounted screen.
-- Full baseline backend: 7,244 tests, 1 failure, 56 errors, no skips. The 56 context errors were caused by the missing Cerner service bean. The separate assertion failure is in `SsmPropertySourceInitializerTest`.
+- Full baseline backend: 7,244 tests, 1 failure, 56 errors, no skips. The 56 context errors were caused by the missing Cerner service bean. The separate assertion failure is `SsmPropertySourceInitializerTest.shouldLoadAllParametersWhenAllSsmCallsSucceed`: expected 12 parameters but received 13.
 - PR #330 candidate: all 54 focused allergy/configuration tests pass. The wider selected startup run has 110 tests, no assertion failures, and 56 context errors. It gets past the missing Cerner bean, then fails on the existing H2 filtered unique-index schema patch. This does not prove full application startup.
-- Full frontend assessment and the web release build are running. No final result is claimed for either until completion.
+- Broad frontend run stopped after 43:45 with 3,519 passed, 6 skipped, and 220 failed. It is incomplete and failing, not a completed full-suite result. Many failing widget fixtures lacked localization setup. No whole-frontend regression pass is claimed. The web release build passed (318.9 seconds). It reported WASM dry-run compatibility warnings; no WASM support or runtime smoke pass is claimed.
 - Checkstyle reports 46,964 warning findings and zero error-severity findings. Its configured gate checks error severity; a successful gate does not mean no findings.
 - Live Team C head had no candidate check runs. The branch was marked protected, but its exposed required-status list was empty and enforcement was off. Detailed protection lookup returned HTTP 404 to this account, so detailed rules remain Not verified.
 - PR #330 is open as a draft against `team-c-develop`, with head `c6cb34ce2418d22f79f69013d750c4de1e911267`. Its GitHub quality gate was still running at the first read. No merge or reviewer acceptance is claimed.
