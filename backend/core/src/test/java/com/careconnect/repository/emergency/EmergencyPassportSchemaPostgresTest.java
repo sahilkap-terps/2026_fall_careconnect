@@ -1,5 +1,6 @@
 package com.careconnect.repository.emergency;
 
+import com.careconnect.model.emergency.BloodType;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Every test runs in the {@code @DataJpaTest} transaction and is rolled back. PostgreSQL aborts the
  * transaction on a constraint violation, so an expected violation is always the last statement.
  * <p>
- * No Test Plan IDs yet: they are issued by the Testing Lead, not chosen by the author.
+ * Test IDs TC-EMG-036…040 (the author's) and TC-EMG-050…053 (the Testing Lead's) are permanent,
+ * Test Plan §3.23. Never renumber, never reuse.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -55,21 +57,21 @@ class EmergencyPassportSchemaPostgresTest {
     private EntityManager entityManager;
 
     @Test
-    @DisplayName("a profile for a patient that does not exist is rejected")
+    @DisplayName("TC-EMG-036: a profile for a patient that does not exist is rejected")
     void profileForUnknownPatientIsRejected() {
         assertThatThrownBy(() -> insertProfile(unknownPatient()))
                 .hasMessageContaining("fk_emergency_passport_profile_patient");
     }
 
     @Test
-    @DisplayName("a visibility row for a patient that does not exist is rejected")
+    @DisplayName("TC-EMG-037: a visibility row for a patient that does not exist is rejected")
     void visibilityForUnknownPatientIsRejected() {
         assertThatThrownBy(() -> insertVisibility(unknownPatient(), "ALLERGIES"))
                 .hasMessageContaining("fk_emergency_passport_visibility_patient");
     }
 
     @Test
-    @DisplayName("a visibility row inserted by SQL without is_public is hidden")
+    @DisplayName("TC-EMG-038: a visibility row inserted by SQL without is_public is hidden")
     void isPublicDefaultsToFalseInTheDatabase() {
         long patient = newPatient();
         insertVisibility(patient, "BLOOD_TYPE");
@@ -81,7 +83,7 @@ class EmergencyPassportSchemaPostgresTest {
     }
 
     @Test
-    @DisplayName("deleting a patient removes their passport profile and visibility rows")
+    @DisplayName("TC-EMG-039: deleting a patient removes their passport profile and visibility rows")
     void deletingAPatientCascades() {
         long patient = newPatient();
         insertProfile(patient);
@@ -99,7 +101,7 @@ class EmergencyPassportSchemaPostgresTest {
     }
 
     @Test
-    @DisplayName("created_at and updated_at on both passport tables are TIMESTAMPTZ")
+    @DisplayName("TC-EMG-040: created_at and updated_at on both passport tables are TIMESTAMPTZ")
     void auditTimestampsAreZoneAware() {
         @SuppressWarnings("unchecked")
         List<Object[]> columns = entityManager
@@ -111,6 +113,57 @@ class EmergencyPassportSchemaPostgresTest {
 
         assertThat(columns).hasSize(4);
         assertThat(columns).extracting(c -> (String) c[2]).containsOnly("timestamp with time zone");
+    }
+
+    @Test
+    @DisplayName("TC-EMG-050: a second profile for the same patient is rejected by uq_emergency_passport_profile_patient")
+    void secondProfileIsRejectedByTheDatabase() {
+        long patient = newPatient();
+        insertProfile(patient);
+
+        assertThatThrownBy(() -> insertProfile(patient))
+                .hasMessageContaining("uq_emergency_passport_profile_patient");
+    }
+
+    @Test
+    @DisplayName("TC-EMG-051: a second row for the same patient and field is rejected by "
+            + "uq_emergency_passport_visibility_patient_field")
+    void secondVisibilityRowIsRejectedByTheDatabase() {
+        long patient = newPatient();
+        insertVisibility(patient, "ALLERGIES");
+
+        assertThatThrownBy(() -> insertVisibility(patient, "ALLERGIES"))
+                .hasMessageContaining("uq_emergency_passport_visibility_patient_field");
+    }
+
+    @Test
+    @DisplayName("TC-EMG-052: a visibility row inserted by SQL with is_public NULL is rejected, so hidden has one meaning")
+    void explicitNullIsPublicIsRejected() {
+        long patient = newPatient();
+
+        assertThatThrownBy(() -> {
+            entityManager.createNativeQuery("insert into emergency_passport_field_visibility"
+                            + " (patient_id, field_key, is_public, created_at, updated_at)"
+                            + " values (:p, 'MEDICATIONS', null, now(), now())")
+                    .setParameter("p", patient).executeUpdate();
+            entityManager.flush();
+        }).hasMessageContaining("is_public");
+    }
+
+    @Test
+    @DisplayName("TC-EMG-053: every blood type name fits blood_type in the database, AB_NEGATIVE included")
+    void everyBloodTypeNameFitsTheColumn() {
+        // H2 types this column as a native ENUM, so only PostgreSQL shows the VARCHAR(16) length holds.
+        for (BloodType bloodType : BloodType.values()) {
+            long patient = newPatient();
+            entityManager.createNativeQuery("insert into emergency_passport_profile"
+                            + " (patient_id, blood_type, created_at, updated_at) values (:p, :b, now(), now())")
+                    .setParameter("p", patient).setParameter("b", bloodType.name()).executeUpdate();
+            Object stored = entityManager
+                    .createNativeQuery("select blood_type from emergency_passport_profile where patient_id = :p")
+                    .setParameter("p", patient).getSingleResult();
+            assertThat(stored).as("blood type %s", bloodType).isEqualTo(bloodType.name());
+        }
     }
 
     private long newPatient() {

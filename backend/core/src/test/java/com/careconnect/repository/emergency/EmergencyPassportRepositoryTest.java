@@ -11,6 +11,8 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -23,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * which skips its PostgreSQL patches on H2; {@link EmergencyPassportSchemaPostgresTest} covers those.
  * Patient ids are bare longs here because H2 has no foreign key to satisfy.
  * <p>
- * No Test Plan IDs yet: they are issued by the Testing Lead, not chosen by the author.
+ * Test IDs TC-EMG-029…035 (the author's) and TC-EMG-044…049 (the Testing Lead's) are permanent,
+ * Test Plan §3.23. Never renumber, never reuse.
  */
 @DataJpaTest
 @ActiveProfiles("test")
@@ -37,7 +40,7 @@ class EmergencyPassportRepositoryTest {
     private EmergencyPassportFieldVisibilityRepository visibilityRepository;
 
     @Test
-    @DisplayName("a profile round-trips every field, blood type stored by enum name")
+    @DisplayName("TC-EMG-029: a profile round-trips every field, blood type stored by enum name")
     void profileRoundTrips() {
         profileRepository.saveAndFlush(EmergencyPassportProfile.builder()
                 .patientId(101L)
@@ -59,7 +62,7 @@ class EmergencyPassportRepositoryTest {
     }
 
     @Test
-    @DisplayName("a profile may leave every value empty")
+    @DisplayName("TC-EMG-030: a profile may leave every value empty")
     void emptyProfileIsAllowed() {
         profileRepository.saveAndFlush(EmergencyPassportProfile.builder().patientId(102L).build());
 
@@ -70,7 +73,7 @@ class EmergencyPassportRepositoryTest {
     }
 
     @Test
-    @DisplayName("a patient cannot hold two profiles")
+    @DisplayName("TC-EMG-031: a patient cannot hold two profiles")
     void secondProfileForOnePatientIsRejected() {
         profileRepository.saveAndFlush(EmergencyPassportProfile.builder().patientId(103L).build());
 
@@ -80,7 +83,7 @@ class EmergencyPassportRepositoryTest {
     }
 
     @Test
-    @DisplayName("a visibility row built without is_public is hidden")
+    @DisplayName("TC-EMG-032: a visibility row built without is_public is hidden")
     void visibilityDefaultsToHidden() {
         visibilityRepository.saveAndFlush(EmergencyPassportFieldVisibility.builder()
                 .patientId(104L)
@@ -93,13 +96,13 @@ class EmergencyPassportRepositoryTest {
     }
 
     @Test
-    @DisplayName("a patient with no visibility rows shows nothing")
+    @DisplayName("TC-EMG-033: a patient with no visibility rows shows nothing")
     void noRowsMeansNothingIsPublic() {
         assertThat(visibilityRepository.findPublicFields(105L)).isEmpty();
     }
 
     @Test
-    @DisplayName("only fields explicitly made public are returned, and only for that patient")
+    @DisplayName("TC-EMG-034: only fields explicitly made public are returned, and only for that patient")
     void findPublicFieldsReturnsOnlyExplicitOptIns() {
         // Arrange: patient 106 makes two fields public and one hidden; patient 107 makes one public.
         save(106L, PassportField.ALLERGIES, true);
@@ -111,15 +114,100 @@ class EmergencyPassportRepositoryTest {
         assertThat(visibilityRepository.findPublicFields(106L))
                 .containsExactlyInAnyOrder(PassportField.ALLERGIES, PassportField.MEDICATIONS);
         assertThat(visibilityRepository.findByPatientId(106L)).hasSize(3);
+        assertThat(visibilityRepository.findPublicFields(107L)).containsExactly(PassportField.BLOOD_TYPE);
+        assertThat(visibilityRepository.findByPatientId(107L)).hasSize(1);
     }
 
     @Test
-    @DisplayName("a patient cannot hold two visibility rows for the same field")
+    @DisplayName("TC-EMG-035: a patient cannot hold two visibility rows for the same field")
     void secondVisibilityRowForOneFieldIsRejected() {
         save(108L, PassportField.ALLERGIES, false);
 
         assertThatThrownBy(() -> save(108L, PassportField.ALLERGIES, true))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-044: every blood type round-trips by name")
+    void everyBloodTypeRoundTrips() {
+        long patientId = 200L;
+        for (BloodType bloodType : BloodType.values()) {
+            profileRepository.saveAndFlush(EmergencyPassportProfile.builder()
+                    .patientId(patientId)
+                    .bloodType(bloodType)
+                    .build());
+            assertThat(profileRepository.findByPatientId(patientId).orElseThrow().getBloodType())
+                    .as("patient %d", patientId).isEqualTo(bloodType);
+            patientId++;
+        }
+    }
+
+    @Test
+    @DisplayName("TC-EMG-045: a profile without a patient is rejected")
+    void profileWithoutPatientIsRejected() {
+        assertThatThrownBy(() -> profileRepository.saveAndFlush(EmergencyPassportProfile.builder()
+                .bloodType(BloodType.O_NEGATIVE)
+                .build()))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-046: a visibility row without a field is rejected")
+    void visibilityWithoutFieldIsRejected() {
+        assertThatThrownBy(() -> visibilityRepository.saveAndFlush(EmergencyPassportFieldVisibility.builder()
+                .patientId(109L)
+                .isPublic(true)
+                .build()))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-047: a visibility row with is_public explicitly null is rejected, not stored as a third state")
+    void visibilityWithNullIsPublicIsRejected() {
+        assertThatThrownBy(() -> visibilityRepository.saveAndFlush(EmergencyPassportFieldVisibility.builder()
+                .patientId(110L)
+                .fieldKey(PassportField.ALLERGIES)
+                .isPublic(null)
+                .build()))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-048: hiding a public field again removes it from the public set and advances updated_at")
+    void hidingAFieldAgainIsRecorded() throws InterruptedException {
+        EmergencyPassportFieldVisibility row = visibilityRepository.saveAndFlush(EmergencyPassportFieldVisibility.builder()
+                .patientId(111L)
+                .fieldKey(PassportField.MEDICATIONS)
+                .isPublic(true)
+                .build());
+        assertThat(visibilityRepository.findPublicFields(111L)).containsExactly(PassportField.MEDICATIONS);
+        LocalDateTime createdAt = row.getCreatedAt();
+        LocalDateTime madePublicAt = row.getUpdatedAt();
+
+        Thread.sleep(20);
+        row.setIsPublic(false);
+        visibilityRepository.saveAndFlush(row);
+
+        EmergencyPassportFieldVisibility reloaded =
+                visibilityRepository.findByPatientIdAndFieldKey(111L, PassportField.MEDICATIONS).orElseThrow();
+        assertThat(visibilityRepository.findPublicFields(111L)).isEmpty();
+        assertThat(reloaded.getIsPublic()).isFalse();
+        assertThat(reloaded.getUpdatedAt()).isAfter(madePublicAt);
+        assertThat(reloaded.getCreatedAt()).isEqualTo(createdAt);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-049: one patient's profile is never returned for another patient")
+    void profileLookupIsPerPatient() {
+        profileRepository.saveAndFlush(EmergencyPassportProfile.builder()
+                .patientId(112L)
+                .bloodType(BloodType.B_POSITIVE)
+                .emergencyContactName("Pat Example")
+                .build());
+
+        assertThat(profileRepository.findByPatientId(113L)).isEmpty();
+        assertThat(profileRepository.findByPatientId(112L)).get()
+                .extracting(EmergencyPassportProfile::getPatientId).isEqualTo(112L);
     }
 
     private void save(long patientId, PassportField field, boolean isPublic) {

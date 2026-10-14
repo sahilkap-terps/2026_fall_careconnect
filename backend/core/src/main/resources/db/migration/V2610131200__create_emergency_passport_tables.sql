@@ -10,13 +10,19 @@
 --
 -- Allergies and medications are not stored here; the passport reads the active rows of
 -- patient_allergy and patient_medication. The QR token table is Increment 2.
+--
+-- The foreign keys carry the names SchemaPatchRunner gives them. Hibernate also adds a CHECK
+-- constraint to each enum column when it creates the table (blood_type: the eight BloodType names;
+-- field_key: the five PassportField names). ddl-auto=update never alters those, so adding an enum
+-- value later needs a patch that drops and recreates the CHECK, as V75 does for user_files.
 
 -- One row per patient. Every value column is nullable: a patient may fill in any subset.
 -- chronic_conditions is a single free-text summary (reduced M4 scope); a structured per-condition
 -- table is a later change.
 CREATE TABLE IF NOT EXISTS emergency_passport_profile (
     id                             BIGSERIAL    PRIMARY KEY,
-    patient_id                     BIGINT       NOT NULL REFERENCES patient (id) ON DELETE CASCADE,
+    patient_id                     BIGINT       NOT NULL
+        CONSTRAINT fk_emergency_passport_profile_patient REFERENCES patient (id) ON DELETE CASCADE,
     blood_type                     VARCHAR(16),           -- BloodType enum name, e.g. O_NEGATIVE
     chronic_conditions             TEXT,
     emergency_contact_name         VARCHAR(255),
@@ -31,7 +37,8 @@ CREATE TABLE IF NOT EXISTS emergency_passport_profile (
 -- is_public = FALSE; nothing is public by default.
 CREATE TABLE IF NOT EXISTS emergency_passport_field_visibility (
     id         BIGSERIAL   PRIMARY KEY,
-    patient_id BIGINT      NOT NULL REFERENCES patient (id) ON DELETE CASCADE,
+    patient_id BIGINT      NOT NULL
+        CONSTRAINT fk_emergency_passport_visibility_patient REFERENCES patient (id) ON DELETE CASCADE,
     field_key  VARCHAR(30) NOT NULL,  -- ALLERGIES, MEDICATIONS, CHRONIC_CONDITIONS, BLOOD_TYPE, EMERGENCY_CONTACT
     is_public  BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ,

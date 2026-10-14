@@ -743,8 +743,11 @@ public class SchemaPatchRunner implements CommandLineRunner {
      * {@code is_public} gets a database default of {@code FALSE} so a row inserted outside JPA is
      * hidden, matching the entity default. The timestamps are made {@code TIMESTAMPTZ} for the
      * reason {@link #applyEhrAuditTimestampZonePatches()} gives.
+     * <p>
+     * Package-private so {@code SchemaPatchRunnerEmergencyPassportTest} can run it against a mocked
+     * PostgreSQL connection: on H2 it returns early, so no other unit test reaches these lines.
      */
-    private void applyEmergencyPassportPatches() {
+    void applyEmergencyPassportPatches() {
         if (!isPostgreSql()) {
             log.info("Skipping PostgreSQL emergency passport patches for non-PostgreSQL datasource");
             return;
