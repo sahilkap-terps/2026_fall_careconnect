@@ -56,6 +56,39 @@ class CernerAllergyMapperTest {
     }
 
     @Test
+    @Tag("M3-REQ-02")
+    @DisplayName("MAP-003: valid calendar dates retain their original precision")
+    void validCalendarDatesPreserved() {
+        for (String value : List.of("2024-02", "2024-12", "2024-02-29", "2000-02-29")) {
+            assertThat(CernerAllergyMapper.normalizeDate(value)).isEqualTo(value);
+        }
+    }
+
+    @Test
+    @Tag("M3-REQ-02")
+    @DisplayName("MAP-003: impossible months and days are rejected")
+    void invalidCalendarDatesRejected() {
+        for (String value : List.of("2024-00", "2024-13", "2024-00-01", "2024-13-01",
+                "2024-01-00", "2024-04-31", "2024-02-30", "2023-02-29", "1900-02-29")) {
+            assertThat(CernerAllergyMapper.normalizeDate(value)).as("date %s", value).isNull();
+        }
+    }
+
+    @Test
+    @Tag("M3-REQ-06")
+    @DisplayName("MAP-005: an impossible recorded date does not hide a valid sibling record")
+    void invalidRecordedDateEntryIsolated() throws Exception {
+        // Arrange synthetic sibling records to check the mapper's existing skip policy.
+        final JsonNode source = bundle(
+                allergy("invalid", PATIENT, "\"recordedDate\":\"2024-02-30\""),
+                allergy("valid", PATIENT, "\"recordedDate\":\"2024-02-29\""));
+
+        // Act and assert: retain only the record with a real calendar date.
+        assertThat(CernerAllergyMapper.map(source, PATIENT))
+                .extracting(Allergy::sourceRecordId).containsExactly("valid");
+    }
+
+    @Test
     @Tag("M3-REQ-06")
     @DisplayName("M3-SC-MAP-004: no reaction maps to empty list with null optional fields")
     void noReactionYieldsEmptyList() throws Exception {
