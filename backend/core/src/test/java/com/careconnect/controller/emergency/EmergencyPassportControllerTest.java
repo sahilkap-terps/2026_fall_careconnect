@@ -2,6 +2,7 @@ package com.careconnect.controller.emergency;
 
 import com.careconnect.dto.emergency.PassportDtos.PublicPassport;
 import com.careconnect.exception.AppException;
+import com.careconnect.exception.GlobalExceptionHandler;
 import com.careconnect.model.Patient;
 import com.careconnect.model.User;
 import com.careconnect.dto.emergency.PassportDtos.VisibilityRequest;
@@ -13,8 +14,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
@@ -24,7 +28,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -116,6 +124,27 @@ class EmergencyPassportControllerTest {
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getStatus())
                 .isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("an unknown blood type or malformed JSON is 400 naming the problem, not the global handler's 500")
+    void unreadableBodyIs400() throws Exception {
+        // Real Spring MVC and Jackson, with the global handler present, so this proves which one wins.
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+
+        mvc.perform(put("/v1/api/passport/profile").principal(SIGNED_IN)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"bloodType\":\"Z_POS\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("bloodType must be one of: A_POSITIVE, A_NEGATIVE, "
+                        + "B_POSITIVE, B_NEGATIVE, AB_POSITIVE, AB_NEGATIVE, O_POSITIVE, O_NEGATIVE"));
+
+        mvc.perform(put("/v1/api/passport/visibility/allergies").principal(SIGNED_IN)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"isPublic\":"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Request body is malformed"));
+        verify(passports, never()).updateProfile(any(), any());
     }
 
     @Test
