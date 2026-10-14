@@ -782,7 +782,19 @@ public class SchemaPatchRunner implements CommandLineRunner {
                 "ALTER TABLE emergency_passport_field_visibility ALTER COLUMN is_public SET DEFAULT FALSE"
         );
 
+        for (final String table : new String[]{
+                "emergency_passport_profile",
+                "emergency_passport_field_visibility"}) {
+            for (final String column : new String[]{"created_at", "updated_at"}) {
+                applyRequiredPatch(
+                        "V2610131200f - " + table + "." + column + " is TIMESTAMPTZ",
+                        timestamptzIfZoneless(table, column)
+                );
+            }
+        }
+
         // CC-12 Increment 2 — the QR code. Mirrors V2610131300__create_emergency_passport_token.sql.
+        // Runs after every Increment 1 patch so their order stays as TC-EMG-041 pins it.
         applyRequiredPatch(
                 "V2610131300a - unique emergency_passport_token(token_lookup)",
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_token_lookup "
@@ -798,17 +810,11 @@ public class SchemaPatchRunner implements CommandLineRunner {
                 foreignKeyIfMissing("fk_emergency_passport_token_patient", "emergency_passport_token",
                         "patient_id", "patient", "id", " ON DELETE CASCADE")
         );
-
-        for (final String table : new String[]{
-                "emergency_passport_profile",
-                "emergency_passport_field_visibility",
-                "emergency_passport_token"}) {
-            for (final String column : new String[]{"created_at", "updated_at"}) {
-                applyRequiredPatch(
-                        "V2610131200f - " + table + "." + column + " is TIMESTAMPTZ",
-                        timestamptzIfZoneless(table, column)
-                );
-            }
+        for (final String column : new String[]{"created_at", "updated_at"}) {
+            applyRequiredPatch(
+                    "V2610131300d - emergency_passport_token." + column + " is TIMESTAMPTZ",
+                    timestamptzIfZoneless("emergency_passport_token", column)
+            );
         }
     }
 
