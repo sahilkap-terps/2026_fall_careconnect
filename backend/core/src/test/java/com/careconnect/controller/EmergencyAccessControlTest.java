@@ -5,6 +5,9 @@ import com.careconnect.exception.GlobalExceptionHandler;
 import com.careconnect.security.AuthorizationService;
 import com.careconnect.security.JwtTokenProvider;
 import com.careconnect.security.UserDetailsServiceImpl;
+import com.careconnect.security.Role;
+import com.careconnect.security.UnauthorizedException;
+import com.careconnect.service.PatientService;
 import com.careconnect.service.VialOfLifePdfService;
 import com.careconnect.util.SecurityUtil;
 import io.jsonwebtoken.Claims;
@@ -39,7 +42,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -100,13 +105,18 @@ class EmergencyAccessControlTest {
     VialOfLifePdfService vialOfLifePdfService;
     @MockitoBean
     Claims claims;
+    @MockitoBean
+    PatientService patientService;
+
+    /** Patient record 1 belongs to user 100. The "other patient" signing in below is user 200. */
+    private static final long PATIENT_ONE_USER = 100L;
 
     @BeforeEach
     void setUp() throws Exception {
         // @MockitoBean mocks are not reset between the @Nested classes' tests, so earlier calls
         // would otherwise count against the never()/times() checks below, and a stub set by one test
         // (GAP 3's thenThrow) would stay in place for the next. Reset calls and stubs, then stub again.
-        reset(vialOfLifePdfService, jwtTokenProvider, userDetailsService, claims);
+        reset(vialOfLifePdfService, jwtTokenProvider, userDetailsService, claims, securityUtil, authorizationService, patientService);
         lenient().when(vialOfLifePdfService.generateVialOfLifePdf(anyString()))
                 .thenReturn("%PDF-synthetic".getBytes(StandardCharsets.US_ASCII));
 
@@ -117,6 +127,22 @@ class EmergencyAccessControlTest {
                         .roles("PATIENT").build());
         lenient().when(userDetailsService.loadUserByEmailAndRole(anyString(), anyString())).thenAnswer(inv ->
                 User.withUsername(OTHER_USER).password("n/a").roles("PATIENT").build());
+
+        // DEF-EMG-01 interim fix: the controller resolves the caller and asks AuthorizationService.
+        // Only patient 1's own user (100) passes; the signed-in caller here is another patient (200).
+        final com.careconnect.model.Patient patientOne = new com.careconnect.model.Patient();
+        patientOne.setId(1L);
+        patientOne.setUser(com.careconnect.model.User.builder().id(PATIENT_ONE_USER).role(Role.PATIENT).build());
+        lenient().when(patientService.getPatientById(1L)).thenReturn(patientOne);
+        lenient().when(securityUtil.resolveCurrentUser())
+                .thenReturn(com.careconnect.model.User.builder().id(200L).role(Role.PATIENT).build());
+        lenient().doAnswer(inv -> {
+            final com.careconnect.model.User caller = inv.getArgument(0);
+            if (caller == null || !Long.valueOf(PATIENT_ONE_USER).equals(caller.getId())) {
+                throw new UnauthorizedException("refused");
+            }
+            return null;
+        }).when(authorizationService).requirePatientAccess(any(), eq(PATIENT_ONE_USER));
 
         // A token the JWT filter would accept, if it ran on these paths.
         lenient().when(jwtTokenProvider.validateToken(VALID_TOKEN)).thenReturn(true);
@@ -169,12 +195,22 @@ class EmergencyAccessControlTest {
     @DisplayName("Current gaps (characterization; each fails once its gap is fixed)")
     class CurrentGaps {
 
-        @ParameterizedTest(name = "{0}: GAP 1 (DEF-EMG-01): another patient signed in with Basic auth gets 200 from {1}")
+        @ParameterizedTest(name = "{0}: DEF-EMG-01 fixed (interim): another patient signed in with Basic auth gets 404 from {1} and nothing is generated")
         @CsvSource({
                 "TC-EMG-007, /v1/api/emergency/VIAL1.pdf",
                 "TC-EMG-008, /v1/api/emergency/download/VIAL1.pdf"})
-        void anyAccountReadsAnyPatientsPdf(final String id, final String path) throws Exception {
+        void otherPatientIsRefusedOnBothPdfPaths(final String id, final String path) throws Exception {
             mvc.perform(asOtherPatientViaBasic(path))
+                    .andExpect(status().isNotFound());
+            verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+        }
+
+        @Test
+        @DisplayName("DEF-EMG-01 interim fix: patient 1 signed in with Basic auth still gets their own PDF")
+        void thePatientStillGetsTheirOwnPdf() throws Exception {
+            when(securityUtil.resolveCurrentUser())
+                    .thenReturn(com.careconnect.model.User.builder().id(PATIENT_ONE_USER).role(Role.PATIENT).build());
+            mvc.perform(asOtherPatientViaBasic(PATIENT_ONE_PDF))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType("application/pdf"));
             verify(vialOfLifePdfService).generateVialOfLifePdf("VIAL1");
@@ -199,13 +235,13 @@ class EmergencyAccessControlTest {
         }
 
         @Test
-        @DisplayName("TC-EMG-010: GAP 3 (DEF-EMG-03): the debug endpoint returns internal exception details to any signed-in account")
-        void debugEndpointLeaksErrors() throws Exception {
+        @DisplayName("TC-EMG-010: DEF-EMG-03 fixed (interim): the debug endpoint gives a patient account 404 and no internal details")
+        void debugEndpointNoLongerLeaksErrors() throws Exception {
             when(vialOfLifePdfService.generateVialOfLifePdf("VIAL1"))
                     .thenThrow(new IllegalStateException("synthetic internal detail"));
             mvc.perform(asOtherPatientViaBasic("/v1/api/emergency/debug/VIAL1"))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().string(org.hamcrest.Matchers.containsString("synthetic internal detail")));
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("synthetic internal detail"))));
         }
     }
 
@@ -214,7 +250,6 @@ class EmergencyAccessControlTest {
     class Target {
 
         @Test
-        @Disabled("CR-1 Increment 2: another patient must not read patient 1's emergency data (GAP 1)")
         @DisplayName("TC-EMG-011: another signed-in patient is refused patient 1's PDF and nothing is generated")
         void otherPatientIsRefused() throws Exception {
             mvc.perform(asOtherPatientViaBasic(PATIENT_ONE_PDF))
@@ -223,7 +258,6 @@ class EmergencyAccessControlTest {
         }
 
         @Test
-        @Disabled("CR-1 Increment 2: debug endpoint removed or admin-only, with no internal details (GAP 3)")
         @DisplayName("TC-EMG-012: the debug endpoint is not reachable by a patient account")
         void debugEndpointIsClosed() throws Exception {
             mvc.perform(asOtherPatientViaBasic("/v1/api/emergency/debug/VIAL1"))

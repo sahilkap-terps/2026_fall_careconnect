@@ -1,6 +1,14 @@
 package com.careconnect.controller;
 
+import com.careconnect.model.Patient;
+import com.careconnect.model.User;
+import com.careconnect.security.AuthorizationService;
+import com.careconnect.security.Role;
+import com.careconnect.security.UnauthorizedException;
+import com.careconnect.service.PatientService;
 import com.careconnect.service.VialOfLifePdfService;
+import com.careconnect.util.SecurityUtil;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +20,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,8 +34,70 @@ class EmergencyControllerTest {
     // ── shared constants ──────────────────────────────────────────────────────
     @Mock
     private VialOfLifePdfService vialOfLifePdfService;
+    @Mock
+    private SecurityUtil securityUtil;
+    @Mock
+    private AuthorizationService authorizationService;
+    @Mock
+    private PatientService patientService;
     @InjectMocks
     private EmergencyController controller;
+
+    private static final long PATIENT_RECORD = 123456L;
+    private static final long PATIENT_USER = 900L;
+
+    /**
+     * The existing cases below test what the endpoints do once a caller is allowed. Allow them here:
+     * patient record 123456 belongs to user 900, the caller is an administrator, and the access check
+     * passes. InterimAccessFix covers the refusals.
+     */
+    @BeforeEach
+    void allowedCaller() {
+        final Patient patient = new Patient();
+        patient.setId(PATIENT_RECORD);
+        patient.setUser(User.builder().id(PATIENT_USER).build());
+        lenient().when(patientService.getPatientById(PATIENT_RECORD)).thenReturn(patient);
+        lenient().when(securityUtil.resolveCurrentUser()).thenReturn(User.builder().id(1L).role(Role.ADMIN).build());
+    }
+
+    // ── DEF-EMG-01 / DEF-EMG-03 interim fix ───────────────────────────────────
+
+    @Nested
+    class InterimAccessFix {
+
+        @Test
+        void pdfIs404_andNothingGenerated_whenCallerMayNotSeeThePatient() throws Exception {
+            when(securityUtil.resolveCurrentUser()).thenReturn(User.builder().id(2L).role(Role.PATIENT).build());
+            doThrow(new UnauthorizedException("refused")).when(authorizationService).requirePatientAccess(any(), eq(PATIENT_USER));
+
+            assertThat(controller.getEmergencyPdf(EMERGENCY_ID).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(controller.downloadEmergencyPdf(EMERGENCY_ID).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+        }
+
+        @Test
+        void accessCheckGetsThePatientsUserId_notTheRecordId() throws Exception {
+            when(vialOfLifePdfService.generateVialOfLifePdf(EMERGENCY_ID)).thenReturn(PDF_BYTES);
+
+            controller.getEmergencyPdf(EMERGENCY_ID);
+
+            verify(authorizationService).requirePatientAccess(any(), eq(PATIENT_USER));
+        }
+
+        @Test
+        void unknownPatientIs404_likeARefusal() throws Exception {
+            assertThat(controller.getEmergencyPdf("VIAL999").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+        }
+
+        @Test
+        void debugIs404_forANonAdmin() throws Exception {
+            when(securityUtil.resolveCurrentUser()).thenReturn(User.builder().id(2L).role(Role.PATIENT).build());
+
+            assertThat(controller.debugPatientData(EMERGENCY_ID).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+        }
+    }
 
     // ── GET /{emergencyId}.pdf ────────────────────────────────────────────────
 
