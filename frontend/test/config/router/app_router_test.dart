@@ -102,14 +102,6 @@ int _countBuilderRoutes(List<RouteBase> routes) {
   return count;
 }
 
-/// Creates a test GoRouter with a single route for widget testing.
-GoRouter _createTestRouter(String path, GoRoute route) {
-  return GoRouter(
-    initialLocation: path,
-    routes: [route],
-  );
-}
-
 /// Creates a test GoRouter navigating to [initialLocation] using the full
 /// appRouter route list.  This lets builder closures run with real GoRouterState
 /// objects just like production.

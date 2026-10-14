@@ -29,7 +29,8 @@ class EpicService {
     final authUrl = (jsonDecode(resp.body) as Map)['authUrl'] as String;
     await launchUrl(
       Uri.parse(authUrl),
-      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      mode:
+          kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
       // On web, navigate the app tab itself ('_self') to Epic so the backend can redirect the
       // SAME tab back to the /epic-linked web route on completion (returnMode=web). A separate
       // '_blank' tab does not return the user to the app, so full-page navigation is preferred.
@@ -44,7 +45,8 @@ class EpicService {
   /// `careconnect://epic/linked` deep link, which the WebView page intercepts. Throws on non-200.
   static Future<String> authorizeUrl() async {
     final headers = await ApiService.getAuthHeaders();
-    final resp = await http.get(Uri.parse('$_base/authorize'), headers: headers);
+    final resp =
+        await http.get(Uri.parse('$_base/authorize'), headers: headers);
     if (resp.statusCode != 200) {
       throw Exception('Epic authorize failed (${resp.statusCode})');
     }
@@ -63,10 +65,12 @@ class EpicService {
 
   /// Fetch one mirrored Epic resource for the current user (Epic citation detail).
   /// Returns null on 404 / error. Scoped server-side to the caller's own records.
-  static Future<Map<String, dynamic>?> getResource(String type, String id) async {
+  static Future<Map<String, dynamic>?> getResource(
+      String type, String id) async {
     final headers = await ApiService.getAuthHeaders();
     final resp = await http.get(
-      Uri.parse('$_base/resource/${Uri.encodeComponent(type)}/${Uri.encodeComponent(id)}'),
+      Uri.parse(
+          '$_base/resource/${Uri.encodeComponent(type)}/${Uri.encodeComponent(id)}'),
       headers: headers,
     );
     if (resp.statusCode != 200) {
@@ -78,7 +82,8 @@ class EpicService {
   /// Disconnect Epic: deletes tokens, revokes consent, and de-indexes Epic chunks.
   static Future<bool> disconnect() async {
     final headers = await ApiService.getAuthHeaders();
-    final resp = await http.post(Uri.parse('$_base/disconnect'), headers: headers);
+    final resp =
+        await http.post(Uri.parse('$_base/disconnect'), headers: headers);
     return resp.statusCode == 200;
   }
 }

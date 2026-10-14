@@ -21,7 +21,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:care_connect_app/features/ai/presentation/pages/voice_command_ai.dart';
 import 'package:care_connect_app/services/voice_intent_service.dart';
-import 'package:care_connect_app/services/voice_intent_registry.dart';
 
 /// Matches debug-mode status display delay in VoiceCommandAI (5s + buffer).
 const _statusSettleDelay = Duration(milliseconds: 5050);

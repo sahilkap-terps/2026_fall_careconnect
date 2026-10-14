@@ -53,6 +53,7 @@ class ApiServiceOffline {
   static void debugSetHttpClient(http.Client client) {
     final current = httpClient;
     if (current is OfflineQueueHttpClient) {
+      // ignore: invalid_use_of_visible_for_testing_member
       current.debugSetInnerClient(client);
     }
   }
@@ -62,6 +63,7 @@ class ApiServiceOffline {
   static void debugResetHttpClient() {
     final current = httpClient;
     if (current is OfflineQueueHttpClient) {
+      // ignore: invalid_use_of_visible_for_testing_member
       current.debugResetInnerClient();
     }
   }
