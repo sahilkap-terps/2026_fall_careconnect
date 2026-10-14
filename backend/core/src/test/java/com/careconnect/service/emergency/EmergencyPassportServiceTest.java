@@ -28,6 +28,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.List;
@@ -58,6 +60,9 @@ class EmergencyPassportServiceTest {
     private static final long PATIENT_ID = 42L;
     /** 2026-10-13, so a patient born 1985-06-14 is 41. */
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneOffset.UTC);
+    private static final Instant PROFILE_CHANGED = Instant.parse("2026-03-01T09:00:00Z");
+    private static final Instant ALLERGY_CHANGED = Instant.parse("2026-05-01T09:00:00Z");
+    private static final Instant MEDICATION_CHANGED = Instant.parse("2026-07-01T09:00:00Z");
 
     private EmergencyPassportProfileRepository profiles;
     private EmergencyPassportFieldVisibilityRepository visibility;
@@ -249,6 +254,97 @@ class EmergencyPassportServiceTest {
         assertThat(saved.getValue().getLastScannedAt()).isEqualTo(CLOCK.instant());
     }
 
+    // ---- How current a passport is ----
+
+    @Test
+    @DisplayName("a scan's lastUpdated is the latest change to the shown sections; a newer hidden section never counts")
+    void scanLastUpdatedCountsShownSectionsOnly() {
+        String raw = stubActiveCode();
+        stubSectionDates();
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(
+                PassportField.BLOOD_TYPE, PassportField.ALLERGIES));
+
+        PublicPassport passport = service.scan(raw).orElseThrow();
+
+        assertThat(passport.lastUpdated()).as("allergies, not the newer hidden medications")
+                .isEqualTo(ALLERGY_CHANGED);
+        verify(medications, never()).findActiveByPatientId(PATIENT_ID);
+    }
+
+    @Test
+    @DisplayName("a recently edited hidden profile section does not move a scan's lastUpdated")
+    void hiddenProfileEditDoesNotCount() {
+        String raw = stubActiveCode();
+        stubSectionDates();
+        // The patient just edited their (hidden) conditions and contact.
+        profiles.findByPatientId(PATIENT_ID).orElseThrow()
+                .setUpdatedAt(LocalDateTime.ofInstant(Instant.parse("2026-10-01T09:00:00Z"), ZoneId.systemDefault()));
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(PassportField.ALLERGIES));
+
+        assertThat(service.scan(raw).orElseThrow().lastUpdated()).isEqualTo(ALLERGY_CHANGED);
+    }
+
+    @Test
+    @DisplayName("a medication that is not approved does not make the passport look newer")
+    void unapprovedMedicationDoesNotCount() {
+        String raw = stubActiveCode();
+        stubSectionDates();
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(PassportField.MEDICATIONS));
+
+        assertThat(service.scan(raw).orElseThrow().lastUpdated())
+                .as("Lisinopril's date, not the newer PENDING row's").isEqualTo(MEDICATION_CHANGED);
+    }
+
+    @Test
+    @DisplayName("with nothing shown, a scan has no lastUpdated")
+    void nothingShownHasNoLastUpdated() {
+        String raw = stubActiveCode();
+        stubSectionDates();
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
+        assertThat(service.scan(raw).orElseThrow().lastUpdated()).as("nothing shared").isNull();
+
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(PassportField.ALLERGIES));
+        when(allergies.findActiveAllergiesByPatientId(PATIENT_ID)).thenReturn(List.of());
+        assertThat(service.scan(raw).orElseThrow().lastUpdated()).as("shared but empty").isNull();
+    }
+
+    @Test
+    @DisplayName("the patient's view dates every section with content, shared or not, and falls back to created_at")
+    void patientViewDatesEverySection() {
+        stubSectionDates();
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
+        when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of());
+        // An allergy never edited since it was added has no updated_at.
+        when(allergies.findActiveAllergiesByPatientId(PATIENT_ID)).thenReturn(List.of(
+                Allergy.builder().allergen("Penicillin").isActive(true).createdAt(ALLERGY_CHANGED).build()));
+
+        PassportView view = service.getPassport(PATIENT_ID);
+
+        assertThat(view.lastUpdated()).isEqualTo(MEDICATION_CHANGED);
+        assertThat(view.lastUpdatedBySection())
+                .containsEntry(PassportField.BLOOD_TYPE, PROFILE_CHANGED)
+                .containsEntry(PassportField.CHRONIC_CONDITIONS, PROFILE_CHANGED)
+                .containsEntry(PassportField.EMERGENCY_CONTACT, PROFILE_CHANGED)
+                .containsEntry(PassportField.ALLERGIES, ALLERGY_CHANGED)
+                .containsEntry(PassportField.MEDICATIONS, MEDICATION_CHANGED);
+    }
+
+    @Test
+    @DisplayName("an empty section has no date in the patient's view")
+    void emptySectionHasNoDate() {
+        stubSectionDates();
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
+        when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of());
+        EmergencyPassportProfile bloodTypeOnly = EmergencyPassportProfile.builder()
+                .patientId(PATIENT_ID).bloodType(BloodType.A_POSITIVE).build();
+        bloodTypeOnly.setUpdatedAt(LocalDateTime.ofInstant(PROFILE_CHANGED, ZoneId.systemDefault()));
+        when(profiles.findByPatientId(PATIENT_ID)).thenReturn(Optional.of(bloodTypeOnly));
+        when(allergies.findActiveAllergiesByPatientId(PATIENT_ID)).thenReturn(List.of());
+
+        assertThat(service.getPassport(PATIENT_ID).lastUpdatedBySection())
+                .containsOnlyKeys(PassportField.BLOOD_TYPE, PassportField.MEDICATIONS);
+    }
+
     // ---- The patient's own view and edits ----
 
     @Test
@@ -319,6 +415,23 @@ class EmergencyPassportServiceTest {
                 .tokenHash(new BCryptPasswordEncoder(4).encode(raw))
                 .status(EmergencyPassportToken.Status.ACTIVE)
                 .build();
+    }
+
+    /**
+     * Profile, then allergy, then the approved medication change, in that order; the PENDING
+     * medication is newest of all, so a test sees it if it ever wrongly counts.
+     */
+    private void stubSectionDates() {
+        EmergencyPassportProfile profile = profiles.findByPatientId(PATIENT_ID).orElseThrow();
+        profile.setUpdatedAt(LocalDateTime.ofInstant(PROFILE_CHANGED, ZoneId.systemDefault()));
+        when(allergies.findActiveAllergiesByPatientId(PATIENT_ID)).thenReturn(List.of(
+                Allergy.builder().allergen("Penicillin").severity(Allergy.AllergySeverity.SEVERE)
+                        .reaction("Anaphylaxis").isActive(true).updatedAt(ALLERGY_CHANGED).build()));
+        when(medications.findActiveByPatientId(PATIENT_ID)).thenReturn(List.of(
+                Medication.builder().medicationName("Lisinopril").approvalStatus("APPROVED").isActive(true)
+                        .updatedAt(MEDICATION_CHANGED).build(),
+                Medication.builder().medicationName("Unreviewed").approvalStatus("PENDING").isActive(true)
+                        .updatedAt(Instant.parse("2026-09-01T00:00:00Z")).build()));
     }
 
     private String stubActiveCode() {

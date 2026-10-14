@@ -34,16 +34,20 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * The Emergency Care Passport (CC-12, Increment 2): the patient's own view and edits, the QR code's
@@ -135,17 +139,22 @@ public class EmergencyPassportService {
         final TokenStatus token = active
                 .map(t -> new TokenStatus(true, toInstant(t), t.getLastScannedAt()))
                 .orElse(null);
+        final List<Allergy> allergyRows = allergies.findActiveAllergiesByPatientId(patientId);
+        final List<Medication> medicationRows = approvedMedications(patientId);
+        final Map<PassportField, Instant> updated = sectionDates(profile, allergyRows, medicationRows);
         return new PassportView(
                 displayName(patient),
                 ageOf(patient.getDob()),
                 profile.map(EmergencyPassportProfile::getBloodType).orElse(null),
                 profile.map(EmergencyPassportProfile::getChronicConditions).orElse(null),
                 profile.map(EmergencyPassportService::contactOf).orElse(null),
-                allergyItems(patientId),
-                medicationItems(patientId),
+                allergyItems(allergyRows),
+                medicationItems(medicationRows),
                 sharing,
                 token,
-                active.isPresent() && !shared.isEmpty());
+                active.isPresent() && !shared.isEmpty(),
+                latest(updated.values().stream()).orElse(null),
+                updated);
     }
 
     /** Replaces every patient-entered field. Blank strings are stored as null. */
@@ -226,17 +235,26 @@ public class EmergencyPassportService {
         final Long patientId = token.getPatientId();
         final Set<PassportField> shared = visibility.findPublicFields(patientId);
         final Optional<EmergencyPassportProfile> profile = profiles.findByPatientId(patientId);
+        // Hidden lists are never read, so they cannot leak into the response or its date.
+        final List<Allergy> allergyRows = shared.contains(PassportField.ALLERGIES)
+                ? allergies.findActiveAllergiesByPatientId(patientId) : List.of();
+        final List<Medication> medicationRows = shared.contains(PassportField.MEDICATIONS)
+                ? approvedMedications(patientId) : List.of();
+        final Instant lastUpdated = latest(sectionDates(profile, allergyRows, medicationRows).entrySet().stream()
+                .filter(section -> shared.contains(section.getKey()))
+                .map(Map.Entry::getValue)).orElse(null);
         return Optional.of(new PublicPassport(
                 displayName(patient.get()),
                 ageOf(patient.get().getDob()),
                 shared.contains(PassportField.BLOOD_TYPE)
                         ? profile.map(EmergencyPassportProfile::getBloodType).orElse(null) : null,
-                shared.contains(PassportField.ALLERGIES) ? nonEmpty(allergyItems(patientId)) : null,
-                shared.contains(PassportField.MEDICATIONS) ? nonEmpty(medicationItems(patientId)) : null,
+                nonEmpty(allergyItems(allergyRows)),
+                nonEmpty(medicationItems(medicationRows)),
                 shared.contains(PassportField.CHRONIC_CONDITIONS)
                         ? profile.map(EmergencyPassportProfile::getChronicConditions).orElse(null) : null,
                 shared.contains(PassportField.EMERGENCY_CONTACT)
-                        ? profile.map(EmergencyPassportService::contactOf).orElse(null) : null));
+                        ? profile.map(EmergencyPassportService::contactOf).orElse(null) : null,
+                lastUpdated));
     }
 
     // ---- Helpers -------------------------------------------------------------------------------
@@ -274,17 +292,56 @@ public class EmergencyPassportService {
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Patient not found"));
     }
 
-    private List<AllergyItem> allergyItems(final Long patientId) {
-        return allergies.findActiveAllergiesByPatientId(patientId).stream()
-                .map(EmergencyPassportService::allergyItem)
+    private List<Medication> approvedMedications(final Long patientId) {
+        return medications.findActiveByPatientId(patientId).stream()
+                .filter(m -> APPROVED.equals(m.getApprovalStatus()))
                 .toList();
     }
 
-    private List<MedicationItem> medicationItems(final Long patientId) {
-        return medications.findActiveByPatientId(patientId).stream()
-                .filter(m -> APPROVED.equals(m.getApprovalStatus()))
+    private static List<AllergyItem> allergyItems(final List<Allergy> rows) {
+        return rows.stream().map(EmergencyPassportService::allergyItem).toList();
+    }
+
+    private static List<MedicationItem> medicationItems(final List<Medication> rows) {
+        return rows.stream()
                 .map(m -> new MedicationItem(m.getMedicationName(), m.getDosage(), m.getFrequency()))
                 .toList();
+    }
+
+    /**
+     * When each section with content last changed, from the rows that section is built from. A
+     * section with no content has no entry, so an empty section never makes the passport look fresh.
+     * Only the rows shown count: an allergy or medication that was removed or never approved does not.
+     */
+    private static Map<PassportField, Instant> sectionDates(
+            final Optional<EmergencyPassportProfile> profile,
+            final List<Allergy> allergyRows,
+            final List<Medication> medicationRows) {
+        final Map<PassportField, Instant> dates = new EnumMap<>(PassportField.class);
+        profile.ifPresent(p -> {
+            final Instant changed = toInstant(p.getUpdatedAt() != null ? p.getUpdatedAt() : p.getCreatedAt());
+            if (changed == null) {
+                return;
+            }
+            if (p.getBloodType() != null) {
+                dates.put(PassportField.BLOOD_TYPE, changed);
+            }
+            if (p.getChronicConditions() != null) {
+                dates.put(PassportField.CHRONIC_CONDITIONS, changed);
+            }
+            if (contactOf(p) != null) {
+                dates.put(PassportField.EMERGENCY_CONTACT, changed);
+            }
+        });
+        latest(allergyRows.stream().map(a -> a.getUpdatedAt() != null ? a.getUpdatedAt() : a.getCreatedAt()))
+                .ifPresent(changed -> dates.put(PassportField.ALLERGIES, changed));
+        latest(medicationRows.stream().map(m -> m.getUpdatedAt() != null ? m.getUpdatedAt() : m.getCreatedAt()))
+                .ifPresent(changed -> dates.put(PassportField.MEDICATIONS, changed));
+        return dates;
+    }
+
+    private static Optional<Instant> latest(final Stream<Instant> dates) {
+        return dates.filter(Objects::nonNull).max(Comparator.naturalOrder());
     }
 
     private static AllergyItem allergyItem(final Allergy allergy) {
@@ -344,7 +401,11 @@ public class EmergencyPassportService {
 
     /** {@code Auditable} stamps {@code LocalDateTime.now()}, which is in the JVM's default zone. */
     private static Instant toInstant(final EmergencyPassportToken token) {
-        return token.getCreatedAt() == null ? null : token.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant();
+        return toInstant(token.getCreatedAt());
+    }
+
+    private static Instant toInstant(final LocalDateTime auditStamp) {
+        return auditStamp == null ? null : auditStamp.atZone(ZoneId.systemDefault()).toInstant();
     }
 
     private static String generateRawToken() {

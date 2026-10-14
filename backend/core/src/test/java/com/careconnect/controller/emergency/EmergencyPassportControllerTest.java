@@ -60,7 +60,7 @@ class EmergencyPassportControllerTest {
     @Test
     @DisplayName("a valid scan is 200 and never cached")
     void validScanIsOkAndNoStore() {
-        PublicPassport passport = new PublicPassport("Jordan Miller", 41, null, null, null, null, null);
+        PublicPassport passport = new PublicPassport("Jordan Miller", 41, null, null, null, null, null, null);
         when(passports.scan("good")).thenReturn(Optional.of(passport));
 
         ResponseEntity<?> response = controller.scan("good", new MockHttpServletRequest());

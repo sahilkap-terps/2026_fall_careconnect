@@ -49,6 +49,11 @@ public final class PassportDtos {
      * @param sharing every {@link PassportField}, true only where the patient opted in
      * @param token   null when the patient has never made a code or has revoked it
      * @param ready   an active code and at least one shared section
+     * @param lastUpdated          the latest change to any section with content, shared or not;
+     *                             null when every section is empty
+     * @param lastUpdatedBySection when each section with content last changed; an empty section
+     *                             has no entry. Blood type, conditions and contact share one profile
+     *                             row, so they share its date.
      */
     public record PassportView(
             String name,
@@ -60,7 +65,9 @@ public final class PassportDtos {
             List<MedicationItem> medications,
             Map<PassportField, Boolean> sharing,
             TokenStatus token,
-            boolean ready) {
+            boolean ready,
+            Instant lastUpdated,
+            Map<PassportField, Instant> lastUpdatedBySection) {
     }
 
     /**
@@ -75,6 +82,10 @@ public final class PassportDtos {
      * section is present only if the patient made it public AND it has content. A hidden section is
      * absent, not null or empty, so the response does not reveal that it exists. An empty shared
      * list is also absent: "no allergies listed" must not read as "no allergies".
+     * <p>
+     * {@code lastUpdated} is the latest change to the sections shown, so a responder can judge how
+     * current they are. Hidden sections never count, or the date would hint at data the patient chose
+     * not to show; absent when no section is shown.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record PublicPassport(
@@ -84,6 +95,7 @@ public final class PassportDtos {
             List<AllergyItem> allergies,
             List<MedicationItem> medications,
             String chronicConditions,
-            EmergencyContact emergencyContact) {
+            EmergencyContact emergencyContact,
+            Instant lastUpdated) {
     }
 }
