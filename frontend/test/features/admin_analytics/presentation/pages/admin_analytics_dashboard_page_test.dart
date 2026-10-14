@@ -406,22 +406,30 @@ void main() {
         await _pumpN(tester);
         expect(requestedUrls.length, 1);
         final initialFrom = requestedUrls.first.queryParameters['from'];
+        final initialTo = requestedUrls.first.queryParameters['to'];
 
         await _openDateRangePicker(tester);
 
-        // Pick a fixed range earlier in the current month (differs from default last-7-days).
+        // A one-day range on the 1st: day 1 is selectable on any date, and a
+        // one-day range can never equal the default last-7-days range. (Days
+        // 1-7 failed on the 7th of a month, when they *are* the default.)
         await _selectCalendarDay(tester, '1');
-        await _selectCalendarDay(tester, '7');
+        await _selectCalendarDay(tester, '1');
         await _confirmDateRangePicker(tester);
         await _pumpN(tester);
 
         expect(requestedUrls.length, greaterThan(1));
-        expect(requestedUrls.last.queryParameters['from'], isNotNull);
-        expect(requestedUrls.last.queryParameters['to'], isNotNull);
+        final from = requestedUrls.last.queryParameters['from'];
+        final to = requestedUrls.last.queryParameters['to'];
+        expect(from, isNotNull);
+        expect(to, isNotNull);
+        // `to` is exclusive (start of the next day), so a one-day range spans
+        // exactly one day.
         expect(
-          requestedUrls.last.queryParameters['from'],
-          isNot(equals(initialFrom)),
+          DateTime.parse(to!).difference(DateTime.parse(from!)),
+          const Duration(days: 1),
         );
+        expect([from, to], isNot(equals([initialFrom, initialTo])));
       }, () => mockClient);
     });
   });

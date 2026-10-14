@@ -5,7 +5,6 @@ import 'package:care_connect_app/features/integrations/presentation/pages/home_m
 import 'package:care_connect_app/features/integrations/presentation/pages/medication_management.dart';
 import 'package:care_connect_app/features/integrations/presentation/pages/smart_devices.dart';
 import 'package:care_connect_app/features/integrations/presentation/pages/wearables_screen.dart';
-import 'package:care_connect_app/features/notetaker/models/patient_note_model.dart';
 import 'package:care_connect_app/features/notetaker/presentation/notetaker_detail_view.dart';
 import 'package:care_connect_app/features/notetaker/presentation/notetaker_search.dart';
 import 'package:care_connect_app/features/informed_delivery/informed_delivery_screen.dart';
@@ -259,7 +258,9 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       builder: (_, __) => const UiPreviewScreen(),
     ),
     GoRoute(path: '/stml/brief', builder: (_, __) => const StmlBriefPage()),
-    GoRoute(path: '/summaries', builder: (_, __) => const SummaryConfirmationList()),
+    GoRoute(
+        path: '/summaries',
+        builder: (_, __) => const SummaryConfirmationList()),
     GoRoute(path: '/stml/recall', builder: (_, __) => const StmlRecallPage()),
     GoRoute(path: '/stml/search', builder: (_, __) => const StmlSearchPage()),
     GoRoute(
@@ -278,7 +279,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return StmlCheckInPage(patientId: patientId);
       },
     ),
-    GoRoute(path: '/symptoms', builder: (_, __) => const SymptomsAllergiesPage()),
+    GoRoute(
+        path: '/symptoms', builder: (_, __) => const SymptomsAllergiesPage()),
     GoRoute(
       path: '/login',
       builder: (context, state) {

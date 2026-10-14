@@ -53,8 +53,8 @@ class Legend extends StatelessWidget {
                   Text(
                     "Task Types",
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   if (showManageButton)
                     IconButton(

@@ -11,9 +11,10 @@ import '../models/medication-model.dart';
 import '../models/medication_photo_extraction.dart';
 
 Future<List<Medication>> fetchMedicationsFromEnhancedProfile({
-  required String baseUrl,   // e.g. http://10.0.2.2:8080 (emulator) or http://localhost:8080 (web)
-  required int patientId,    // from /v1/api/patients/me
-  required String jwtToken,  // Bearer <token>
+  required String
+      baseUrl, // e.g. http://10.0.2.2:8080 (emulator) or http://localhost:8080 (web)
+  required int patientId, // from /v1/api/patients/me
+  required String jwtToken, // Bearer <token>
 }) async {
   final uri = Uri.parse('$baseUrl/v1/api/patients/$patientId/profile/enhanced');
 
@@ -30,7 +31,8 @@ Future<List<Medication>> fetchMedicationsFromEnhancedProfile({
   }
 
   final Map<String, dynamic> body = json.decode(res.body);
-  final Map<String, dynamic> data = (body['data'] as Map<String, dynamic>?) ?? {};
+  final Map<String, dynamic> data =
+      (body['data'] as Map<String, dynamic>?) ?? {};
   final List meds = (data['activeMedications'] as List?) ?? const [];
 
   return meds
@@ -57,7 +59,8 @@ Future<MedicationPhotoExtractionResult> extractMedicationPhoto({
     final headers = await AuthTokenManager.getAuthHeaders();
     headers.remove('Content-Type'); // set by the multipart request
 
-    final mime = lookupMimeType(fileName, headerBytes: imageBytes) ?? 'image/jpeg';
+    final mime =
+        lookupMimeType(fileName, headerBytes: imageBytes) ?? 'image/jpeg';
     final mimeParts = mime.split('/');
     final request = http.MultipartRequest('POST', uri)
       ..headers.addAll(headers)

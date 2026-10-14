@@ -119,7 +119,8 @@ class _EpicWebViewLoginPageState extends State<EpicWebViewLoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.wifi_off_outlined, size: 48, color: Colors.orange),
+                  const Icon(Icons.wifi_off_outlined,
+                      size: 48, color: Colors.orange),
                   const SizedBox(height: 12),
                   Text(_error!, textAlign: TextAlign.center),
                   const SizedBox(height: 20),
