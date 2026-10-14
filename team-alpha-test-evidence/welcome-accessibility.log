@@ -1,0 +1,54 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/features/welcome/welcome_page_test.dart
+00:00 +0: WelcomePage – initial loading state shows CareConnect brand name
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +1: WelcomePage – initial loading state shows subtitle text
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +2: WelcomePage – initial loading state shows description text
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +3: WelcomePage – initial loading state shows tagline text
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +4: WelcomePage – initial loading state shows loading spinner during health check
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +5: WelcomePage – initial loading state shows Initializing healthcare experience text
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +6: WelcomePage – initial loading state shows language picker button
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +7: WelcomePage – ready state (after health check times out) shows Ready to connect text after health check
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +8: WelcomePage – ready state (after health check times out) shows Continue button after health check
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +9: WelcomePage – ready state (after health check times out) no longer shows loading spinner after health check
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +10: WelcomePage – compliance badges shows HIPAA Compliant badge
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +11: WelcomePage – compliance badges shows WCAG AA badge
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:00 +12: WelcomePage – compliance badges shows Secure badge
+BASE URL: http://10.0.2.2:8080
+STATUS CODE: 400
+BODY: 
+00:01 +13: All tests passed!

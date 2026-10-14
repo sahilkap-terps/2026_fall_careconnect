@@ -1,0 +1,18 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/features/health/medication_tracker/medication_type_ki05_test.dart
+00:00 +0: KI-05 wire round-trip TC-MED-TYPE-005/006: HERBAL survives fromJson -> toJson unchanged
+00:00 +1: KI-05 wire round-trip TC-MED-TYPE-005/006: EMERGENCY survives fromJson -> toJson unchanged
+00:00 +2: KI-05 backend parity TC-MED-TYPE-007: the frontend MedicationType names and the backend Medication.MedicationType constants are the same set
+00:00 +3: KI-05 follow-up: OVER_THE_COUNTER wire name TC-MED-TYPE-014: a complete backend OVER_THE_COUNTER row parses with every field intact and the type as OVER_THE_COUNTER, not PRESCRIPTION
+00:00 +4: KI-05 follow-up: OVER_THE_COUNTER wire name TC-MED-TYPE-015: OVER_THE_COUNTER survives fromJson -> toJson unchanged, so saving an OTC medication sends a name the backend accepts
+00:00 +5: KI-05 follow-up: OVER_THE_COUNTER wire name TC-MED-TYPE-016: a legacy OTC value still reads as OVER_THE_COUNTER and is written back with the backend name
+00:00 +6: KI-05 follow-up: OVER_THE_COUNTER wire name TC-MED-TYPE-017: an active OVER_THE_COUNTER row from the backend shows the remove button (it no longer falls back to PRESCRIPTION)
+00:00 +7: KI-05 follow-up: the add form posts the backend wire name TC-MED-TYPE-018: choosing OVER_THE_COUNTER in the add form posts "OVER_THE_COUNTER", never "OTC" (DEF-MED-01 at the failing path)
+[telemetry] blocked (disabled): feature.medications.add
+00:01 +8: KI-05 follow-up: caregiver card TC-MED-TYPE-020: a backend OVER_THE_COUNTER row shows the over-the-counter label, not Prescription, on the caregiver card
+[telemetry] blocked (disabled): feature.medications.view_active
+00:01 +9: KI-05 follow-up: Medication Type dropdown at 320dp TC-MED-TYPE-021: every Medication Type option can be selected at 320x640, text at 100%, without the dropdown overflowing
+00:01 +10: KI-05 follow-up: Medication Type dropdown at 320dp TC-MED-TYPE-021: every Medication Type option can be selected at 320x640, text at 200%, without the dropdown overflowing
+00:01 +11: KI-05 add-medication dropdown TC-MED-TYPE-008: dropdown offers all five types and HERBAL can be selected
+00:01 +12: KI-05 MedicationCard remove rule TC-MED-TYPE-009/010: active HERBAL row from the backend shows the remove button
+00:01 +13: KI-05 MedicationCard remove rule TC-MED-TYPE-009/010: active EMERGENCY row from the backend shows the remove button
+00:01 +14: All tests passed!

@@ -1,0 +1,8 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/shared/widgets/disclaimer_banner_test.dart
+00:00 +0: DisclaimerBanner ai() renders the localized AI disclaimer
+00:00 +1: DisclaimerBanner medication() renders the localized medication disclaimer
+00:00 +2: DisclaimerBanner renders Spanish copy under the es locale
+00:00 +3: DisclaimerBanner renders at the 18pt accessibility font size
+00:00 +4: DisclaimerBanner exposes a localized Semantics label for screen readers
+00:00 +5: DisclaimerBanner renders in dark theme without error
+00:00 +6: All tests passed!

@@ -1,0 +1,679 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/features/analytics/analytics_page_test.dart
+00:00 +0: AnalyticsPage - invalid patientId error state renders without crashing
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +1: AnalyticsPage - invalid patientId error state shows Patient Analytics in AppBar
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +2: AnalyticsPage - invalid patientId error state shows Scaffold
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +3: AnalyticsPage - invalid patientId error state shows error message for invalid patientId 0
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +4: AnalyticsPage - invalid patientId error state shows error message for negative patientId
+⚠️ Analytics Error: Invalid patient ID: -5
+00:00 +5: AnalyticsPage - invalid patientId error state does NOT show CircularProgressIndicator after error
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +6: AnalyticsPage - invalid patientId error state shows error icon
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +7: AnalyticsPage - invalid patientId error state shows Retry button after error
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +8: AnalyticsPage - invalid patientId error state shows refresh icon on Retry button
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +9: AnalyticsPage - invalid patientId error state tapping Retry calls fetchAnalytics again
+⚠️ Analytics Error: Invalid patient ID: 0
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +10: AnalyticsPage - invalid patientId error state shows FAB with chat icon in error state
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +11: AnalyticsPage - invalid patientId error state FAB exists and has tooltip in error state
+⚠️ Analytics Error: Invalid patient ID: 0
+00:00 +12: AnalyticsPage - loading state shows CircularProgressIndicator before postFrame callback
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 400
+🔍 Dashboard API response status: 400
+00:00 +13: AnalyticsPage - loading state shows Scaffold with valid patientId
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 400
+🔍 Dashboard API response status: 400
+00:00 +14: AnalyticsPage - loading state shows Patient Analytics title during loading
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 400
+🔍 Dashboard API response status: 400
+00:00 +15: AnalyticsPage - loading state renders with different patientId
+🔍 Fetching analytics for patientId: 42, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=42&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=42&days=7
+🔍 Vitals API response status: 400
+🔍 Dashboard API response status: 400
+00:00 +16: AnalyticsPage - API error responses shows error message when API returns 500
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 500
+🔍 Dashboard API response status: 500
+❌ Vitals API error: Server error
+00:00 +17: AnalyticsPage - API error responses shows error when API returns 404
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 404
+🔍 Dashboard API response status: 404
+❌ Vitals API error: Not found
+00:01 +18: AnalyticsPage - API error responses shows error when vitals response missing data key
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"results":[]}...
+❌ Error parsing API response: FormatException: Vitals response missing "data" key
+00:01 +19: AnalyticsPage - API error responses shows combined error from both API failures
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 500
+🔍 Dashboard API response status: 500
+❌ Vitals API error: Vitals server error
+00:01 +20: AnalyticsPage - API error responses error state has FAB for AI chat
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 500
+🔍 Dashboard API response status: 500
+❌ Vitals API error: Server error
+00:01 +21: AnalyticsPage - API error responses analytics opens grounded chat for its patient
+🔍 Fetching analytics for patientId: 42, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=42&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=42&days=7
+🔍 Vitals API response status: 500
+🔍 Dashboard API response status: 500
+❌ Vitals API error: Server error
+00:01 +22: AnalyticsPage - success state (desktop) renders Analytics Overview heading
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:55.959551","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:55.959973","periodEnd":"2026-10-09T23:58:55.959980","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:55.959973, periodEnd: 2026-10-09T23:58:55.959980, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:01 +23: AnalyticsPage - success state (desktop) renders subtitle text
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.196519","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.196854","periodEnd":"2026-10-09T23:58:56.196861","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.196854, periodEnd: 2026-10-09T23:58:56.196861, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:01 +24: AnalyticsPage - success state (desktop) renders Time Range label
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.312639","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.312947","periodEnd":"2026-10-09T23:58:56.312953","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.312947, periodEnd: 2026-10-09T23:58:56.312953, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:01 +25: AnalyticsPage - success state (desktop) renders filter chips for 7, 14, 21, 30 days
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.408662","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.409058","periodEnd":"2026-10-09T23:58:56.409066","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.409058, periodEnd: 2026-10-09T23:58:56.409066, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:01 +26: AnalyticsPage - success state (desktop) 7 days filter chip is selected by default
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.498906","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.499224","periodEnd":"2026-10-09T23:58:56.499230","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.499224, periodEnd: 2026-10-09T23:58:56.499230, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:01 +27: AnalyticsPage - success state (desktop) renders Health Summary card
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.581583","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.581901","periodEnd":"2026-10-09T23:58:56.581907","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.581901, periodEnd: 2026-10-09T23:58:56.581907, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +28: AnalyticsPage - success state (desktop) renders Detailed Charts heading
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.660700","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.661203","periodEnd":"2026-10-09T23:58:56.661225","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.661203, periodEnd: 2026-10-09T23:58:56.661225, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +29: AnalyticsPage - success state (desktop) renders chart titles
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.742287","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.742822","periodEnd":"2026-10-09T23:58:56.742844","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.742822, periodEnd: 2026-10-09T23:58:56.742844, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +30: AnalyticsPage - success state (desktop) renders chart unit labels
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.811901","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.812157","periodEnd":"2026-10-09T23:58:56.812163","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.812157, periodEnd: 2026-10-09T23:58:56.812163, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +31: AnalyticsPage - success state (desktop) renders LineChart widgets for each metric
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.881766","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.882027","periodEnd":"2026-10-09T23:58:56.882032","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.882027, periodEnd: 2026-10-09T23:58:56.882032, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +32: AnalyticsPage - success state (desktop) renders CSV export button in AppBar
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:56.952185","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:56.952477","periodEnd":"2026-10-09T23:58:56.952484","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:56.952477, periodEnd: 2026-10-09T23:58:56.952484, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +33: AnalyticsPage - success state (desktop) renders PDF export button in AppBar
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.029210","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.029577","periodEnd":"2026-10-09T23:58:57.029596","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.029577, periodEnd: 2026-10-09T23:58:57.029596, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +34: AnalyticsPage - success state (desktop) renders AI Health Assistant card
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.096843","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.097128","periodEnd":"2026-10-09T23:58:57.097133","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.097128, periodEnd: 2026-10-09T23:58:57.097133, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +35: AnalyticsPage - success state (desktop) AI card shows suggestion chips on wide screen
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.160517","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.160763","periodEnd":"2026-10-09T23:58:57.160769","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.160763, periodEnd: 2026-10-09T23:58:57.160769, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +36: AnalyticsPage - success state (desktop) AI card shows privacy note
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.224882","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.225123","periodEnd":"2026-10-09T23:58:57.225128","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.225123, periodEnd: 2026-10-09T23:58:57.225128, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +37: AnalyticsPage - success state (desktop) AI card shows "You can ask about:" section
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.290359","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.290612","periodEnd":"2026-10-09T23:58:57.290617","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.290612, periodEnd: 2026-10-09T23:58:57.290617, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +38: AnalyticsPage - success state (desktop) AI card shows lightbulb tip
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.351730","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.352017","periodEnd":"2026-10-09T23:58:57.352024","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.352017, periodEnd: 2026-10-09T23:58:57.352024, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +39: AnalyticsPage - success state (desktop) renders desktop summary grid with all metric items
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.413280","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.413637","periodEnd":"2026-10-09T23:58:57.413643","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.413637, periodEnd: 2026-10-09T23:58:57.413643, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +40: AnalyticsPage - success state (desktop) renders analytics icon in summary header
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.477337","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.477652","periodEnd":"2026-10-09T23:58:57.477661","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.477652, periodEnd: 2026-10-09T23:58:57.477661, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:02 +41: AnalyticsPage - success state (mobile) mobile renders compact filter chip labels
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.538142","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.538394","periodEnd":"2026-10-09T23:58:57.538398","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.538394, periodEnd: 2026-10-09T23:58:57.538398, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Mobile Summary - Dashboard data:
+  - avgMood: 4.0
+  - avgPain: 3.0
+  - avgHeartRate: 73.0
+  - avgSpo2: 97.1
+00:02 +42: AnalyticsPage - success state (mobile) mobile does not show CSV/PDF text labels
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.594630","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.594878","periodEnd":"2026-10-09T23:58:57.594882","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.594878, periodEnd: 2026-10-09T23:58:57.594882, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Mobile Summary - Dashboard data:
+  - avgMood: 4.0
+  - avgPain: 3.0
+  - avgHeartRate: 73.0
+  - avgSpo2: 97.1
+00:03 +43: AnalyticsPage - success state (mobile) mobile renders mobile summary cards layout
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.658134","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.658371","periodEnd":"2026-10-09T23:58:57.658374","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.658371, periodEnd: 2026-10-09T23:58:57.658374, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Mobile Summary - Dashboard data:
+  - avgMood: 4.0
+  - avgPain: 3.0
+  - avgHeartRate: 73.0
+  - avgSpo2: 97.1
+00:03 +44: AnalyticsPage - success state (mobile) mobile shows days avg badge
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.700508","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.700872","periodEnd":"2026-10-09T23:58:57.700888","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.700872, periodEnd: 2026-10-09T23:58:57.700888, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Mobile Summary - Dashboard data:
+  - avgMood: 4.0
+  - avgPain: 3.0
+  - avgHeartRate: 73.0
+  - avgSpo2: 97.1
+00:03 +45: AnalyticsPage - success state (mobile) mobile shows Latest Reading section
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.743660","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.743901","periodEnd":"2026-10-09T23:58:57.743905","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.743901, periodEnd: 2026-10-09T23:58:57.743905, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Mobile Summary - Dashboard data:
+  - avgMood: 4.0
+  - avgPain: 3.0
+  - avgHeartRate: 73.0
+  - avgSpo2: 97.1
+00:03 +46: AnalyticsPage - success state (mobile) narrow screen hides sample questions in AI card
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.796536","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.796865","periodEnd":"2026-10-09T23:58:57.796869","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.796865, periodEnd: 2026-10-09T23:58:57.796869, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Mobile Summary - Dashboard data:
+  - avgMood: 4.0
+  - avgPain: 3.0
+  - avgHeartRate: 73.0
+  - avgSpo2: 97.1
+00:03 +47: AnalyticsPage - filter chip interactions tapping 14 days filter triggers reload
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.842904","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.843157","periodEnd":"2026-10-09T23:58:57.843160","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.843157, periodEnd: 2026-10-09T23:58:57.843160, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Fetching analytics for patientId: 1, days: 14
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=14
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=14
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.891781","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.892024","periodEnd":"2026-10-09T23:58:57.892029","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.892024, periodEnd: 2026-10-09T23:58:57.892029, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +48: AnalyticsPage - filter chip interactions tapping 30 days filter updates selection
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:57.982117","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:57.982402","periodEnd":"2026-10-09T23:58:57.982405","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:57.982402, periodEnd: 2026-10-09T23:58:57.982405, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+🔍 Fetching analytics for patientId: 1, days: 30
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=30
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=30
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.026503","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.026746","periodEnd":"2026-10-09T23:58:58.026750","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.026746, periodEnd: 2026-10-09T23:58:58.026750, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +49: AnalyticsPage - export buttons tapping CSV export button shows snackbar
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.111967","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.112190","periodEnd":"2026-10-09T23:58:58.112194","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.112190, periodEnd: 2026-10-09T23:58:58.112194, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +50: AnalyticsPage - export buttons tapping PDF export button shows snackbar
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.183831","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.184287","periodEnd":"2026-10-09T23:58:58.184294","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.184287, periodEnd: 2026-10-09T23:58:58.184294, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +51: AnalyticsPage - success without mood/pain renders charts even without mood/pain values
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.256735","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.256955","periodEnd":"2026-10-09T23:58:58.256958"}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.256955, periodEnd: 2026-10-09T23:58:58.256958}
+✅ Dashboard parsed - avgMood: null, avgPain: null
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +52: AnalyticsPage - success without mood/pain desktop grid shows N/A for null mood/pain
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.324070","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.324626","periodEnd":"2026-10-09T23:58:58.324641"}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.324626, periodEnd: 2026-10-09T23:58:58.324641}
+✅ Dashboard parsed - avgMood: null, avgPain: null
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +53: AnalyticsPage - tablet layout tablet renders filter chips in row layout
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.383689","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.383957","periodEnd":"2026-10-09T23:58:58.383962","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.383957, periodEnd: 2026-10-09T23:58:58.383962, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +54: AnalyticsPage - tablet layout tablet shows last N days overview text
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.432330","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.432548","periodEnd":"2026-10-09T23:58:58.432552","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.432548, periodEnd: 2026-10-09T23:58:58.432552, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:03 +55: AnalyticsPage - many vitals chart renders with many data points (11+)
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-09-28T23:58:58.479125","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.479499","periodEnd":"2026-10-09T23:58:58.479533","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.479499, periodEnd: 2026-10-09T23:58:58.479533, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 11 vitals and dashboard data
+00:03 +56: AnalyticsPage - empty data success state shows "No data available" message for each chart when empty
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[]}...
+🔍 Dashboard API response: {"periodStart":"2026-10-02T23:58:58.525003","periodEnd":"2026-10-09T23:58:58.525021"}
+🔍 Dashboard JSON parsed: {periodStart: 2026-10-02T23:58:58.525003, periodEnd: 2026-10-09T23:58:58.525021}
+✅ Dashboard parsed - avgMood: null, avgPain: null
+✅ Successfully loaded 0 vitals and dashboard data
+00:03 +57: AnalyticsPage - empty data success state mobile shows "No Health Data Available" when no data
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[]}...
+🔍 Dashboard API response: {"periodStart":"2026-10-02T23:58:58.563839","periodEnd":"2026-10-09T23:58:58.563862"}
+🔍 Dashboard JSON parsed: {periodStart: 2026-10-02T23:58:58.563839, periodEnd: 2026-10-09T23:58:58.563862}
+✅ Dashboard parsed - avgMood: null, avgPain: null
+✅ Successfully loaded 0 vitals and dashboard data
+🔍 Mobile Summary - Dashboard data:
+  - avgMood: null
+  - avgPain: null
+  - avgHeartRate: null
+  - avgSpo2: null
+00:03 +58: AnalyticsPage - empty data success state desktop shows No data for empty dashboard N/A items
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[]}...
+🔍 Dashboard API response: {"periodStart":"2026-10-02T23:58:58.596026","periodEnd":"2026-10-09T23:58:58.596050"}
+🔍 Dashboard JSON parsed: {periodStart: 2026-10-02T23:58:58.596026, periodEnd: 2026-10-09T23:58:58.596050}
+✅ Dashboard parsed - avgMood: null, avgPain: null
+✅ Successfully loaded 0 vitals and dashboard data
+00:03 +59: AnalyticsPage - error with unparseable body handles non-JSON error response body
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 500
+🔍 Dashboard API response status: 500
+❌ Could not parse vitals error response: FormatException: Unexpected character (at character 1)
+Internal Server Error - not JSON
+^
+
+Failed to parse dashboard error response: FormatException: Unexpected character (at character 1)
+Internal Server Error - not JSON
+^
+
+00:04 +60: AnalyticsPage - retry from API error retry button triggers re-fetch
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 500
+🔍 Dashboard API response status: 500
+❌ Vitals API error: fail
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 500
+🔍 Dashboard API response status: 500
+❌ Vitals API error: fail
+00:04 +61: AnalyticsPage - drawer loading state has a drawer
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 400
+🔍 Dashboard API response status: 400
+00:04 +62: AnalyticsPage - drawer error state has a drawer
+⚠️ Analytics Error: Invalid patient ID: 0
+00:04 +63: AnalyticsPage - drawer success state has a drawer
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.706912","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.707147","periodEnd":"2026-10-09T23:58:58.707151","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.707147, periodEnd: 2026-10-09T23:58:58.707151, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:04 +64: AnalyticsPage - chart empty spots message empty chart shows show_chart icon
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[]}...
+🔍 Dashboard API response: {"periodStart":"2026-10-02T23:58:58.756983","periodEnd":"2026-10-09T23:58:58.757003"}
+🔍 Dashboard JSON parsed: {periodStart: 2026-10-02T23:58:58.756983, periodEnd: 2026-10-09T23:58:58.757003}
+✅ Dashboard parsed - avgMood: null, avgPain: null
+✅ Successfully loaded 0 vitals and dashboard data
+00:04 +65: AnalyticsPage - AppBar in success state success state AppBar shows Patient Analytics title
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.789846","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.790082","periodEnd":"2026-10-09T23:58:58.790087","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.790082, periodEnd: 2026-10-09T23:58:58.790087, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:04 +66: AnalyticsPage - AppBar in success state success AppBar has download and PDF icons
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.838114","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.838338","periodEnd":"2026-10-09T23:58:58.838341","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.838338, periodEnd: 2026-10-09T23:58:58.838341, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:04 +67: AnalyticsPage - tooltips CSV button has Download CSV tooltip
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.891472","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.891690","periodEnd":"2026-10-09T23:58:58.891694","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.891690, periodEnd: 2026-10-09T23:58:58.891694, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:04 +68: AnalyticsPage - tooltips PDF button has Download PDF tooltip
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.940903","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.941230","periodEnd":"2026-10-09T23:58:58.941237","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.941230, periodEnd: 2026-10-09T23:58:58.941237, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:04 +69: AnalyticsPage - scrolling success state body is scrollable
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-06T23:58:58.995311","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:58.995544","periodEnd":"2026-10-09T23:58:58.995549","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:58.995544, periodEnd: 2026-10-09T23:58:58.995549, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 3 vitals and dashboard data
+00:04 +70: AnalyticsPage - single vital data point renders correctly with single vital entry
+🔍 Fetching analytics for patientId: 1, days: 7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/vitals?patientId=1&days=7
+🔍 Making API call to: http://10.0.2.2:8080/v1/api/analytics/dashboard?patientId=1&days=7
+🔍 Vitals API response status: 200
+🔍 Dashboard API response status: 200
+🔍 Vitals API response body: {"data":[{"patientId":1,"timestamp":"2026-10-08T23:58:59.042999","heartRate":72.0,"spo2":97.0,"systo...
+🔍 Dashboard API response: {"adherenceRate":92.5,"avgHeartRate":73.0,"avgSpo2":97.1,"avgSystolic":121.0,"avgDiastolic":81.0,"avgWeight":171.0,"periodStart":"2026-10-02T23:58:59.043200","periodEnd":"2026-10-09T23:58:59.043205","avgMood":4.0,"avgPain":3.0,"moodValues":[3.0,4.0,5.0],"painValues":[2.0,3.0,4.0]}
+🔍 Dashboard JSON parsed: {adherenceRate: 92.5, avgHeartRate: 73.0, avgSpo2: 97.1, avgSystolic: 121.0, avgDiastolic: 81.0, avgWeight: 171.0, periodStart: 2026-10-02T23:58:59.043200, periodEnd: 2026-10-09T23:58:59.043205, avgMood: 4.0, avgPain: 3.0, moodValues: [3.0, 4.0, 5.0], painValues: [2.0, 3.0, 4.0]}
+✅ Dashboard parsed - avgMood: 4.0, avgPain: 3.0
+✅ Successfully loaded 1 vitals and dashboard data
+00:04 +71: All tests passed!

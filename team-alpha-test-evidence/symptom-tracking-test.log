@@ -1,0 +1,15 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/features/health/symptom_tracker/symptom_tracker_screen_test.dart
+00:00 +0: SymptomTrackerScreen – initial render renders without crashing
+00:00 +1: SymptomTrackerScreen – initial render shows "Symptom Tracker" in the AppBar
+00:00 +2: SymptomTrackerScreen – initial render shows "Select a symptom:" label
+00:00 +3: SymptomTrackerScreen – initial render shows a DropdownButton for symptom selection
+00:00 +4: SymptomTrackerScreen – initial render dropdown hint text is "Choose a symptom"
+00:00 +5: SymptomTrackerScreen – initial render shows custom symptom TextField
+00:00 +6: SymptomTrackerScreen – initial render shows severity Slider
+00:00 +7: SymptomTrackerScreen – initial render shows "Select time of occurrence" button
+00:00 +8: SymptomTrackerScreen – initial render shows "Upload Symptom Photo" button
+00:00 +9: SymptomTrackerScreen – initial render shows "Submit Symptom Log" button
+00:00 +10: SymptomTrackerScreen – initial render shows "Symptom History:" section
+00:00 +11: SymptomTrackerScreen – initial render shows a Divider
+00:00 +12: SymptomTrackerScreen – initial render does NOT show photo image initially
+00:00 +13: All tests passed!

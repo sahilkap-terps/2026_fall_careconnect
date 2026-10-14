@@ -1,0 +1,52 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/l10n/app_localizations_test.dart
+00:00 +0: lookupAppLocalizations returns AppLocalizations for locale "am"
+00:00 +1: lookupAppLocalizations returns AppLocalizations for locale "ar"
+00:00 +2: lookupAppLocalizations returns AppLocalizations for locale "bn"
+00:00 +3: lookupAppLocalizations returns AppLocalizations for locale "en"
+00:00 +4: lookupAppLocalizations returns AppLocalizations for locale "es"
+00:00 +5: lookupAppLocalizations returns AppLocalizations for locale "fa"
+00:00 +6: lookupAppLocalizations returns AppLocalizations for locale "fr"
+00:00 +7: lookupAppLocalizations returns AppLocalizations for locale "hi"
+00:00 +8: lookupAppLocalizations returns AppLocalizations for locale "ja"
+00:00 +9: lookupAppLocalizations returns AppLocalizations for locale "ne"
+00:00 +10: lookupAppLocalizations returns AppLocalizations for locale "pt"
+00:00 +11: lookupAppLocalizations returns AppLocalizations for locale "ru"
+00:00 +12: lookupAppLocalizations returns AppLocalizations for locale "ur"
+00:00 +13: lookupAppLocalizations returns AppLocalizations for locale "zh"
+00:00 +14: lookupAppLocalizations throws FlutterError for an unsupported locale
+00:00 +15: AppLocalizations.delegate.isSupported returns true for "am"
+00:00 +16: AppLocalizations.delegate.isSupported returns true for "ar"
+00:00 +17: AppLocalizations.delegate.isSupported returns true for "bn"
+00:00 +18: AppLocalizations.delegate.isSupported returns true for "en"
+00:00 +19: AppLocalizations.delegate.isSupported returns true for "es"
+00:00 +20: AppLocalizations.delegate.isSupported returns true for "fa"
+00:00 +21: AppLocalizations.delegate.isSupported returns true for "fr"
+00:00 +22: AppLocalizations.delegate.isSupported returns true for "hi"
+00:00 +23: AppLocalizations.delegate.isSupported returns true for "ja"
+00:00 +24: AppLocalizations.delegate.isSupported returns true for "ne"
+00:00 +25: AppLocalizations.delegate.isSupported returns true for "pt"
+00:00 +26: AppLocalizations.delegate.isSupported returns true for "ru"
+00:00 +27: AppLocalizations.delegate.isSupported returns true for "ur"
+00:00 +28: AppLocalizations.delegate.isSupported returns true for "zh"
+00:00 +29: AppLocalizations.delegate.isSupported returns false for unsupported code "xx"
+00:00 +30: AppLocalizations.delegate.isSupported returns false for another unsupported code "de"
+00:00 +31: AppLocalizations.delegate.shouldReload always returns false
+00:00 +32: AppLocalizations.supportedLocales TC-S4-REG-L10N-001 English and Spanish expose localized shell labels
+00:00 +33: AppLocalizations.supportedLocales TC-S4-REG-L10N-003 English and Spanish expose Team C voice and language labels
+00:00 +34: AppLocalizations.supportedLocales contains exactly 14 locales
+00:00 +35: AppLocalizations.supportedLocales contains the English locale
+00:00 +36: All locale getters produce non-empty strings locale "am" — all getters return non-empty strings
+00:00 +37: All locale getters produce non-empty strings locale "ar" — all getters return non-empty strings
+00:00 +38: All locale getters produce non-empty strings locale "bn" — all getters return non-empty strings
+00:00 +39: All locale getters produce non-empty strings locale "en" — all getters return non-empty strings
+00:00 +40: All locale getters produce non-empty strings locale "es" — all getters return non-empty strings
+00:00 +41: All locale getters produce non-empty strings locale "fa" — all getters return non-empty strings
+00:00 +42: All locale getters produce non-empty strings locale "fr" — all getters return non-empty strings
+00:00 +43: All locale getters produce non-empty strings locale "hi" — all getters return non-empty strings
+00:00 +44: All locale getters produce non-empty strings locale "ja" — all getters return non-empty strings
+00:00 +45: All locale getters produce non-empty strings locale "ne" — all getters return non-empty strings
+00:00 +46: All locale getters produce non-empty strings locale "pt" — all getters return non-empty strings
+00:00 +47: All locale getters produce non-empty strings locale "ru" — all getters return non-empty strings
+00:00 +48: All locale getters produce non-empty strings locale "ur" — all getters return non-empty strings
+00:00 +49: All locale getters produce non-empty strings locale "zh" — all getters return non-empty strings
+00:00 +50: All tests passed!

@@ -1,0 +1,33 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/features/auth/login_page_test.dart
+00:00 +0: LoginPage – form elements renders Scaffold
+00:00 +1: LoginPage – form elements shows sign in title
+00:00 +2: LoginPage – form elements shows sign in subtitle
+00:00 +3: LoginPage – form elements shows Username label
+00:00 +4: LoginPage – form elements shows username hint text in email field
+00:00 +5: LoginPage – form elements shows Password label
+00:00 +6: LoginPage – form elements shows password hint text
+00:00 +7: LoginPage – form elements shows Forgot Password link
+00:00 +8: LoginPage – form elements shows Sign In button
+00:00 +9: LoginPage – form elements shows Create Account link
+00:01 +10: LoginPage – form elements shows no account prompt text
+00:01 +11: LoginPage – security badges shows Secure badge
+00:01 +12: LoginPage – security badges shows HIPAA Compliant badge
+00:01 +13: LoginPage – security badges shows Accessible badge
+00:01 +14: LoginPage – security badges shows End-to-end encrypted text
+00:01 +15: LoginPage – security badges shows WCAG AA compliant text
+00:01 +16: LoginPage – interactions password visibility toggle shows visibility icon
+00:01 +17: LoginPage – interactions tapping visibility icon toggles to visibility_off
+00:01 +18: LoginPage – login submit flow shows error when credentials are rejected
+00:01 +19: LoginPage – successful login verified login navigates away from the login page
+UserRoleStorageService: Stored user data - Role: PATIENT, UserID: 1
+User data stored in UserRoleStorageService: Role=PATIENT, UserID=1
+Connecting to notification WebSocket: ws://10.0.2.2:8080/ws/notifications
+Login successful: JWT token force-updated
+UserRoleStorageService: Stored user data - Role: PATIENT, UserID: 1
+00:01 +20: LoginPage – successful login unverified email shows the verification dialog
+UserRoleStorageService: Stored user data - Role: PATIENT, UserID: 1
+User data stored in UserRoleStorageService: Role=PATIENT, UserID=1
+Login successful: JWT token force-updated
+00:01 +21: LoginPage – navigation links Forgot Password navigates away to /reset-password
+00:01 +22: LoginPage – navigation links Create Account navigates away to /signup
+00:01 +23: All tests passed!
