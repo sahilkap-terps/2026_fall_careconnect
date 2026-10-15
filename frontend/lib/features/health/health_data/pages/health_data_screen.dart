@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../../providers/user_provider.dart';
 import '../models/health_record.dart';
 import '../models/patient_demographics.dart';
 import '../services/medicare_data_service.dart';
 import '../services/ehr_data_service.dart';
+import '../services/athena_connect_service.dart';
+import '../services/athena_data_service.dart';
+import '../services/record_choice_store.dart';
+import '../services/record_reconciler.dart';
+import '../widgets/athena_connect_tile.dart';
+import '../widgets/record_conflict_dialog.dart';
 
 import 'health_event_details_screen.dart';
 
@@ -53,6 +61,17 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
   bool _medicareEmpty = false;
   List<HealthRecord> _ehr = [];
   List<HealthRecord> _medicare = [];
+  List<HealthRecord> _athena = [];
+  AthenaReadProblem? _athenaProblem;
+
+  /// Every source's records with duplicates merged (Epic preferred).
+  List<HealthRecord> _records = [];
+
+  /// Records whose providers disagree and the patient hasn't decided.
+  List<RecordConflict> _conflicts = [];
+  Map<String, String> _choices = {};
+  bool _conflictPromptShown = false;
+  final RecordChoiceStore _choiceStore = RecordChoiceStore();
   PatientDemographics? _patientDemographics;
   String _searchQuery = '';
   final Set<RecordType> _selectedTypes = {};
@@ -120,9 +139,17 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     try {
       medicare = await MedicareDataService().fetchRecords();
     } catch (_) {}
+    AthenaFetchResult athena = const AthenaFetchResult(
+        records: [], complete: false, problem: AthenaReadProblem.unreachable);
+    try {
+      athena = await AthenaDataService().fetchRecords();
+    } catch (_) {}
+    athena = await _explainAthenaFailure(athena);
+    final choices = await _choiceStore.load();
 
     if (!mounted) return;
     setState(() {
+      _choices = choices;
       _ehr = ehrRecords ?? [];
       _ehrUnavailable = ehrRecords == null;
       _medicareProblem = medicare.problem;
@@ -131,13 +158,113 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       _synthetic = medicare.synthetic;
       _medicareUnreachable = !medicare.complete;
       _medicareEmpty = medicare.complete && medicare.records.isEmpty;
+      _athena = athena.records;
+      _athenaProblem = athena.problem;
+      _reconcile();
       _loading = false;
     });
+    // Only records whose details differ pop up by themselves; possible
+    // duplicates and medications for the caregiver wait in the banner.
+    if (_conflicts.any((c) => c.kind == RecordConflictKind.differs) &&
+        !_conflictPromptShown) {
+      _conflictPromptShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _reviewConflicts();
+      });
+    }
+  }
+
+  /// A failed athena read is only "unreachable" for a patient who is
+  /// connected. A server with athena turned off can't even say 404: its
+  /// catch-all error handler answers 500 for the missing route. So ask the
+  /// status, and read anything but "connected" as not connected, as Epic's
+  /// tile does.
+  Future<AthenaFetchResult> _explainAthenaFailure(AthenaFetchResult r) async {
+    if (r.problem != AthenaReadProblem.unreachable) return r;
+    AthenaStatus? status;
+    try {
+      status = await AthenaConnectService.instance.status();
+    } catch (_) {}
+    if (status != null && status.connected) return r;
+    return AthenaFetchResult(
+      records: r.records,
+      complete: false,
+      problem: status != null && !status.shown
+          ? AthenaReadProblem.hidden
+          : AthenaReadProblem.notConnected,
+    );
+  }
+
+  void _reconcile() {
+    final result = RecordReconciler.reconcile(
+        [..._ehr, ..._medicare, ..._athena],
+        choices: _choices);
+    _records = result.records;
+    _conflicts = result.unresolved;
+  }
+
+  /// Goes through each flagged record in turn. "Decide later" stops and
+  /// leaves the rest flagged (WBS 6.2.41); a medication for the caregiver is
+  /// view only, so closing it moves on.
+  Future<void> _reviewConflicts() async {
+    final pending = List.of(_conflicts);
+    for (var i = 0; i < pending.length; i++) {
+      final conflict = pending[i];
+      final decision = await showRecordConflictDialog(context, conflict,
+          index: i + 1, total: pending.length);
+      if (!mounted) return;
+      if (conflict.kind == RecordConflictKind.medicationNeedsCaregiver) {
+        continue;
+      }
+      final versions =
+          conflict.versions.map(RecordConflict.versionId).toList();
+      if (decision == null) {
+        await _choiceStore.logDecision(RecordDecisionEntry(
+            at: DateTime.now(), decision: 'deferred', versions: versions));
+        break;
+      }
+      final encoded = decision.keepBoth
+          ? RecordReconciler.encodeKeepBoth(conflict)
+          : RecordReconciler.encodeChoice(conflict, decision.chosen!);
+      _choices = {..._choices, conflict.storageKey: encoded};
+      await _choiceStore.save(conflict.storageKey, encoded);
+      await _choiceStore.logDecision(RecordDecisionEntry(
+        at: DateTime.now(),
+        decision: decision.keepBoth ? 'keep_both' : 'confirmed',
+        versions: versions,
+        chosen: decision.chosen == null
+            ? null
+            : RecordConflict.versionId(decision.chosen!),
+      ));
+      if (!mounted) return;
+      setState(_reconcile);
+    }
+  }
+
+  /// One line for every kind of flagged record.
+  String _conflictSummary() {
+    int count(RecordConflictKind k) =>
+        _conflicts.where((c) => c.kind == k).length;
+    String plural(int n, String one, String many) => n == 1 ? one : many;
+    final differs = count(RecordConflictKind.differs);
+    final duplicates = count(RecordConflictKind.possibleDuplicate);
+    final medications = count(RecordConflictKind.medicationNeedsCaregiver);
+    return [
+      if (differs > 0)
+        '$differs ${plural(differs, 'record has', 'records have')} '
+            'different details from your providers.',
+      if (duplicates > 0)
+        '$duplicates possible duplicate '
+            '${plural(duplicates, 'record was', 'records were')} combined.',
+      if (medications > 0)
+        '$medications ${plural(medications, 'medication needs', 'medications need')} '
+            'your caregiver\'s review.',
+    ].join(' ');
   }
 
   @override
   Widget build(BuildContext context) {
-    final allRecords = [..._ehr, ..._medicare];
+    final allRecords = _records;
 
     final records = allRecords.where((record) {
       final matchesType =
@@ -187,7 +314,6 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
         record.title,
         record.type.label,
         record.status ?? '',
-        ...record.sources.map((source) => source.label),
         ...record.details.map((detail) => detail.label),
         ...record.details.map((detail) => detail.value),
       ].join(' ').toLowerCase();
@@ -249,10 +375,37 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                     // SRS ERR-MCR-03 (FR-MCR-24, AC-MCR-24-2), exact wording.
                     'Showing your saved records. We couldn\'t check Medicare for updates.',
                   ),
-                if (_ehrUnavailable)
+                if (_athenaProblem == AthenaReadProblem.notConnected &&
+                    _mayConnectAthena())
+                  _noticeBanner(
+                    Icons.link_off,
+                    'athenahealth isn\'t connected yet.',
+                    // Consent and connect happen right here, then the screen
+                    // reloads with the new records.
+                    action: AthenaConnectTile(
+                      buttonOnly: true,
+                      onChanged: () {
+                        if (mounted) _load();
+                      },
+                    ),
+                  ),
+                if (_ehrUnavailable ||
+                    _athenaProblem == AthenaReadProblem.unreachable)
                   _noticeBanner(
                     Icons.cloud_off_outlined,
                     'We couldn\'t load records from your other providers. Showing what we could.',
+                  ),
+                if (_conflicts.isNotEmpty)
+                  _noticeBanner(
+                    Icons.compare_arrows,
+                    _conflictSummary(),
+                    action: TextButton(
+                      onPressed: _reviewConflicts,
+                      style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF006B80),
+                          minimumSize: const Size(48, 48)),
+                      child: const Text('Review'),
+                    ),
                   ),
                 if (_medicareEmpty)
                   _noticeBanner(
@@ -328,7 +481,13 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                   const SizedBox(height: 24),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final useTwoColumns = constraints.maxWidth >= 900;
+                    // Only reserve the left column when something is in it;
+                    // an empty one pushed the records off-centre.
+                    final hasSidebar = _patientDemographics != null ||
+                        _showConfirmationSection ||
+                        _showConnectedProvidersSection;
+                    final useTwoColumns =
+                        hasSidebar && constraints.maxWidth >= 900;
 
                     final sidebar = Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -634,8 +793,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          sidebar,
-                          const SizedBox(height: 24),
+                          if (hasSidebar) ...[
+                            sidebar,
+                            const SizedBox(height: 24),
+                          ],
                           healthHistory,
                         ],
                       );
@@ -779,6 +940,18 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
           minimumSize: const Size(48, 48)),
       child: const Text('Connect Medicare Account'),
     );
+  }
+
+  /// athenahealth is patients only. With athena off the server answers 404
+  /// to everyone, so the role decides; without a signed-in user to ask (as
+  /// in widget tests) the server's answer stands.
+  bool _mayConnectAthena() {
+    try {
+      final role = Provider.of<UserProvider>(context, listen: false).user?.role;
+      return role == null || role.toLowerCase() == 'patient';
+    } on ProviderNotFoundException {
+      return true;
+    }
   }
 
   Widget _noticeBanner(IconData icon, String text, {Widget? action}) {
@@ -926,11 +1099,13 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
             padding: const EdgeInsets.only(top: 20, bottom: 12),
             child: Row(
               children: [
-                Text(
-                  group,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                Flexible(
+                  child: Text(
+                    group,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -960,8 +1135,11 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -981,7 +1159,6 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                           ),
                     ),
                   ),
-                  const Spacer(),
                   if (r.status != null) _statusChip(r.status!),
                 ],
               ),
@@ -1050,14 +1227,16 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
                     children: [
-                      Text(
-                        'View details',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: _accent(context),
-                              fontWeight: FontWeight.w600,
-                            ),
+                      Expanded(
+                        child: Text(
+                          'View details',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: _accent(context),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
                       ),
-                      const Spacer(),
                       Icon(
                         Icons.chevron_right,
                         color: _accent(context),

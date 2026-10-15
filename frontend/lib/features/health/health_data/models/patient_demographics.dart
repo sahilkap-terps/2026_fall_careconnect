@@ -17,6 +17,19 @@ class PatientDemographics {
     );
   }
 
+  bool get isEmpty => name == null && birthDate == null && gender == null;
+
+  /// This record, with any missing field taken from [other]. A field this
+  /// record has always wins, so the preferred source is the receiver.
+  PatientDemographics fillFrom(PatientDemographics? other) {
+    if (other == null) return this;
+    return PatientDemographics(
+      name: name ?? other.name,
+      birthDate: birthDate ?? other.birthDate,
+      gender: gender ?? other.gender,
+    );
+  }
+
   static String? _stringOrNull(dynamic value) {
     if (value == null) return null;
 

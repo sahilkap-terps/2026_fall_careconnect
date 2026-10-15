@@ -1,5 +1,5 @@
-// HealthEventDetailsScreen: one record in full, including where it came from
-// (the source moved here from the cards, per the M2 feedback).
+// HealthEventDetailsScreen: one record in full. Where it came from is never
+// shown; only "not connected" messages name a source.
 
 import 'package:care_connect_app/features/health/health_data/models/health_record.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_event_details_screen.dart';
@@ -10,7 +10,7 @@ Future<void> _show(WidgetTester t, HealthRecord record) =>
     t.pumpWidget(MaterialApp(home: HealthEventDetailsScreen(record: record)));
 
 void main() {
-  testWidgets('shows the type, title, status, date, source and every detail', (t) async {
+  testWidgets('shows the type, title, status, date and every detail, never the source', (t) async {
     await _show(t, HealthRecord.single(
       id: 'claim-1',
       source: RecordSource.medicare,
@@ -29,8 +29,8 @@ void main() {
     expect(find.text('Office visit'), findsOneWidget);
     expect(find.text('Paid'), findsOneWidget);
     expect(find.text('September 15, 2026'), findsOneWidget);
-    expect(find.text('Where this came from'), findsOneWidget);
-    expect(find.text('Medicare'), findsOneWidget);
+    expect(find.text('Where this came from'), findsNothing);
+    expect(find.text('Medicare'), findsNothing);
     expect(find.text('Dr. Sarah Mitchell'), findsOneWidget);
     expect(find.text('\$120.00'), findsOneWidget);
   });
@@ -45,7 +45,7 @@ void main() {
 
     expect(find.text('Hypertension'), findsOneWidget);
     expect(find.text('Date'), findsNothing);
-    expect(find.text('Epic'), findsOneWidget);
+    expect(find.text('Epic'), findsNothing);
   });
 
   testWidgets('every month is spelled out in the date', (t) async {

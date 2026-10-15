@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/health_record.dart';
+import 'athena_resource_detail_page.dart';
 
 class HealthEventDetailsScreen extends StatelessWidget {
   final HealthRecord record;
@@ -27,6 +28,18 @@ class HealthEventDetailsScreen extends StatelessWidget {
     ];
 
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  /// The page with the full stored record, for EHR records the app can
+  /// address. The shown version's own source serves it.
+  static Widget? _fullRecordPage(HealthRecord record) {
+    final type = record.resourceType;
+    if (type == null || record.id.isEmpty) return null;
+    // Epic's record page is the Ask AI citation target and names its source,
+    // so Health Data doesn't link to it.
+    return record.primarySource == RecordSource.athena
+        ? AthenaResourceDetailPage(resourceType: type, resourceId: record.id)
+        : null;
   }
 
   @override
@@ -109,25 +122,8 @@ class HealthEventDetailsScreen extends StatelessWidget {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ],
-                          // Source is de-emphasized on the list (M2 feedback)
-                          // but always findable here, e.g. for conflicts and
-                          // to tell Medicare claims from clinical records.
-                          const SizedBox(height: 24),
-                          Text(
-                            'Where this came from',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            record.sources.map((s) => s.label).join(', '),
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
+                          // Where a record came from is never shown: only
+                          // "not connected" messages name a source.
                           if (record.details.isNotEmpty) ...[
                             const SizedBox(height: 24),
                             const Divider(),
@@ -159,6 +155,24 @@ class HealthEventDetailsScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                            ),
+                          ],
+                          if (_fullRecordPage(record) case final page?) ...[
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              // The light theme's primary is 2.85:1 on white.
+                              style: TextButton.styleFrom(
+                                foregroundColor: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context).colorScheme.primary
+                                    : const Color(0xFF006B80),
+                                minimumSize: const Size(48, 48),
+                              ),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(builder: (_) => page),
+                              ),
+                              icon: const Icon(Icons.description_outlined),
+                              label: const Text('View full record'),
                             ),
                           ],
                         ],

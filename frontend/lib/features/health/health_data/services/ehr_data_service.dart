@@ -2,6 +2,7 @@ import '../../../../services/auth_token_manager.dart';
 import '../../../../services/api_client.dart';
 import '../models/health_record.dart';
 import '../models/patient_demographics.dart';
+import 'ehr_resource_mapper.dart';
 
 class EhrDataService {
   Future<List<HealthRecord>> fetchRecords() async =>
@@ -19,24 +20,42 @@ class EhrDataService {
       );
 
       // A resource whose source the app does not know is dropped, never
-      // relabelled as another source: provenance shown to a patient must be
-      // the real one (DEF-MCR-22, as DEF-MCR-14 for HealthRecord.fromJson).
+      // relabelled as another source (see EhrResourceMapper.sourceFrom).
       return resources
           .whereType<Map<String, dynamic>>()
-          .where((r) => _sourceFrom(r['source']) != null)
-          .map(_toHealthRecord)
+          .map(EhrResourceMapper.toHealthRecord)
+          .whereType<HealthRecord>()
           .toList();
     } catch (_) {
       return null;
     }
   }
 
+  /// Sources the Patient Information card reads, most preferred first.
+  /// Epic is the default source of /api/ehr/patient; athenahealth fills any
+  /// field Epic doesn't have, or the whole card when there is no Epic chart.
+  static const demographicsSources = ['EPIC', 'ATHENAHEALTH'];
+
+  /// The patient's demographics, field by field from the first source in
+  /// [demographicsSources] that has each one. Null when no source has any.
   Future<PatientDemographics?> fetchPatientDemographics() async {
+    final perSource = await Future.wait(
+        demographicsSources.map(_fetchPatientDemographicsFrom));
+    PatientDemographics? merged;
+    for (final d in perSource) {
+      merged = merged == null ? d : merged.fillFrom(d);
+    }
+    return merged == null || merged.isEmpty ? null : merged;
+  }
+
+  Future<PatientDemographics?> _fetchPatientDemographicsFrom(
+      String source) async {
     try {
       final headers = await AuthTokenManager.getAuthHeaders();
 
       return await ApiClient.instance.getJson<PatientDemographics>(
         '/api/ehr/patient',
+        query: {'source': source},
         headers: headers,
         parser: (json) => PatientDemographics.fromJson(
           json as Map<String, dynamic>,
@@ -45,56 +64,5 @@ class EhrDataService {
     } catch (_) {
       return null;
     }
-  }
-
-  HealthRecord _toHealthRecord(Map<String, dynamic> resource) {
-    return HealthRecord.single(
-      id: (resource['resourceId'] ?? '').toString(),
-      source: _sourceFrom(resource['source'])!,
-      type: _recordTypeFrom(resource['category']),
-      title: _stringOrNull(resource['title']) ?? 'Health record',
-      date: _parseDate(resource['occurredAt']),
-      status: _stringOrNull(resource['status']),
-    );
-  }
-
-  RecordSource? _sourceFrom(dynamic source) {
-    switch (source?.toString().trim().toUpperCase()) {
-      case 'EPIC':
-        return RecordSource.epic;
-      case 'CERNER':
-        return RecordSource.cerner;
-      case 'ATHENA':
-        return RecordSource.athena;
-      case 'MEDICARE':
-        return RecordSource.medicare;
-      default:
-        return null;
-    }
-  }
-
-  RecordType _recordTypeFrom(dynamic category) {
-    switch (category?.toString()) {
-      case 'Conditions':
-        return RecordType.condition;
-      case 'Medications':
-        return RecordType.medication;
-      case 'Allergies':
-        return RecordType.allergy;
-      default:
-        return RecordType.other;
-    }
-  }
-
-  String? _stringOrNull(dynamic value) {
-    if (value == null) return null;
-
-    final text = value.toString().trim();
-    return text.isEmpty ? null : text;
-  }
-
-  DateTime? _parseDate(dynamic value) {
-    if (value is! String || value.isEmpty) return null;
-    return DateTime.tryParse(value);
   }
 }

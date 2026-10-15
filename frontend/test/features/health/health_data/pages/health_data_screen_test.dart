@@ -6,10 +6,14 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:care_connect_app/config/theme/app_theme.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_data_screen.dart';
+import 'package:care_connect_app/features/health/health_data/services/athena_connect_service.dart';
+import 'package:care_connect_app/features/health/health_data/widgets/athena_connect_tile.dart';
+import 'package:care_connect_app/providers/user_provider.dart';
 import 'package:care_connect_app/services/api_client.dart';
 
 import '../health_data_test_support.dart';
@@ -68,7 +72,7 @@ void main() {
   });
 
   testWidgets('TC-HDATA-010: loaded mock data shows the demo-data banner and '
-      'each Medicare record, and the details screen says where it came from',
+      'each Medicare record, and never says where a record came from',
       (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
@@ -91,8 +95,7 @@ void main() {
     }
     expect(find.text('Duplicate Submission Clinic', skipOffstage: false),
         findsNothing);
-    // Source is de-emphasized on the cards (M2 feedback) and shown on the
-    // details screen instead (#263 review, replaces the "From Medicare" badge).
+    // Where a record came from is shown nowhere, cards or details.
     final details = find.text('View details', skipOffstage: false);
     expect(details, findsWidgets);
     await t.scrollUntilVisible(details.first, 200,
@@ -101,8 +104,9 @@ void main() {
               .first);
     await t.tap(details.first);
     await t.pumpAndSettle();
-    expect(find.text('Where this came from'), findsOneWidget);
-    expect(find.text('Medicare'), findsOneWidget);
+    expect(find.text('Health Event Details'), findsOneWidget);
+    expect(find.text('Where this came from'), findsNothing);
+    expect(find.text('Medicare'), findsNothing);
   });
 
   testWidgets('TC-HDATA-011: when Medicare cannot be reached the screen says '
@@ -256,7 +260,7 @@ void main() {
   });
 
   testWidgets('TC-HDATA-024: View details shows the claim type, title, '
-      'status, date, source and every detail', (t) async {
+      'status, date and every detail, but not the source', (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
     await pump(t, fixtures());
@@ -274,8 +278,6 @@ void main() {
       'Simple pneumonia and pleurisy with CC',
       'Paid',
       'April 18, 2026',
-      'Where this came from',
-      'Medicare',
       'Saint Agnes Hospital',
       'Pneumonia, unspecified organism',
       r'$14320.55',
@@ -283,6 +285,8 @@ void main() {
     ]) {
       expect(find.text(text), findsWidgets, reason: text);
     }
+    expect(find.text('Where this came from'), findsNothing);
+    expect(find.text('Medicare'), findsNothing);
   });
 
   for (final theme in {
@@ -303,7 +307,7 @@ void main() {
       final low = lowContrastText(
               t,
               find.ancestor(
-                  of: find.text('Where this came from'),
+                  of: find.text('Health Event Details'),
                   matching: find.byType(Scaffold)))
           .toSet();
       expect(low, isEmpty, reason: low.join('\n'));
@@ -371,4 +375,418 @@ void main() {
     expect(find.text('May 14, 1980'), findsOneWidget);
     expect(find.text('Female'), findsOneWidget);
   });
+
+  testWidgets('athenahealth records show beside Epic and Medicare', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage':
+              envelope(fixtureResources('coverage-bundle.json')),
+          '/api/ehr/resources':
+              '[{"resourceId":"epic-1","source":"EPIC","category":"Medications",'
+                  '"title":"Lisinopril 10 mg","occurredAt":"2026-09-01T00:00:00Z"}]',
+          '/api/athena/resources': '{"items":[{"resourceType":"Condition",'
+              '"resourceId":"ath-1","category":"Conditions",'
+              '"title":"Type 2 diabetes","status":"active",'
+              '"occurredAt":"2026-07-01T00:00:00Z",'
+              '"lastSyncedAt":"2026-10-14T12:00:00Z",'
+              '"source":"ATHENAHEALTH"}],"page":0,"size":100,"hasNext":false}',
+        }));
+    await settle(t);
+    expect(find.text('Lisinopril 10 mg'), findsOneWidget);
+    expect(find.text('Type 2 diabetes'), findsOneWidget);
+    expect(find.text('Medicare Part A (Hospital Insurance)'), findsOneWidget);
+    expect(find.textContaining('athenahealth isn'), findsNothing);
+  });
+
+  RouteAdapter athenaNotConnected() => RouteAdapter({
+        '/v1/api/medicare/visits': envelope(const []),
+        '/v1/api/medicare/coverage': envelope(const []),
+        '/api/ehr/resources': '[]',
+      }, status: {
+        '/api/athena/resources': 409,
+      }, statusBodies: {
+        '/api/athena/resources': '{"code":"NOT_CONNECTED"}',
+      });
+
+  testWidgets('when athenahealth is not connected the screen offers to '
+      'connect it', (t) async {
+    await pump(t, athenaNotConnected());
+    await settle(t);
+    expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
+    expect(find.text('Connect athenahealth'), findsOneWidget);
+  });
+
+  group('connecting athenahealth from the banner', () {
+    late AthenaConnectService original;
+    setUp(() => original = AthenaConnectService.instance);
+    tearDown(() => AthenaConnectService.instance = original);
+
+    Future<RouteAdapter> openConsent(WidgetTester t, _BannerAthena athena) async {
+      AthenaConnectService.instance = athena;
+      final adapter = athenaNotConnected();
+      await pump(t, adapter);
+      await settle(t);
+      await t.tap(find.text('Connect athenahealth'));
+      await t.pumpAndSettle();
+      return adapter;
+    }
+
+    Finder dialogConnect() => find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Connect'));
+
+    testWidgets('asks for consent in place, with the same text as Settings',
+        (t) async {
+      final athena = _BannerAthena();
+      await openConsent(t, athena);
+      expect(find.text(AthenaConnectTile.consentText), findsOneWidget);
+      expect(t.widget<FilledButton>(dialogConnect()).onPressed, isNull);
+      // Still on Health Data: nothing navigated away.
+      expect(find.text('Health Data'), findsOneWidget);
+
+      await t.tap(find.text('Cancel'));
+      await t.pumpAndSettle();
+      expect(athena.connects, 0);
+      expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
+    });
+
+    testWidgets('agreeing connects, says so in a snackbar and reloads the '
+        'records', (t) async {
+      final athena = _BannerAthena(
+          result: AthenaStatus(
+              connected: true,
+              sync: AthenaSyncResult(completed: true, types: const [
+                AthenaTypeResult(
+                    resourceType: 'Condition',
+                    outcome: AthenaTypeOutcome.stored,
+                    count: 2),
+              ])));
+      final adapter = await openConsent(t, athena);
+      final readsBefore =
+          adapter.paths.where((p) => p.endsWith('/api/athena/resources')).length;
+      await t.tap(find.byType(Checkbox));
+      await t.pump();
+      await t.tap(dialogConnect());
+      await settle(t);
+
+      expect(athena.connects, 1);
+      expect(find.textContaining('2 records are now in Health Data'),
+          findsOneWidget);
+      // The reload runs on real time (Dio): wait for its athena read.
+      int reads() =>
+          adapter.paths.where((p) => p.endsWith('/api/athena/resources')).length;
+      for (var i = 0; i < 40 && reads() <= readsBefore; i++) {
+        await t.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await t.pump(const Duration(milliseconds: 50));
+      }
+      expect(reads(), greaterThan(readsBefore));
+    });
+
+    testWidgets('a chart that can\'t be linked says why and the banner stays',
+        (t) async {
+      final athena = _BannerAthena(
+          result: const AthenaStatus(
+              connected: false, reason: AthenaNotConnectedReason.notMatched));
+      await openConsent(t, athena);
+      await t.tap(find.byType(Checkbox));
+      await t.pump();
+      await t.tap(dialogConnect());
+      await settle(t);
+      expect(find.textContaining('couldn\'t find an athenahealth chart'),
+          findsOneWidget);
+      expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
+      expect(find.text('Connect athenahealth'), findsOneWidget);
+    });
+  });
+
+  RouteAdapter athenaOff() => RouteAdapter({
+        '/v1/api/medicare/visits': envelope(const []),
+        '/v1/api/medicare/coverage': envelope(const []),
+        '/api/ehr/resources': '[]',
+      }, status: {
+        '/api/athena/resources': 404,
+      });
+
+  testWidgets('when the server has athenahealth turned off a patient is '
+      'still offered Connect, as with Epic', (t) async {
+    await pump(t, athenaOff());
+    await settle(t);
+    expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
+    expect(find.text('Connect athenahealth'), findsOneWidget);
+  });
+
+  for (final role in ['CAREGIVER', 'ADMIN', 'FAMILY_MEMBER']) {
+    testWidgets('athenahealth stays hidden from a $role even when the server '
+        'has it turned off', (t) async {
+      ApiClient.instance.debugSetHttpClientAdapter(athenaOff());
+      await t.pumpWidget(ChangeNotifierProvider<UserProvider>(
+        create: (_) => UserProvider()
+          ..setUser(UserSession(
+              id: 2, email: 'user@example.com', role: role, token: 't')),
+        child: const MaterialApp(home: HealthDataScreen()),
+      ));
+      await settle(t);
+      expect(find.textContaining('athenahealth'), findsNothing);
+    });
+  }
+
+  testWidgets('a signed-in patient sees the banner when athena is off',
+      (t) async {
+    ApiClient.instance.debugSetHttpClientAdapter(athenaOff());
+    await t.pumpWidget(ChangeNotifierProvider<UserProvider>(
+      create: (_) => UserProvider()
+        ..setUser(UserSession(
+            id: 1, email: 'patient@example.com', role: 'PATIENT', token: 't')),
+      child: const MaterialApp(home: HealthDataScreen()),
+    ));
+    await settle(t);
+    expect(find.text('Connect athenahealth'), findsOneWidget);
+  });
+
+  RouteAdapter duplicates(String athenaStatus) => RouteAdapter({
+        '/v1/api/medicare/visits': envelope(const []),
+        '/v1/api/medicare/coverage': envelope(const []),
+        '/api/ehr/resources': '[{"resourceType":"Condition",'
+            '"resourceId":"epic-1","source":"EPIC","category":"Conditions",'
+            '"title":"Type 2 diabetes","status":"active",'
+            '"occurredAt":"2026-07-01T00:00:00Z",'
+            '"lastSyncedAt":"2026-10-14T12:00:00Z"}]',
+        '/api/athena/resources': '{"items":[{"resourceType":"Condition",'
+            '"resourceId":"ath-1","category":"Conditions",'
+            '"title":"Type 2 diabetes","status":"$athenaStatus",'
+            '"occurredAt":"2026-07-01T00:00:00Z",'
+            '"source":"ATHENAHEALTH"}],"page":0,"size":100,"hasNext":false}',
+      });
+
+  testWidgets('the same record from two providers shows once, without a '
+      'popup, and is flagged as a possible duplicate (WBS 6.2.41)', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(t, duplicates('active'));
+    await settle(t);
+    expect(find.text('Type 2 diabetes'), findsOneWidget);
+    expect(find.text('Which is correct?'), findsNothing);
+    expect(find.textContaining('different details'), findsNothing);
+    expect(find.text('1 possible duplicate record was combined.'),
+        findsOneWidget);
+
+    await t.tap(find.text('Review'));
+    await settle(t);
+    expect(find.text('Is this the same record?'), findsOneWidget);
+    expect(find.text('From Epic, updated Oct 14, 2026'), findsOneWidget);
+    await t.tap(find.text('Same record'));
+    await settle(t);
+    expect(find.text('Type 2 diabetes'), findsOneWidget);
+    expect(find.textContaining('possible duplicate'), findsNothing);
+  });
+
+  testWidgets('when providers disagree the patient is asked once, and the '
+      'chosen version is shown and remembered', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(t, duplicates('resolved'));
+    await settle(t);
+    expect(find.text('Which is correct?'), findsOneWidget);
+    expect(find.text('Version 1'), findsOneWidget);
+    expect(find.text('Version 2'), findsOneWidget);
+    // The review is the one place a source is shown, with provenance
+    // (WBS 6.2.41).
+    expect(find.text('From Epic, updated Oct 14, 2026'), findsOneWidget);
+    expect(find.text('From Athena'), findsOneWidget);
+
+    await t.tap(find.text('Use version 2'));
+    await settle(t);
+    expect(find.text('Which is correct?'), findsNothing);
+    expect(find.textContaining('different details'), findsNothing);
+    expect(find.text('resolved'), findsOneWidget);
+    expect(find.text('Type 2 diabetes'), findsOneWidget);
+
+    // Opening the screen again doesn't ask again.
+    await t.pumpWidget(const SizedBox());
+    await pump(t, duplicates('resolved'));
+    await settle(t);
+    expect(find.text('Which is correct?'), findsNothing);
+    expect(find.text('resolved'), findsOneWidget);
+  });
+
+  testWidgets('"Decide later" shows Epic\'s version and leaves a Review '
+      'banner', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(t, duplicates('resolved'));
+    await settle(t);
+    await t.tap(find.text('Decide later'));
+    await settle(t);
+    expect(find.text('active'), findsOneWidget);
+    expect(find.text('1 record has different details from your providers.'),
+        findsOneWidget);
+    await t.tap(find.text('Review'));
+    await settle(t);
+    expect(find.text('Which is correct?'), findsOneWidget);
+  });
+
+  testWidgets('"Keep both" shows each version as its own record and isn\'t '
+      'asked again', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(t, duplicates('resolved'));
+    await settle(t);
+    await t.tap(find.text('Keep both'));
+    await settle(t);
+    expect(find.text('Type 2 diabetes'), findsNWidgets(2));
+    expect(find.textContaining('different details'), findsNothing);
+    // Outside the review, sources stay hidden.
+    expect(find.textContaining('From Epic'), findsNothing);
+
+    await t.pumpWidget(const SizedBox());
+    await pump(t, duplicates('resolved'));
+    await settle(t);
+    expect(find.text('Which is correct?'), findsNothing);
+    expect(find.text('Type 2 diabetes'), findsNWidgets(2));
+  });
+
+  testWidgets('FR-EHR-07: a medication the providers disagree on shows both '
+      'versions and waits for a caregiver, with no choice offered', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage': envelope(const []),
+          '/api/ehr/resources': '[{"resourceType":"MedicationRequest",'
+              '"resourceId":"epic-m","source":"EPIC","category":"Medications",'
+              '"title":"Lisinopril 10 mg","status":"active"}]',
+          '/api/athena/resources': '{"items":[{"resourceType":"MedicationRequest",'
+              '"resourceId":"ath-m","category":"Medications",'
+              '"title":"Lisinopril 10 mg","status":"stopped",'
+              '"source":"ATHENAHEALTH"}],"page":0,"size":100,"hasNext":false}',
+        }));
+    await settle(t);
+    expect(find.text('Which is correct?'), findsNothing);
+    expect(find.text('Lisinopril 10 mg'), findsNWidgets(2));
+    expect(find.text('1 medication needs your caregiver\'s review.'),
+        findsOneWidget);
+    await t.tap(find.text('Review'));
+    await settle(t);
+    expect(find.text('Waiting for your caregiver'), findsOneWidget);
+    expect(find.textContaining('Use version'), findsNothing);
+    expect(find.text('Keep both'), findsNothing);
+    await t.tap(find.text('Close'));
+    await settle(t);
+    expect(find.text('Lisinopril 10 mg'), findsNWidgets(2));
+  });
+
+  for (final kind in ['resolved', 'active']) {
+    testWidgets('the review dialog meets 4.5:1 contrast (NFR-ACC-07, $kind)',
+        (t) async {
+      await t.binding.setSurfaceSize(const Size(800, 3000));
+      addTearDown(() => t.binding.setSurfaceSize(null));
+      await pump(t, duplicates(kind));
+      await settle(t);
+      if (kind == 'active') {
+        await t.tap(find.text('Review'));
+        await settle(t);
+      }
+      final low =
+          lowContrastText(t, find.byType(AlertDialog)).toSet();
+      expect(low, isEmpty, reason: low.join('\n'));
+    });
+  }
+
+  group('athenahealth off on a server that answers 500 for the missing route',
+      () {
+    late AthenaConnectService original;
+    setUp(() => original = AthenaConnectService.instance);
+    tearDown(() => AthenaConnectService.instance = original);
+
+    RouteAdapter athena500() => RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage': envelope(const []),
+          '/api/ehr/resources': '[]',
+        }, status: {
+          '/api/athena/resources': 500,
+        }, statusBodies: {
+          '/api/athena/resources': '{"error":"An unexpected error occurred"}',
+        });
+
+    testWidgets('a patient still gets the banner with Connect, not a '
+        '"couldn\'t load" message', (t) async {
+      AthenaConnectService.instance = _StatusAthena(null);
+      await pump(t, athena500());
+      await settle(t);
+      expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
+      expect(find.text('Connect athenahealth'), findsOneWidget);
+      expect(find.textContaining('other providers'), findsNothing);
+    });
+
+    testWidgets('a connected patient whose read fails is told it couldn\'t '
+        'load, not asked to connect', (t) async {
+      AthenaConnectService.instance =
+          _StatusAthena(const AthenaStatus(connected: true));
+      await pump(t, athena500());
+      await settle(t);
+      expect(find.textContaining('other providers'), findsOneWidget);
+      expect(find.text('athenahealth isn\'t connected yet.'), findsNothing);
+    });
+  });
+
+  testWidgets('with no Patient Information the records use the full width '
+      '(no empty left column)', (t) async {
+    await t.binding.setSurfaceSize(const Size(1200, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(t, fixtures());
+    await settle(t);
+    expect(find.text('Patient Information'), findsNothing);
+    final history = t.getRect(find.text('Your health history'));
+    expect(history.left, lessThan(100));
+  });
+
+  testWidgets('with Patient Information it sits in its own column beside the '
+      'records', (t) async {
+    await t.binding.setSurfaceSize(const Size(1200, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage': envelope(const []),
+          '/api/ehr/resources': '[]',
+          '/api/ehr/patient':
+              '{"name":"Test Patient","birthDate":"1980-05-14","gender":"female"}',
+        }));
+    await settle(t);
+    final card = t.getRect(find.text('Patient Information'));
+    final history = t.getRect(find.text('Your health history'));
+    expect(history.left, greaterThan(card.right));
+  });
+}
+
+class _BannerAthena extends AthenaConnectService {
+  _BannerAthena({this.result});
+  final AthenaStatus? result;
+  int connects = 0;
+
+  @override
+  Future<AthenaStatus?> status() async => const AthenaStatus(
+      connected: false, reason: AthenaNotConnectedReason.notConsented);
+
+  @override
+  Future<AthenaStatus> connect() async {
+    connects++;
+    return result!;
+  }
+}
+
+class _StatusAthena extends AthenaConnectService {
+  _StatusAthena(this.result);
+  final AthenaStatus? result;
+
+  @override
+  Future<AthenaStatus?> status() async => result;
 }

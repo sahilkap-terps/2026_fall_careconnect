@@ -23,6 +23,8 @@ class AppBarHelper {
       leading: leading ??
           IconButton(
             icon: const Icon(Icons.arrow_back),
+            // A name for screen readers (WCAG 4.1.2); "Back", localized.
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             onPressed: () {
               if (Navigator.canPop(context)) {
                 Navigator.of(context).pop();

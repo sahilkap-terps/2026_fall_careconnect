@@ -22,6 +22,8 @@ import 'package:care_connect_app/features/summary/summary_confirmation_list.dart
 import 'package:care_connect_app/features/health/symptom-tracker/pages/symptom_allergies_tracker_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/dob_confirmation_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_data_screen.dart';
+import 'package:care_connect_app/features/health/health_data/pages/athena_connect_page.dart';
+import 'package:care_connect_app/features/health/health_data/pages/athena_resource_detail_page.dart';
 import 'package:care_connect_app/features/health/health_data/pages/medicare_connect_page.dart';
 import 'package:care_connect_app/features/health/health_data/services/medicare_connect_service.dart';
 import 'package:care_connect_app/features/invoices/screens/invoice_tabbed_page.dart';
@@ -251,6 +253,21 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
       builder: (_, __) => MedicareConnectPage(
         result: MedicareConnectPage.takePendingResult(),
+      ),
+    ),
+    // athenahealth connect (2-legged OAuth: in-app consent, no browser return).
+    GoRoute(
+      path: '/athena-connect',
+      redirect: _requireSignIn,
+      builder: (_, __) => const AthenaConnectPage(),
+    ),
+    // One athenahealth record with its FHIR resource (GET /api/athena/resources/{type}/{id}).
+    GoRoute(
+      path: '/athena/:type/:id',
+      redirect: _requireSignIn,
+      builder: (context, state) => AthenaResourceDetailPage(
+        resourceType: state.pathParameters['type'] ?? '',
+        resourceId: state.pathParameters['id'] ?? '',
       ),
     ),
     GoRoute(
