@@ -35,6 +35,10 @@ const _warnSoft = Color(0xFFFFFAEB);
 /// Two columns from this width; one below it.
 const wideLayoutBreakpoint = 900.0;
 
+final _linkTheme = TextButtonThemeData(
+  style: TextButton.styleFrom(foregroundColor: _brand, minimumSize: const Size(0, 44)),
+);
+
 class _MedicalPassportPageState extends State<MedicalPassportPage> {
   MedicalPassport? _passport;
   Object? _loadError;
@@ -85,7 +89,8 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
     if (passport == null) return;
     final update = await showDialog<PassportProfileUpdate>(
       context: context,
-      builder: (_) => _EditDetailsDialog(initial: PassportProfileUpdate.from(passport)),
+      builder: (context) => _branded(
+          context, _EditDetailsDialog(initial: PassportProfileUpdate.from(passport))),
     );
     if (update == null || !mounted) return;
     try {
@@ -117,7 +122,8 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
       final code = await MedicalPassportService.createCode();
       await _load();
       if (!mounted) return;
-      await showDialog<void>(context: context, builder: (_) => _QrCodeDialog(code: code));
+      await showDialog<void>(
+          context: context, builder: (context) => _branded(context, _QrCodeDialog(code: code)));
     } catch (e) {
       _toast(_messageFor(e, 'Couldn\'t make a QR code. Try again.'));
     } finally {
@@ -152,23 +158,39 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
   }) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _brand),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(action),
-          ),
-        ],
+      builder: (context) => _branded(
+        context,
+        AlertDialog(
+          title: Text(title),
+          content: Text(body),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _brand),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(action),
+            ),
+          ],
+        ),
       ),
     );
     return ok ?? false;
+  }
+
+  /// Dialogs are built from the app's theme, not the page's: give them the
+  /// passport's green for links, focus and selection too.
+  static Widget _branded(BuildContext context, Widget dialog) {
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        colorScheme: theme.colorScheme.copyWith(primary: _brand),
+        textButtonTheme: _linkTheme,
+      ),
+      child: dialog,
+    );
   }
 
   void _toast(String message) {
@@ -187,13 +209,11 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _page,
+      // No title: the page's own heading says "Medical passport".
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: _ink,
         elevation: 0,
-        titleTextStyle: const TextStyle(
-            color: _ink, fontSize: 20, fontWeight: FontWeight.w600),
-        title: const Text('Medical passport'),
         leading: IconButton(
           tooltip: 'Back',
           icon: const Icon(Icons.arrow_back),
@@ -201,7 +221,11 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
               context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
       ),
-      body: SafeArea(child: _body()),
+      // Text buttons and switches in the passport's green, not the app's default.
+      body: Theme(
+        data: Theme.of(context).copyWith(textButtonTheme: _linkTheme),
+        child: SafeArea(child: _body()),
+      ),
     );
   }
 
@@ -443,6 +467,7 @@ class _IdentityCard extends StatelessWidget {
                   _ShareSwitch(
                     key: shareSwitchKey(PassportField.bloodType),
                     label: 'blood type',
+                    subject: 'Blood type',
                     shared: passport.isShared(PassportField.bloodType),
                     saving: saving,
                     enabled: passport.bloodType != null,
@@ -585,11 +610,19 @@ class _AllergiesCard extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [for (final a in allergies) _AllergyTile(allergy: a)],
-          ),
+          // Two to a row when each still gets 200 px, as in the design; else one.
+          child: LayoutBuilder(builder: (context, constraints) {
+            const gap = 12.0;
+            final twoUp = constraints.maxWidth >= 2 * 200 + gap;
+            final width = twoUp ? (constraints.maxWidth - gap) / 2 : constraints.maxWidth;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final a in allergies) SizedBox(width: width, child: _AllergyTile(allergy: a)),
+              ],
+            );
+          }),
         ),
       ],
     );
@@ -605,8 +638,7 @@ class _AllergyTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final severity = severityLabel(allergy.severity);
     final serious = allergy.severity == 'SEVERE' || allergy.severity == 'LIFE_THREATENING';
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
+    return IntrinsicHeight(
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -868,9 +900,14 @@ class _ShareSwitch extends StatelessWidget {
     required this.saving,
     required this.enabled,
     required this.onChanged,
+    this.subject,
   });
 
   final String label;
+
+  /// Named in the visible text when the switch isn't in its section's header,
+  /// e.g. "Blood type shared on QR".
+  final String? subject;
   final bool shared;
   final bool saving;
   final bool enabled;
@@ -887,9 +924,14 @@ class _ShareSwitch extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(on ? 'Shared on QR' : 'Hidden',
-              style: TextStyle(
-                  color: on ? _brand : _muted, fontSize: 13, fontWeight: FontWeight.w600)),
+          Flexible(
+            child: Text(
+                subject == null
+                    ? (on ? 'Shared on QR' : 'Hidden')
+                    : '$subject ${on ? 'shared on QR' : 'hidden'}',
+                style: TextStyle(
+                    color: on ? _brand : _muted, fontSize: 13, fontWeight: FontWeight.w600)),
+          ),
           Switch(
             value: on,
             activeTrackColor: _brand,
