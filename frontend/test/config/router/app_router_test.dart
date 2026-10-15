@@ -2111,7 +2111,7 @@ void main() {
       expect(screens(), isNotEmpty);
       expect(screens().where((s) => s.contains(code)), isEmpty);
       expect(screens(), contains('/passport/:token'));
-    }, skip: true /* DEF-EMG-08: enable with the fix */);
+    });
   });
 
   testWidgets(

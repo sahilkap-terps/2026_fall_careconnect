@@ -98,7 +98,7 @@ public class EmergencyPassportService {
             final AllergyRepository allergies,
             final MedicationRepository medications,
             final TokenHashService tokenHashService,
-            @Value("${careconnect.passport.base-url:${frontend.base-url}/passport}") final String scanBaseUrl) {
+            @Value("${careconnect.passport.base-url:${frontend.base-url}/#/passport}") final String scanBaseUrl) {
         this(profiles, visibility, tokens, patients, allergies, medications, tokenHashService, scanBaseUrl,
                 Clock.systemUTC());
     }

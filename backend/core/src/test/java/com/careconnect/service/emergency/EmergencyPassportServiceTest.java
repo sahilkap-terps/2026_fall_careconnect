@@ -617,9 +617,6 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @Disabled("DEF-EMG-07: the default scan URL is {frontend.base-url}/passport/{code}, but the web app routes by "
-            + "URL fragment (HashUrlStrategy), so a scanned code opens the welcome page. Enable when the fix lands "
-            + "(suggested patch, PR #339 review).")
     @DisplayName("TC-EMG-254: by default a code's URL opens the web app's scan route, {frontend.base-url}/#/passport, "
             + "both from application.properties and from the constructor's own fallback")
     void defaultScanUrlUsesTheWebAppsHashRoute() throws Exception {
