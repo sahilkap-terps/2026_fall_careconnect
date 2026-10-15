@@ -68,6 +68,10 @@ class EhrRetentionQueriesPostgresTest {
     @Autowired
     private EhrResourceRepository resources;
     @Autowired
+    private EhrCoverageRecordRepository coverages;
+    @Autowired
+    private EhrVisitRecordRepository visits;
+    @Autowired
     private EntityManager entityManager;
 
     private Long patientId;

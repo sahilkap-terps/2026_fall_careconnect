@@ -1,12 +1,10 @@
 package com.careconnect.service.ehr;
 
 import com.careconnect.repository.ehr.EhrAuditEventRepository;
-import com.careconnect.repository.ehr.EhrCoverageRecordRepository;
 import com.careconnect.repository.ehr.EhrIdentityConflictRepository;
 import com.careconnect.repository.ehr.EhrRawPayloadRepository;
 import com.careconnect.repository.ehr.EhrResourceRepository;
 import com.careconnect.repository.ehr.EhrSourceIdentityRepository;
-import com.careconnect.repository.ehr.EhrVisitRecordRepository;
 import com.careconnect.repository.ehr.PatientDateOfBirth;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -239,15 +237,11 @@ class EhrRetentionWorkerTest {
         when(conflicts.findPatientsWithConflictResolvedBefore(CUTOFF_INSTANT)).thenReturn(List.of(adult));
         when(sourceIdentities.findPatientsWithSnapshotUpdatedBefore(CUTOFF_LOCAL)).thenReturn(List.of(adult));
         when(auditEvents.findPatientsWithEventBefore(CUTOFF)).thenReturn(List.of(adult));
-        when(coverages.findPatientsWithCoverageUpdatedBefore(CUTOFF_LOCAL)).thenReturn(List.of(adult));
-        when(visits.findPatientsWithVisitUpdatedBefore(CUTOFF_LOCAL)).thenReturn(List.of(adult));
         when(rawPayloads.deleteRetrievedBeforeForPatients(CUTOFF, List.of(1L))).thenReturn(1);
         when(resources.deleteSyncedBeforeForPatients(CUTOFF_INSTANT, List.of(1L))).thenReturn(5);
         when(conflicts.deleteResolvedBeforeForPatients(CUTOFF_INSTANT, List.of(1L))).thenReturn(2);
         when(sourceIdentities.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(3);
         when(auditEvents.deleteEventsBeforeForPatients(CUTOFF, List.of(1L))).thenReturn(4);
-        when(coverages.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(5);
-        when(visits.deleteUpdatedBeforeForPatients(CUTOFF_LOCAL, List.of(1L))).thenReturn(6);
 
         assertThat(worker().purgeExpired(NOW)).isEqualTo(15);
     }

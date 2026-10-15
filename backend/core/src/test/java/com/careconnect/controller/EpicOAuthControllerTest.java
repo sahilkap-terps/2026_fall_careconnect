@@ -4,6 +4,7 @@ import com.careconnect.config.EpicProperties;
 import com.careconnect.model.User;
 import com.careconnect.model.ehr.EhrCredential;
 import com.careconnect.repository.ehr.EhrResourceRepository;
+import com.careconnect.security.EpicAccessPolicy;
 import com.careconnect.service.ConsentService;
 import com.careconnect.service.ehr.EpicAuthStateStore;
 import com.careconnect.service.ehr.EpicOAuthService;
@@ -42,10 +43,11 @@ class EpicOAuthControllerTest {
     private final EpicSyncService syncService = mock(EpicSyncService.class);
     private final EhrResourceRepository resourceRepo = mock(EhrResourceRepository.class);
     private final EpicProperties cfg = mock(EpicProperties.class);
+    private final EpicAccessPolicy accessPolicy = mock(EpicAccessPolicy.class);
 
     private EpicOAuthController newController() {
         return new EpicOAuthController(epic, stateStore, securityUtil, consentService,
-                syncService, resourceRepo, new ObjectMapper(), cfg);
+                syncService, resourceRepo, new ObjectMapper(), cfg, accessPolicy);
     }
 
     private User userWithId(long id) {
