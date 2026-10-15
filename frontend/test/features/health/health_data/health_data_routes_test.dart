@@ -131,6 +131,7 @@ void main() {
     ('TC-MCR-CONN-026', '/medicare-connect'),
     ('TC-HDATA-016', '/health-data'),
     ('TC-EHR-REC-041', '/dob-confirm'),
+    ('CC-12', '/emergency-qr'),
   ]) {
     testWidgets('${c.$1}: ${c.$2} without signing in goes to the login page',
         (t) async {
