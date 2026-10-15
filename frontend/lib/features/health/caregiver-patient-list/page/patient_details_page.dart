@@ -1785,15 +1785,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
         return;
       }
 
- 
-
       final http.Response resp =
           await ApiService.getPatientMedicationsForPatient(patientIdInt);
-      
-      unawaited(
-          Telemetry.event('feature.medications.view_all', {'statusCode': resp.statusCode})
-      );
-      
+
+      unawaited(Telemetry.event(
+          'feature.medications.view_all', {'statusCode': resp.statusCode}));
+
       if (resp.statusCode == 200) {
         final List<dynamic> data = jsonDecode(resp.body);
 

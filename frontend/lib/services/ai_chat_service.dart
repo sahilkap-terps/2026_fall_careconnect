@@ -719,9 +719,8 @@ class AIChatService {
               sourceTypes.any((type) => type.trim().isEmpty))) {
         throw const FormatException('Invalid sourceTypes');
       }
-      final modality = inputModality.trim().toUpperCase() == 'VOICE'
-          ? 'VOICE'
-          : 'TEXT';
+      final modality =
+          inputModality.trim().toUpperCase() == 'VOICE' ? 'VOICE' : 'TEXT';
       final headers = await ApiService.getAuthHeaders();
       headers['Content-Type'] = 'application/json';
       headers['Accept'] = 'application/json';

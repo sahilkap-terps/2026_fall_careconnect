@@ -3,6 +3,7 @@
 
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,31 @@ import 'package:intl/intl.dart';
 import 'package:care_connect_app/services/api_service_offline.dart';
 
 import '../../../../mock_user_provider.dart';
+
+/// "Now" for these tests: today at 14:00, so visits built a few hours either
+/// side of it never cross midnight. The date stays real because Flutter's
+/// calendar widgets read DateTime.now() directly.
+DateTime _todayAt(int hour, [int minute = 0]) {
+  final n = DateTime.now();
+  return DateTime(n.year, n.month, n.day, hour, minute);
+}
+
+/// testWidgets with clock.now() fixed at [now] (default: today 14:00).
+void _testWidgets(
+  String description,
+  WidgetTesterCallback callback, {
+  bool? skip,
+  DateTime? now,
+}) {
+  testWidgets(
+    description,
+    (tester) => withClock(
+      Clock.fixed(now ?? _todayAt(14)),
+      () => callback(tester),
+    ),
+    skip: skip,
+  );
+}
 
 /// Mutable HTTP handler — the singleton delegates every request here.
 late Future<http.Response> Function(http.Request) _httpHandler;
@@ -38,7 +64,7 @@ Map<String, dynamic> _visitJson({
   String status = 'Scheduled',
   String priority = 'Normal',
 }) {
-  final now = DateTime.now();
+  final now = clock.now();
   return {
     'id': id,
     'patientId': patientId,
@@ -162,38 +188,38 @@ void main() {
   });
 
   group('SchedulePage - initial render', () {
-    testWidgets('renders without crashing', (tester) async {
+    _testWidgets('renders without crashing', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byType(SchedulePage), findsOneWidget);
     });
 
-    testWidgets('shows "EVV Visit Schedules" in AppBar', (tester) async {
+    _testWidgets('shows "EVV Visit Schedules" in AppBar', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.text('EVV Visit Schedules'), findsOneWidget);
     });
 
-    testWidgets('shows CircularProgressIndicator while loading',
+    _testWidgets('shows CircularProgressIndicator while loading',
         (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('shows Scaffold', (tester) async {
+    _testWidgets('shows Scaffold', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byType(Scaffold), findsOneWidget);
     });
 
-    testWidgets('shows AppBar', (tester) async {
+    _testWidgets('shows AppBar', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byType(AppBar), findsOneWidget);
     });
 
-    testWidgets('shows Center while loading', (tester) async {
+    _testWidgets('shows Center while loading', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byType(Center), findsWidgets);
     });
 
-    testWidgets('shows refresh button in AppBar', (tester) async {
+    _testWidgets('shows refresh button in AppBar', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byIcon(Icons.refresh), findsOneWidget);
       expect(find.byTooltip('Refresh'), findsOneWidget);
@@ -201,7 +227,7 @@ void main() {
   });
 
   group('SchedulePage - with successful HTTP responses (empty visits)', () {
-    testWidgets('shows empty state when no visits returned', (tester) async {
+    _testWidgets('shows empty state when no visits returned', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -220,7 +246,7 @@ void main() {
       expect(find.byIcon(Icons.event_available), findsOneWidget);
     });
 
-    testWidgets('shows header text "Manage your visit schedule"',
+    _testWidgets('shows header text "Manage your visit schedule"',
         (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
@@ -234,7 +260,7 @@ void main() {
       expect(find.text('Manage your visit schedule'), findsOneWidget);
     });
 
-    testWidgets('shows Schedule New Visit button', (tester) async {
+    _testWidgets('shows Schedule New Visit button', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -248,7 +274,7 @@ void main() {
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
-    testWidgets('shows summary cards with zero counts', (tester) async {
+    _testWidgets('shows summary cards with zero counts', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -268,7 +294,7 @@ void main() {
       expect(find.text('0'), findsNWidgets(4));
     });
 
-    testWidgets(
+    _testWidgets(
         'does not show Upcoming Visits section when no upcoming visits',
         (tester) async {
       _httpHandler = ((request) async {
@@ -284,7 +310,7 @@ void main() {
       expect(find.text('Upcoming Visits'), findsNothing);
     });
 
-    testWidgets('shows Todays Scheduled Visits header', (tester) async {
+    _testWidgets('shows Todays Scheduled Visits header', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -299,8 +325,8 @@ void main() {
   });
 
   group('SchedulePage - with scheduled visits', () {
-    testWidgets('shows visit cards for today visits', (tester) async {
-      final now = DateTime.now();
+    _testWidgets('shows visit cards for today visits', (tester) async {
+      final now = clock.now();
       // Create a visit scheduled slightly in the future (ready status)
       final futureTime = now.add(const Duration(minutes: 15));
       final visits = [
@@ -331,9 +357,9 @@ void main() {
       expect(find.text('Estimated Duration: '), findsOneWidget);
     });
 
-    testWidgets('shows duration with hours and minutes format',
+    _testWidgets('shows duration with hours and minutes format',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final futureTime = now.add(const Duration(minutes: 15));
       final visits = [
         _visitJson(
@@ -361,9 +387,9 @@ void main() {
       expect(find.text('1h 30m'), findsOneWidget);
     });
 
-    testWidgets('shows duration with minutes only when under 1 hour',
+    _testWidgets('shows duration with minutes only when under 1 hour',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final futureTime = now.add(const Duration(minutes: 15));
       final visits = [
         _visitJson(
@@ -390,9 +416,9 @@ void main() {
       expect(find.text('45m'), findsOneWidget);
     });
 
-    testWidgets('filters out completed visits from today view',
+    _testWidgets('filters out completed visits from today view',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final futureTime = now.add(const Duration(minutes: 15));
       final visits = [
         _visitJson(
@@ -426,9 +452,9 @@ void main() {
       expect(find.text('Active Visit'), findsWidgets);
     });
 
-    testWidgets('shows Ready badge for visit within 30 minutes',
+    _testWidgets('shows Ready badge for visit within 30 minutes',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final futureTime = now.add(const Duration(minutes: 15));
       final visits = [
         _visitJson(
@@ -454,8 +480,8 @@ void main() {
       expect(find.text('Start Visit'), findsOneWidget);
     });
 
-    testWidgets('shows Overdue badge for past visit', (tester) async {
-      final now = DateTime.now();
+    _testWidgets('shows Overdue badge for past visit', (tester) async {
+      final now = clock.now();
       final pastTime = now.subtract(const Duration(hours: 1));
       final visits = [
         _visitJson(
@@ -483,9 +509,9 @@ void main() {
       expect(find.byIcon(Icons.priority_high), findsOneWidget);
     });
 
-    testWidgets('shows Upcoming badge for visit more than 30 min away',
+    _testWidgets('shows Upcoming badge for visit more than 30 min away',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final futureTime = now.add(const Duration(hours: 2));
       final visits = [
         _visitJson(
@@ -513,10 +539,10 @@ void main() {
   });
 
   group('SchedulePage - with upcoming visits (future dates)', () {
-    testWidgets('shows Upcoming Visits section with grouped visits',
+    _testWidgets('shows Upcoming Visits section with grouped visits',
         (tester) async {
-      final tomorrow = DateTime.now().add(const Duration(days: 1));
-      final dayAfter = DateTime.now().add(const Duration(days: 2));
+      final tomorrow = clock.now().add(const Duration(days: 1));
+      final dayAfter = clock.now().add(const Duration(days: 2));
       final upcomingVisits = [
         _visitJson(
           id: 10,
@@ -543,7 +569,7 @@ void main() {
           final startParam =
               request.url.queryParameters['startDate'] ?? '';
           final startDate = DateTime.tryParse(startParam);
-          if (startDate != null && startDate.isAfter(DateTime.now())) {
+          if (startDate != null && startDate.isAfter(clock.now())) {
             return http.Response(jsonEncode(upcomingVisits), 200);
           }
           // For today/past range and summary range, return today's visit or empty
@@ -563,9 +589,9 @@ void main() {
       expect(find.text('Day After Patient'), findsOneWidget);
     });
 
-    testWidgets('upcoming visit entries show service type and time',
+    _testWidgets('upcoming visit entries show service type and time',
         (tester) async {
-      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final tomorrow = clock.now().add(const Duration(days: 1));
       final upcomingVisits = [
         _visitJson(
           id: 10,
@@ -583,7 +609,7 @@ void main() {
           final startParam =
               request.url.queryParameters['startDate'] ?? '';
           final startDate = DateTime.tryParse(startParam);
-          if (startDate != null && startDate.isAfter(DateTime.now())) {
+          if (startDate != null && startDate.isAfter(clock.now())) {
             return http.Response(jsonEncode(upcomingVisits), 200);
           }
           return http.Response(jsonEncode([]), 200);
@@ -602,7 +628,7 @@ void main() {
   });
 
   group('SchedulePage - HTTP error handling', () {
-    testWidgets('handles HTTP error gracefully for scheduled visits',
+    _testWidgets('handles HTTP error gracefully for scheduled visits',
         (tester) async {
       _httpHandler = ((request) async {
         return http.Response('Server Error', 500);
@@ -617,7 +643,7 @@ void main() {
       expect(find.text('No visits scheduled for today'), findsOneWidget);
     });
 
-    testWidgets('handles network exception gracefully', (tester) async {
+    _testWidgets('handles network exception gracefully', (tester) async {
       _httpHandler = ((request) async {
         throw Exception('Network error');
       });
@@ -633,7 +659,7 @@ void main() {
   });
 
   group('SchedulePage - refresh functionality', () {
-    testWidgets('refresh button triggers data reload', (tester) async {
+    _testWidgets('refresh button triggers data reload', (tester) async {
       int callCount = 0;
       _httpHandler = ((request) async {
         callCount++;
@@ -663,7 +689,7 @@ void main() {
   });
 
   group('SchedulePage - Schedule New Visit dialog', () {
-    testWidgets('tapping Schedule New Visit opens dialog', (tester) async {
+    _testWidgets('tapping Schedule New Visit opens dialog', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -687,7 +713,7 @@ void main() {
       expect(find.text('Schedule Visit'), findsOneWidget);
     });
 
-    testWidgets('dialog shows patient loading indicator then patient list',
+    _testWidgets('dialog shows patient loading indicator then patient list',
         (tester) async {
       _httpHandler = ((request) async {
         final url = request.url.toString();
@@ -724,7 +750,7 @@ void main() {
       expect(find.text('Notes'), findsOneWidget);
     });
 
-    testWidgets('dialog shows service type options', (tester) async {
+    _testWidgets('dialog shows service type options', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -743,7 +769,7 @@ void main() {
       expect(find.text('Select service type'), findsOneWidget);
     });
 
-    testWidgets('dialog shows default duration of 60', (tester) async {
+    _testWidgets('dialog shows default duration of 60', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -762,7 +788,7 @@ void main() {
       expect(find.text('60'), findsOneWidget);
     });
 
-    testWidgets('dialog shows time placeholder', (tester) async {
+    _testWidgets('dialog shows time placeholder', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -780,7 +806,7 @@ void main() {
       expect(find.text('--:-- --'), findsOneWidget);
     });
 
-    testWidgets('dialog close button dismisses dialog', (tester) async {
+    _testWidgets('dialog close button dismisses dialog', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -803,7 +829,7 @@ void main() {
       expect(find.byType(Dialog), findsNothing);
     });
 
-    testWidgets('dialog Cancel button dismisses dialog', (tester) async {
+    _testWidgets('dialog Cancel button dismisses dialog', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -825,7 +851,7 @@ void main() {
       expect(find.byType(Dialog), findsNothing);
     });
 
-    testWidgets('dialog notes field accepts input', (tester) async {
+    _testWidgets('dialog notes field accepts input', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -852,7 +878,7 @@ void main() {
       expect(find.text('Special instructions here'), findsOneWidget);
     });
 
-    testWidgets('duration decrement button works', (tester) async {
+    _testWidgets('duration decrement button works', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -878,7 +904,7 @@ void main() {
       expect(find.text('45'), findsOneWidget);
     });
 
-    testWidgets('duration increment button works', (tester) async {
+    _testWidgets('duration increment button works', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -906,7 +932,7 @@ void main() {
       expect(find.text('75'), findsOneWidget);
     });
 
-    testWidgets('dialog shows date in MM/dd/yyyy format', (tester) async {
+    _testWidgets('dialog shows date in MM/dd/yyyy format', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -922,17 +948,16 @@ void main() {
       await tester.pump();
 
       // Should display today's date in MM/dd/yyyy format
-      final todayStr = DateFormat('MM/dd/yyyy').format(DateTime.now());
+      final todayStr = DateFormat('MM/dd/yyyy').format(clock.now());
       expect(find.text(todayStr), findsOneWidget);
     });
   });
 
   group('SchedulePage - View Details dialog', () {
-    testWidgets('tapping View Details on upcoming visit shows dialog',
+    _testWidgets('tapping View Details on upcoming visit shows dialog',
         (tester) async {
       // Visit dialog content labels changed; needs investigation.
-      return;
-      final now = DateTime.now();
+      final now = clock.now();
       // Use 14:00 (safe — won't wrap past midnight on any timezone)
       final visits = [
         _visitJson(
@@ -972,11 +997,11 @@ void main() {
       expect(find.text('Status:'), findsOneWidget);
       expect(find.text('Close'), findsOneWidget);
       expect(find.text('Start Visit'), findsOneWidget);
-    });
+    }, skip: true);
 
-    testWidgets('View Details dialog Close button dismisses it',
+    _testWidgets('View Details dialog Close button dismisses it',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final futureTime = now.add(const Duration(hours: 2));
       final visits = [
         _visitJson(
@@ -1093,9 +1118,9 @@ void main() {
   });
 
   group('SchedulePage - summary cards computation', () {
-    testWidgets('summary counts overdue, ready, upcoming correctly',
+    _testWidgets('summary counts overdue, ready, upcoming correctly',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final pastTime = now.subtract(const Duration(hours: 1));
       final readyTime = now.add(const Duration(minutes: 15));
       final futureTime = now.add(const Duration(hours: 3));
@@ -1152,7 +1177,7 @@ void main() {
   });
 
   group('SchedulePage - summary card icons', () {
-    testWidgets('summary cards show correct icons', (tester) async {
+    _testWidgets('summary cards show correct icons', (tester) async {
       _httpHandler = ((request) async {
         return http.Response(jsonEncode([]), 200);
       });
@@ -1170,7 +1195,7 @@ void main() {
   });
 
   group('SchedulePage - null caregiverId defaults', () {
-    testWidgets('uses default caregiverId 1 when user has null caregiverId',
+    _testWidgets('uses default caregiverId 1 when user has null caregiverId',
         (tester) async {
       final provider = MockUserProvider(
         mockUser: MockUser(
@@ -1195,7 +1220,7 @@ void main() {
   });
 
   group('SchedulePage - dialog error handling', () {
-    testWidgets('dialog shows error when patients fail to load',
+    _testWidgets('dialog shows error when patients fail to load',
         (tester) async {
       _httpHandler = ((request) async {
         final url = request.url.toString();
@@ -1221,8 +1246,8 @@ void main() {
   });
 
   group('SchedulePage - visit card icons', () {
-    testWidgets('visit card shows person icon', (tester) async {
-      final now = DateTime.now();
+    _testWidgets('visit card shows person icon', (tester) async {
+      final now = clock.now();
       final futureTime = now.add(const Duration(minutes: 10));
       final visits = [
         _visitJson(
@@ -1250,8 +1275,8 @@ void main() {
   });
 
   group('SchedulePage - multiple visits sorting', () {
-    testWidgets('visits are sorted by scheduled time', (tester) async {
-      final now = DateTime.now();
+    _testWidgets('visits are sorted by scheduled time', (tester) async {
+      final now = clock.now();
       final laterTime = now.add(const Duration(minutes: 20));
       final earlierTime = now.add(const Duration(minutes: 5));
 
@@ -1290,9 +1315,9 @@ void main() {
   });
 
   group('SchedulePage - completed visit status in _getVisitStatus', () {
-    testWidgets('completed visit card is filtered from today view',
+    _testWidgets('completed visit card is filtered from today view',
         (tester) async {
-      final now = DateTime.now();
+      final now = clock.now();
       final visits = [
         _visitJson(
           id: 1,
@@ -1315,5 +1340,54 @@ void main() {
       // Completed visits are filtered out; today's section shows empty state
       expect(find.text('No visits scheduled for today'), findsOneWidget);
     });
+  });
+
+  group('SchedulePage - overdue visits from earlier days', () {
+    // _getVisitStatus used to compare time of day only, so a still-Scheduled
+    // visit from an earlier day showed as Upcoming/Ready whenever its clock
+    // time was later than now.
+    Future<void> pumpWithVisitAt(WidgetTester tester, DateTime when) async {
+      final visits = [
+        _visitJson(
+          id: 1,
+          patientName: 'Earlier Patient',
+          status: 'Scheduled',
+          scheduledDate: DateFormat('yyyy-MM-dd').format(when),
+          scheduledTime: DateFormat('HH:mm:ss').format(when),
+        ),
+      ];
+      _httpHandler = ((request) async {
+        return http.Response(jsonEncode(visits), 200);
+      });
+      await tester.pumpWidget(_wrapWithHttp());
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+    }
+
+    _testWidgets(
+      'visit yesterday 23:30 is overdue just after midnight',
+      (tester) async {
+        final yesterday = _todayAt(0, 30).subtract(const Duration(hours: 1));
+        await pumpWithVisitAt(tester, yesterday);
+
+        expect(find.text('Start Overdue Visit'), findsOneWidget);
+        expect(find.byIcon(Icons.priority_high), findsOneWidget);
+      },
+      now: _todayAt(0, 30),
+    );
+
+    _testWidgets(
+      'visit three days ago at a later clock time is overdue',
+      (tester) async {
+        final threeDaysAgo =
+            _todayAt(15).subtract(const Duration(days: 3));
+        await pumpWithVisitAt(tester, threeDaysAgo);
+
+        expect(find.text('Start Overdue Visit'), findsOneWidget);
+        expect(find.text('View Details'), findsNothing);
+      },
+      now: _todayAt(10),
+    );
   });
 }
