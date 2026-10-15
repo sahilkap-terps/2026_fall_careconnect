@@ -1,0 +1,121 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/video_call/video_call_service_test.dart
+00:00 +0: Durable call patient ownership patient initiator owns the session by user ID
+00:00 +1: Durable call patient ownership caregiver-to-patient call uses recipient user ID
+00:00 +2: Durable call patient ownership care-team call requires one unambiguous context patient
+00:00 +3: Durable call patient ownership care-team ambiguity asks for explicit patient selection
+00:00 +4: Durable call patient ownership call-session errors do not expose backend diagnostics
+00:00 +5: Durable call patient ownership createCallSession posts durable ownership before joining
+✅ VideoCallService initialized
+00:00 +6: Remote call end transcript buffering awaits an in-flight transcript batch before clearing call state
+✅ VideoCallService initialized
+📹 Joining Chime call: remote-end-buffer-test
+✅ Chime meeting credentials received for call: remote-end-buffer-test
+[CareConnect][Transcript] segment persisted queue=1
+📴 Remote party ended the call
+00:00 +7: Remote call end transcript buffering joining a failed in-flight flush retries remaining segment
+✅ VideoCallService initialized
+📹 Joining Chime call: remote-end-inflight-retry
+✅ Chime meeting credentials received for call: remote-end-inflight-retry
+[CareConnect][Transcript] segment persisted queue=1
+📴 Remote party ended the call
+00:00 +8: Remote call end transcript buffering transient 500 retries without clearing the segment
+✅ VideoCallService initialized
+📹 Joining Chime call: transient-500-retry
+✅ Chime meeting credentials received for call: transient-500-retry
+[CareConnect][Transcript] segment persisted queue=1
+📴 Remote party ended the call
+00:00 +9: Remote call end transcript buffering transient timeout retries without clearing the segment
+✅ VideoCallService initialized
+📹 Joining Chime call: transient-timeout-retry
+✅ Chime meeting credentials received for call: transient-timeout-retry
+[CareConnect][Transcript] segment persisted queue=1
+📴 Remote party ended the call
+00:00 +10: Remote call end transcript buffering hang-up reset retains final segment after retry exhaustion
+✅ VideoCallService initialized
+📹 Joining Chime call: hangup-retains-unsent
+✅ Chime meeting credentials received for call: hangup-retains-unsent
+[CareConnect][Transcript] segment persisted queue=1
+📴 Remote party ended the call
+00:00 +11: Constants and Configuration maxBufferedTranscriptSegments is exactly 120
+00:00 +12: Constants and Configuration sentimentStaleThreshold is exactly 45 seconds
+00:00 +13: Constants and Configuration maxTranscriptChars is exactly 1200 characters
+00:00 +14: Constants and Configuration transcriptFlushInterval is 4 seconds
+00:00 +15: Constants and Configuration transcript truncation preserves complete Unicode runes
+00:00 +16: Initialization service starts with isInCall = false and no current call ID
+00:00 +17: Initialization meetingCredentials is null before any call is joined
+00:00 +18: Initialization after initialize() the service is still not in a call
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +19: Initialization sendTextForAnalysis returns false when not in a call regardless of capture flag
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +20: Initialization sendTextForAnalysis returns false when capture is disabled
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +21: Initialization setPatientSentimentSourceEnabled does not throw
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +22: Active-call event scoping accepts only events carrying the active call ID
+00:00 +23: Completed call ID sentinel joinCall throws when service has not been initialized
+00:00 +24: Completed call ID sentinel endCall when not in a call completes without throwing
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +25: Sentiment analysis pre-call guards (setUpAll)
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +25: Sentiment analysis pre-call guards sendTextForAnalysis returns false when service is not in a call
+00:00 +26: Sentiment analysis pre-call guards sendVoiceMetricsForAnalysis returns false when service is not in a call
+00:00 +27: Sentiment analysis pre-call guards sendVideoFrameForAnalysis returns false when service is not in a call
+00:00 +28: Sentiment analysis pre-call guards sendTranscriptSegment returns false when service is not in a call
+00:00 +29: Sentiment analysis pre-call guards sendTranscriptSegment with empty text returns false
+00:00 +30: Sentiment analysis pre-call guards (tearDownAll)
+00:00 +30: WebSocket sentiment stream integration onSentimentUpdate callback is accepted by initialize() without error
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +31: WebSocket sentiment stream integration onCallDeclined callback is accepted by initialize() without error
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +32: WebSocket sentiment stream integration dispose() completes without error and resets call state
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +33: ChimeCallSession data class ChimeCallSession retains all constructor fields
+00:00 +34: ChimeCallSession data class ChimeCallSession optional fields default to null
+00:00 +35: dispose() idempotency calling dispose() twice does not throw
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +36: dispose() idempotency dispose() on never-initialized service does not throw
+00:00 +37: updateSentimentChannelState guard updateSentimentChannelState returns false when not in a call
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +38: Recording API getRecordingStatus returns null when backend is unreachable
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:00 +39: Recording API getRecordingPlaybackUrl returns null when backend is unreachable
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+00:05 +40: Conference participant tracking (L8a) trackParticipant_accumulatesIds
+00:05 +41: Conference participant tracking (L8a) trackParticipant_ignoresBlankIds
+00:05 +42: Conference participant tracking (L8a) endCall_sendsParticipantUserIdsInBody
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+📹 Joining Chime call: call-x
+✅ Chime meeting credentials received for call: call-x
+📴 Ending call: call-x
+00:05 +43: Conference participant tracking (L8a) endCall_marksCompletedOnProcessingStatus
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+📹 Joining Chime call: call-processing-end
+✅ Chime meeting credentials received for call: call-processing-end
+📴 Ending call: call-processing-end
+00:05 +44: Conference participant tracking (L8a) endCall_doesNotMarkCompletedOnHttpFailure
+[CareConnect][Transcript] encrypted outbox initialization failed
+✅ VideoCallService initialized
+📹 Joining Chime call: call-end-http-fail
+✅ Chime meeting credentials received for call: call-end-http-fail
+📴 Ending call: call-end-http-fail
+Backend returned 503 while ending call: {"message":"unavailable"}
+📹 Joining Chime call: call-end-http-fail
+✅ Chime meeting credentials received for call: call-end-http-fail
+00:05 +45: All tests passed!

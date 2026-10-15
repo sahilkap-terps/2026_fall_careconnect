@@ -1,0 +1,5 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/features/usps/ada_mail_envelope_readout_e2e_test.dart
+00:00 +0: ADA mail envelope readout E2E (Task 3.14.10) mail tile read-aloud speaks envelope sender and summary end-to-end
+00:00 +1: ADA mail envelope readout E2E (Task 3.14.10) missing-image mail readout includes metadata accessibility note
+00:00 +2: ADA mail envelope readout E2E (Task 3.14.10) read-aloud control exposes accessible semantics label
+00:00 +3: All tests passed!

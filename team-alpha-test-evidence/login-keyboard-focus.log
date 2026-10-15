@@ -1,0 +1,367 @@
+00:00 +0: loading /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/team_alpha_accessibility/login_keyboard_test.dart
+00:00 +0: Team Alpha: login keyboard navigation
+FOCUS AFTER TAB: null
+FOCUS CONTEXT: Focus
+FocusManager#c920e
+ │ primaryFocus: FocusNode#5edc4([PRIMARY FOCUS])
+ │ primaryFocusCreator: Focus ← _ActionsScope ← Actions ←
+ │   _ParentInkResponseProvider ← _InkResponseStateWidget ← InkWell
+ │   ← DefaultSelectionStyle ← IconTheme ← IconTheme ←
+ │   InheritedCupertinoTheme ← CupertinoTheme ← _InheritedTheme ←
+ │   Theme ← AnimatedTheme ← DefaultTextStyle ←
+ │   AnimatedDefaultTextStyle ← _InkFeatures-[GlobalKey#044d1 ink
+ │   renderer] ← NotificationListener<LayoutChangedNotification> ←
+ │   CustomPaint ← _ShapeBorderPaint ← ⋯
+ │
+ └─rootScope: FocusScopeNode#e36f6(Root Focus Scope [IN FOCUS PATH])
+   │ IN FOCUS PATH
+   │ focusedChildren: FocusScopeNode#a8863(View Scope [IN FOCUS PATH])
+   │
+   └─Child 1: _FocusTraversalGroupNode#59990(FocusTraversalGroup [IN FOCUS PATH])
+     │ context: Focus
+     │ NOT FOCUSABLE
+     │ IN FOCUS PATH
+     │
+     └─Child 1: FocusScopeNode#a8863(View Scope [IN FOCUS PATH])
+       │ context: _FocusScopeWithExternalFocusNode
+       │ IN FOCUS PATH
+       │ focusedChildren: FocusScopeNode#fdbaa(_ModalScopeState<dynamic>
+       │   Focus Scope [IN FOCUS PATH])
+       │
+       └─Child 1: FocusNode#6b022(Shortcuts: <Default WidgetsApp Shortcuts> [IN FOCUS PATH])
+         │ context: Focus
+         │ NOT FOCUSABLE
+         │ IN FOCUS PATH
+         │
+         └─Child 1: FocusNode#6e112(Shortcuts: <Default Text Editing Shortcuts> [IN FOCUS PATH])
+           │ context: Focus
+           │ NOT FOCUSABLE
+           │ IN FOCUS PATH
+           │
+           └─Child 1: _FocusTraversalGroupNode#41c5c(FocusTraversalGroup [IN FOCUS PATH])
+             │ context: Focus
+             │ NOT FOCUSABLE
+             │ IN FOCUS PATH
+             │
+             └─Child 1: FocusNode#de148(Shortcuts: <Shortcut Registrar> [IN FOCUS PATH])
+               │ context: Focus
+               │ NOT FOCUSABLE
+               │ IN FOCUS PATH
+               │
+               └─Child 1: FocusNode#27fa8([IN FOCUS PATH])
+                 │ context: Focus
+                 │ NOT FOCUSABLE
+                 │ IN FOCUS PATH
+                 │
+                 └─Child 1: _FocusTraversalGroupNode#e9157(FocusTraversalGroup [IN FOCUS PATH])
+                   │ context: Focus
+                   │ NOT FOCUSABLE
+                   │ IN FOCUS PATH
+                   │
+                   └─Child 1: FocusNode#05827(Navigator [IN FOCUS PATH])
+                     │ context: Focus
+                     │ IN FOCUS PATH
+                     │
+                     └─Child 1: FocusScopeNode#fdbaa(_ModalScopeState<dynamic> Focus Scope [IN FOCUS PATH])
+                       │ context: _FocusScopeWithExternalFocusNode
+                       │ IN FOCUS PATH
+                       │ focusedChildren: FocusNode#5edc4([PRIMARY FOCUS]),
+                       │   FocusNode#e0c25, FocusNode#7bb50
+                       │ traversalEdgeBehavior: TraversalEdgeBehavior.parentScope
+                       │
+                       ├─Child 1: FocusNode#7bb50
+                       │   context: Focus
+                       │
+                       ├─Child 2: FocusNode#e0c25
+                       │   context: Focus
+                       │
+                       ├─Child 3: FocusNode#5edc4([PRIMARY FOCUS])
+                       │   context: Focus
+                       │   PRIMARY FOCUS
+                       │
+                       ├─Child 4: FocusNode#1fb70
+                       │   context: Focus
+                       │
+                       ├─Child 5: FocusNode#37d09
+                       │   context: Focus
+                       │
+                       └─Child 6: FocusNode#4e6ec
+                           context: Focus
+
+FOCUSED ANCESTORS:
+  _ActionsScope
+  Actions
+  _ParentInkResponseProvider
+  _InkResponseStateWidget
+  InkWell
+  DefaultSelectionStyle
+  IconTheme
+  IconTheme
+  InheritedCupertinoTheme
+  CupertinoTheme
+  _InheritedTheme
+  Theme
+  AnimatedTheme
+  DefaultTextStyle
+  AnimatedDefaultTextStyle
+  _InkFeatures
+  NotificationListener<LayoutChangedNotification>
+  CustomPaint
+  _ShapeBorderPaint
+  PhysicalShape
+  _MaterialInterior
+  Material
+  ConstrainedBox
+  _InputPadding
+  Semantics
+  _IconButtonM3
+  _SelectableIconButton
+  IconButton
+  Semantics
+  IconButtonTheme
+  IconTheme
+  Builder
+  ConstrainedBox
+  MouseRegion
+  Center
+  _Decorator
+  Semantics
+  InputDecorator
+  AnimatedBuilder
+  Listener
+  RawGestureDetector
+  TextSelectionGestureDetector
+  Semantics
+  AnimatedBuilder
+  IgnorePointer
+  TextFieldTapRegion
+  MouseRegion
+  TextField
+  UnmanagedRestorationScope
+  Semantics
+  TextFormField
+  Column
+  Column
+  Padding
+  DecoratedBox
+  ConstrainedBox
+  Container
+  Column
+  Padding
+  ConstrainedBox
+  Container
+  Center
+  _SingleChildViewport
+  IgnorePointer
+  Semantics
+  Listener
+  _GestureSemantics
+  RawGestureDetector
+  Listener
+  _ScrollableScope
+  _ScrollSemantics
+  NotificationListener<ScrollMetricsNotification>
+  Transform
+  StretchEffect
+  ClipRect
+  AnimatedBuilder
+  NotificationListener<ScrollNotification>
+  StretchingOverscrollIndicator
+  Scrollable
+  PrimaryScrollController
+  SingleChildScrollView
+  MediaQuery
+  Padding
+  SafeArea
+  KeyedSubtree
+  _BodyBuilder
+  MediaQuery
+  LayoutId
+  CustomMultiChildLayout
+  _ActionsScope
+  Actions
+  Builder
+  DefaultTextStyle
+  AnimatedDefaultTextStyle
+  _InkFeatures
+  NotificationListener<LayoutChangedNotification>
+  PhysicalModel
+  AnimatedPhysicalModel
+  Material
+  _ScrollNotificationObserverScope
+  NotificationListener<ScrollNotification>
+  NotificationListener<ScrollMetricsNotification>
+  ScrollNotificationObserver
+  _ScaffoldScope
+  Scaffold
+  LoginPage
+  Builder
+  Semantics
+  Builder
+  RepaintBoundary
+  IgnorePointer
+  ListenableBuilder
+  FractionalTranslation
+  SlideTransition
+  FadeTransition
+  FractionalTranslation
+  SlideTransition
+  FadeTransition
+  DualTransitionBuilder
+  ColoredBox
+  FractionalTranslation
+  SlideTransition
+  FadeTransition
+  IgnorePointer
+  FractionalTranslation
+  SlideTransition
+  FadeTransition
+  DualTransitionBuilder
+  _FadeForwardsPageTransition
+  _PredictiveBackGestureDetector
+  _PageTransitionsThemeTransitions<void>
+  ListenableBuilder
+  RepaintBoundary
+  _FocusInheritedScope
+  Semantics
+  _FocusScopeWithExternalFocusNode
+  PrimaryScrollController
+  _ActionsScope
+  Actions
+  Builder
+  PageStorage
+  Offstage
+  _ModalScopeStatus
+  UnmanagedRestorationScope
+  RestorationScope
+  AnimatedBuilder
+  _ModalScope<void>
+  Semantics
+  Builder
+  _RenderTheaterMarker
+  _EffectiveTickerMode
+  TickerMode
+  _OverlayEntryWidget
+  _Theater
+  Overlay
+  UnmanagedRestorationScope
+  _FocusInheritedScope
+  Focus
+  _FocusInheritedScope
+  Focus
+  FocusTraversalGroup
+  AbsorbPointer
+  Listener
+  NotificationListener<NavigationNotification>
+  HeroControllerScope
+  Navigator
+  HeroControllerScope
+  GoRouterStateRegistryScope
+  _CustomNavigator
+  InheritedGoRouter
+  Builder
+  _RouterScope
+  UnmanagedRestorationScope
+  Router<Object>
+  DefaultSelectionStyle
+  _ScaffoldMessengerScope
+  ScaffoldMessenger
+  DefaultSelectionStyle
+  IconTheme
+  IconTheme
+  InheritedCupertinoTheme
+  CupertinoTheme
+  _InheritedTheme
+  Theme
+  AnimatedTheme
+  Builder
+  DefaultTextStyle
+  ValueListenableBuilder<bool>
+  CustomPaint
+  Banner
+  CheckedModeBanner
+  Semantics
+  _FocusInheritedScope
+  Focus
+  Title
+  Directionality
+  _LocalizationsScope
+  Semantics
+  Localizations
+  ListenableBuilder
+  Semantics
+  _FocusInheritedScope
+  Focus
+  Shortcuts
+  _ShortcutRegistrarScope
+  ShortcutRegistrar
+  TapRegionSurface
+  _FocusInheritedScope
+  Focus
+  FocusTraversalGroup
+  _ActionsScope
+  Actions
+  Semantics
+  _FocusInheritedScope
+  Focus
+  Shortcuts
+  DefaultTextEditingShortcuts
+  Semantics
+  _FocusInheritedScope
+  Focus
+  Shortcuts
+  NotificationListener<NavigationNotification>
+  _SharedAppModel
+  SharedAppData
+  UnmanagedRestorationScope
+  RestorationScope
+  UnmanagedRestorationScope
+  RootRestorationScope
+  WidgetsApp
+  HeroControllerScope
+  ScrollConfiguration
+  MaterialApp
+  _InheritedProviderScope<UserProvider?>
+  ChangeNotifierProvider<UserProvider>
+  _FocusInheritedScope
+  _FocusScopeWithExternalFocusNode
+  _FocusInheritedScope
+  Focus
+  FocusTraversalGroup
+  MediaQuery
+  _MediaQueryFromView
+  _PipelineOwnerScope
+  _ViewScope
+  _RawViewInternal
+  RawView
+  View
+  RootWidget
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: true
+  Actual: <false>
+Password visibility button should be reachable.
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///Users/ice/Desktop/last%20semester/SWEN670/2026_fall_careconnect/frontend/test/team_alpha_accessibility/login_keyboard_test.dart:139:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///Users/ice/Desktop/last%20semester/SWEN670/2026_fall_careconnect/frontend/test/team_alpha_accessibility/login_keyboard_test.dart line 139
+The test description was:
+  Team Alpha: login keyboard navigation
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +0 -1: Team Alpha: login keyboard navigation [E]
+  Test failed. See exception logs above.
+  The test description was: Team Alpha: login keyboard navigation
+  
+00:01 +0 -1: Some tests failed.
+
+Failing tests:
+  /Users/ice/Desktop/last semester/SWEN670/2026_fall_careconnect/frontend/test/team_alpha_accessibility/login_keyboard_test.dart: Team Alpha: login keyboard navigation
