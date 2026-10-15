@@ -392,6 +392,7 @@ public class SchemaPatchRunner implements CommandLineRunner {
         applyEhrCanonicalSchemaPatches();
         applyEhrResourceJsonbPatch();
         applyEhrResourcePatientIdPatch();
+        applyEhrTypedProjectionDedupPatches();
         applyEhrIdentityReconciliationPatches();
         applyPatientAuditTimestampBackfill();
         applyEhrAuditTimestampZonePatches();
@@ -669,6 +670,38 @@ public class SchemaPatchRunner implements CommandLineRunner {
                 "V2610041300d - FK ehr_resource.patient_id -> patient.id",
                 foreignKeyIfMissing("fk_ehr_resource_patient", "ehr_resource",
                         "patient_id", "patient", "id", " ON DELETE CASCADE")
+        );
+    }
+
+    /**
+     * Required dedup unique indexes for the three Epic typed projection tables
+     * (Cononical_5_1 Step 6/Step 9; Team E brief S5). Each enforces one row per
+     * {@code (patient_id, source_id, external_*_id)} so a re-sync upserts rather than duplicates —
+     * the brief's non-negotiable rule, made an explicit invariant here rather than relying on
+     * {@code ddl-auto} alone (applyRequiredPatch, because a silently-missing unique key accumulates
+     * duplicates). {@code ddl-auto=update} creates each table with the matching {@code @UniqueConstraint}
+     * of the same name on first boot, so {@code IF NOT EXISTS} makes these a no-op there; they bite
+     * only on a database where the table exists without the constraint.
+     */
+    private void applyEhrTypedProjectionDedupPatches() {
+        if (!isPostgreSql()) {
+            log.info("Skipping PostgreSQL ehr typed-projection dedup patches for non-PostgreSQL datasource");
+            return;
+        }
+        applyRequiredPatch(
+                "V2610151200a - unique ehr_medication_record(patient_id, source_id, external_medication_id)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_ehr_medication_record_source_external "
+                        + "ON ehr_medication_record (patient_id, source_id, external_medication_id)"
+        );
+        applyRequiredPatch(
+                "V2610151200b - unique ehr_condition_record(patient_id, source_id, external_condition_id)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_ehr_condition_record_source_external "
+                        + "ON ehr_condition_record (patient_id, source_id, external_condition_id)"
+        );
+        applyRequiredPatch(
+                "V2610151200c - unique ehr_observation_record(patient_id, source_id, external_observation_id)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_ehr_observation_record_source_external "
+                        + "ON ehr_observation_record (patient_id, source_id, external_observation_id)"
         );
     }
 

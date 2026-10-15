@@ -63,7 +63,9 @@ class EpicSyncServiceCanonicalWriteTest {
                 patientRepository,
                 sourceResolver,
                 crosswalkRepo,
-                rawPayloadRepo);
+                rawPayloadRepo,
+                mock(EpicCanonicalProjector.class),
+                mock(EpicIdentitySync.class));
     }
 
     private static Patient patientWithId(final long id) {

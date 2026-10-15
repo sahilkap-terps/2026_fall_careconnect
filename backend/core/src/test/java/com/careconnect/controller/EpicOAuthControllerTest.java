@@ -1,8 +1,10 @@
 package com.careconnect.controller;
 
 import com.careconnect.config.EpicProperties;
+import com.careconnect.ehr.reconciliation.IdentityReconciler;
 import com.careconnect.model.User;
 import com.careconnect.model.ehr.EhrCredential;
+import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.ehr.EhrResourceRepository;
 import com.careconnect.security.EpicAccessPolicy;
 import com.careconnect.service.ConsentService;
@@ -47,7 +49,8 @@ class EpicOAuthControllerTest {
 
     private EpicOAuthController newController() {
         return new EpicOAuthController(epic, stateStore, securityUtil, consentService,
-                syncService, resourceRepo, new ObjectMapper(), cfg, accessPolicy);
+                syncService, resourceRepo, new ObjectMapper(), cfg, accessPolicy,
+                mock(IdentityReconciler.class), mock(PatientRepository.class));
     }
 
     private User userWithId(long id) {

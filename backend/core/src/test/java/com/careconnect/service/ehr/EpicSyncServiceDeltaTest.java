@@ -63,7 +63,9 @@ class EpicSyncServiceDeltaTest {
                 patientRepository,
                 mock(EhrSourceResolver.class),
                 mock(EhrPatientCrosswalkRepository.class),
-                mock(EhrRawPayloadRepository.class));
+                mock(EhrRawPayloadRepository.class),
+                mock(EpicCanonicalProjector.class),
+                mock(EpicIdentitySync.class));
     }
 
     @Test

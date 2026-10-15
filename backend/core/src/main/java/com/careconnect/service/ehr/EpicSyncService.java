@@ -127,6 +127,10 @@ public class EpicSyncService {
     private final EhrSourceResolver sourceResolver;
     private final EhrPatientCrosswalkRepository crosswalkRepo;
     private final EhrRawPayloadRepository rawPayloadRepo;
+    // Typed projection (Team E brief S5 / Cononical_5_1 Step 6): med/condition/observation tables.
+    private final EpicCanonicalProjector canonicalProjector;
+    // Identity reconciliation (Team E brief S6 / Cononical_5_1 Step 7): ehr_source_identity + reconciler.
+    private final EpicIdentitySync identitySync;
 
     public EpicSyncService(EpicFhirClient fhirClient,
                            EhrResourceRepository resourceRepo,
@@ -142,7 +146,9 @@ public class EpicSyncService {
                            PatientRepository patientRepository,
                            EhrSourceResolver sourceResolver,
                            EhrPatientCrosswalkRepository crosswalkRepo,
-                           EhrRawPayloadRepository rawPayloadRepo) {
+                           EhrRawPayloadRepository rawPayloadRepo,
+                           EpicCanonicalProjector canonicalProjector,
+                           EpicIdentitySync identitySync) {
         this.fhirClient = fhirClient;
         this.resourceRepo = resourceRepo;
         this.statusGate = statusGate;
@@ -158,6 +164,8 @@ public class EpicSyncService {
         this.sourceResolver = sourceResolver;
         this.crosswalkRepo = crosswalkRepo;
         this.rawPayloadRepo = rawPayloadRepo;
+        this.canonicalProjector = canonicalProjector;
+        this.identitySync = identitySync;
     }
 
     /** How much of the patient record a sync pass pulls. */
@@ -367,6 +375,16 @@ public class EpicSyncService {
             log.warn("Epic sync skipped one {} resource for user {}: {}",
                     actualType, userId, ex.getClass().getSimpleName());
         }
+        // Feed demographics into identity reconciliation (Step 7), in its own transaction. Isolated
+        // from the mirror above so a reconcile failure never fails the sync.
+        if (PATIENT_TYPE.equals(actualType) && patientId != null && sourceId != null) {
+            try {
+                identitySync.syncFromPatient(patientId, sourceId, resource);
+            } catch (final RuntimeException ex) {
+                log.warn("Epic identity reconcile skipped for user {}: {}",
+                        userId, ex.getClass().getSimpleName());
+            }
+        }
     }
 
     private static String resourceTypeOf(final JsonNode resource) {
@@ -433,6 +451,9 @@ public class EpicSyncService {
         // canonical ids could not be resolved (see syncNow).
         if (patientId != null && sourceId != null) {
             writeRawPayload(patientId, sourceId, resourceType, fhirId, resource);
+            // Typed projection (Team E brief S5 / Cononical_5_1 Step 6): med/condition/observation.
+            // No-op for other resource types; same per-resource transaction, so it shares fail-isolation.
+            canonicalProjector.project(patientId, sourceId, resourceType, resource);
         }
 
         // Only emit for resource types the chunker can index (skip Patient/Practitioner, etc.).
@@ -550,8 +571,10 @@ public class EpicSyncService {
         if (patientId != null && sourceId != null) {
             final int rawDeleted = rawPayloadRepo.deleteByPatientIdAndSourceId(patientId, sourceId);
             final int crosswalkDeleted = crosswalkRepo.deleteByPatientIdAndSourceId(patientId, sourceId);
+            final int typedDeleted = canonicalProjector.deleteAllForPatientAndSource(patientId, sourceId);
             log.info("Epic disconnect canonical cleanup for user {} (patient {}): {} raw-payload row(s), "
-                    + "{} crosswalk row(s) removed", userId, patientId, rawDeleted, crosswalkDeleted);
+                    + "{} crosswalk row(s), {} typed projection row(s) removed",
+                    userId, patientId, rawDeleted, crosswalkDeleted, typedDeleted);
         } else {
             log.warn("Epic disconnect canonical cleanup skipped for user {}: patientId or sourceId "
                     + "unresolved (patientId={}, sourceId={})", userId, patientId, sourceId);
