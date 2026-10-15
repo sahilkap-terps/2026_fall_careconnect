@@ -25,10 +25,17 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.env.PropertiesPropertySourceLoader;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.lang.reflect.Constructor;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -36,6 +43,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -606,6 +614,31 @@ class EmergencyPassportServiceTest {
                 .tokenHash(new BCryptPasswordEncoder(4).encode(raw))
                 .status(EmergencyPassportToken.Status.ACTIVE)
                 .build();
+    }
+
+    @Test
+    @Disabled("DEF-EMG-07: the default scan URL is {frontend.base-url}/passport/{code}, but the web app routes by "
+            + "URL fragment (HashUrlStrategy), so a scanned code opens the welcome page. Enable when the fix lands "
+            + "(suggested patch, PR #339 review).")
+    @DisplayName("TC-EMG-254: by default a code's URL opens the web app's scan route, {frontend.base-url}/#/passport, "
+            + "both from application.properties and from the constructor's own fallback")
+    void defaultScanUrlUsesTheWebAppsHashRoute() throws Exception {
+        StandardEnvironment env = new StandardEnvironment();
+        env.getPropertySources().addFirst(
+                new MapPropertySource("frontend", Map.of("frontend.base-url", "https://app.example.test")));
+        for (PropertySource<?> source : new PropertiesPropertySourceLoader()
+                .load("main", new FileSystemResource("src/main/resources/application.properties"))) {
+            env.getPropertySources().addLast(source);
+        }
+        assertThat(env.getProperty("careconnect.passport.base-url")).isEqualTo("https://app.example.test/#/passport");
+
+        Constructor<?> wired = EmergencyPassportService.class.getConstructor(
+                EmergencyPassportProfileRepository.class, EmergencyPassportFieldVisibilityRepository.class,
+                EmergencyPassportTokenRepository.class, PatientRepository.class, AllergyRepository.class,
+                MedicationRepository.class, TokenHashService.class, String.class);
+        String fallback = wired.getParameters()[7].getAnnotation(Value.class).value()
+                .replace("${careconnect.passport.base-url:", "${absent.key:");
+        assertThat(env.resolvePlaceholders(fallback)).isEqualTo("https://app.example.test/#/passport");
     }
 
     /**
