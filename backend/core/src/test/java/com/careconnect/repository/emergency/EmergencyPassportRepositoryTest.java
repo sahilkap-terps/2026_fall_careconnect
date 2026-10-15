@@ -8,6 +8,7 @@ import com.careconnect.model.emergency.PassportField;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
@@ -26,8 +27,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * which skips its PostgreSQL patches on H2; {@link EmergencyPassportSchemaPostgresTest} covers those.
  * Patient ids are bare longs here because H2 has no foreign key to satisfy.
  * <p>
- * Test IDs TC-EMG-029…035 (the author's) and TC-EMG-044…049 (the Testing Lead's) are permanent,
- * Test Plan §3.23. Never renumber, never reuse.
+ * Test IDs TC-EMG-029…035 and 065, 066 (the author's) and TC-EMG-044…049 and 126 (the Testing Lead's) are permanent,
+ * Test Plan §3.23 (Increment 1) and §3.24 (Increment 2). Never renumber, never reuse.
  */
 @DataJpaTest
 @ActiveProfiles("test")
@@ -42,6 +43,9 @@ class EmergencyPassportRepositoryTest {
 
     @Autowired
     private EmergencyPassportTokenRepository tokenRepository;
+
+    @Autowired
+    private TestEntityManager entityManager;
 
     @Test
     @DisplayName("TC-EMG-029: a profile round-trips every field, blood type stored by enum name")
@@ -217,7 +221,7 @@ class EmergencyPassportRepositoryTest {
     // ---- Increment 2: emergency_passport_token ----
 
     @Test
-    @DisplayName("a code is found by its lookup prefix, and active codes by patient")
+    @DisplayName("TC-EMG-065: a code is found by its lookup prefix, and active codes by patient")
     void tokenLookupAndActiveQuery() {
         tokenRepository.saveAndFlush(token(110L, "lookup-0000-0001", EmergencyPassportToken.Status.REVOKED));
         tokenRepository.saveAndFlush(token(110L, "lookup-0000-0002", EmergencyPassportToken.Status.ACTIVE));
@@ -229,13 +233,38 @@ class EmergencyPassportRepositoryTest {
     }
 
     @Test
-    @DisplayName("two codes cannot share a lookup prefix")
+    @DisplayName("TC-EMG-066: two codes cannot share a lookup prefix")
     void duplicateLookupIsRejected() {
         tokenRepository.saveAndFlush(token(111L, "lookup-dup-00001", EmergencyPassportToken.Status.ACTIVE));
 
         assertThatThrownBy(() -> tokenRepository.saveAndFlush(
                 token(112L, "lookup-dup-00001", EmergencyPassportToken.Status.ACTIVE)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-126: a code round-trips its status by name, its revocation and last-scan instants, and "
+            + "gets audit timestamps")
+    void tokenRoundTripsEveryField() {
+        java.time.Instant revoked = java.time.Instant.parse("2026-10-14T12:00:00Z");
+        java.time.Instant scanned = java.time.Instant.parse("2026-10-14T11:00:00Z");
+        EmergencyPassportToken saved = token(113L, "lookup-trip-0001", EmergencyPassportToken.Status.REVOKED);
+        saved.setRevokedAt(revoked);
+        saved.setLastScannedAt(scanned);
+        Long id = tokenRepository.saveAndFlush(saved).getId();
+        entityManager.clear();
+
+        EmergencyPassportToken read = tokenRepository.findById(id).orElseThrow();
+        assertThat(read.getStatus()).isEqualTo(EmergencyPassportToken.Status.REVOKED);
+        assertThat(read.isActive()).isFalse();
+        assertThat(read.getRevokedAt()).isEqualTo(revoked);
+        assertThat(read.getLastScannedAt()).isEqualTo(scanned);
+        assertThat(read.getCreatedAt()).isNotNull();
+        assertThat(read.getUpdatedAt()).isNotNull();
+        Object status = entityManager.getEntityManager()
+                .createNativeQuery("select status from emergency_passport_token where id = :id")
+                .setParameter("id", id).getSingleResult();
+        assertThat(status.toString()).isEqualTo("REVOKED");
     }
 
     private static EmergencyPassportToken token(long patientId, String lookup, EmergencyPassportToken.Status status) {

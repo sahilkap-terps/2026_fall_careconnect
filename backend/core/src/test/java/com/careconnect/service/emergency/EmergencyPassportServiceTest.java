@@ -9,6 +9,7 @@ import com.careconnect.model.Allergy;
 import com.careconnect.model.Medication;
 import com.careconnect.model.Patient;
 import com.careconnect.model.emergency.BloodType;
+import com.careconnect.model.emergency.EmergencyPassportFieldVisibility;
 import com.careconnect.model.emergency.EmergencyPassportProfile;
 import com.careconnect.model.emergency.EmergencyPassportToken;
 import com.careconnect.model.emergency.PassportField;
@@ -20,9 +21,11 @@ import com.careconnect.repository.emergency.EmergencyPassportProfileRepository;
 import com.careconnect.repository.emergency.EmergencyPassportTokenRepository;
 import com.careconnect.security.TokenHashService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -42,6 +45,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,7 +57,7 @@ import static org.mockito.Mockito.when;
  * Token hashing is real BCrypt (at the minimum cost, for speed) rather than a mock, so a test that
  * passes proves the stored hash actually verifies the raw token the patient was given.
  * <p>
- * No Test Plan IDs yet: they are issued by the Testing Lead, not chosen by the author.
+ * Test Plan §3.24.3: TC-EMG-072…092 (author) and TC-EMG-105…115 (Testing Lead). Test IDs are permanent.
  */
 class EmergencyPassportServiceTest {
 
@@ -107,7 +111,7 @@ class EmergencyPassportServiceTest {
     // ---- Making and revoking codes ----
 
     @Test
-    @DisplayName("a new code stores only its prefix and a hash that verifies the raw token")
+    @DisplayName("TC-EMG-072: a new code stores only its prefix and a hash that verifies the raw token")
     void newCodeStoresPrefixAndVerifyingHash() {
         // Arrange
         when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of());
@@ -128,7 +132,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("making a new code revokes the active one before inserting")
+    @DisplayName("TC-EMG-073: making a new code revokes the active one before inserting")
     void newCodeRevokesTheOldOne() {
         EmergencyPassportToken old = activeToken("unused-raw-token-value-0000000000");
         when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of(old));
@@ -141,7 +145,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("revoking with no active code is a no-op, not an error")
+    @DisplayName("TC-EMG-074: revoking with no active code is a no-op, not an error")
     void revokeWithoutActiveCodeIsIdempotent() {
         when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of());
 
@@ -153,7 +157,7 @@ class EmergencyPassportServiceTest {
     // ---- Which codes a scan accepts ----
 
     @Test
-    @DisplayName("an unknown code is rejected without any hashing")
+    @DisplayName("TC-EMG-075: an unknown code is rejected without any hashing")
     void unknownCodeIsRejectedCheaply() {
         when(tokens.findByTokenLookup(anyString())).thenReturn(Optional.empty());
 
@@ -162,7 +166,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("too-short and too-long codes are rejected before any lookup")
+    @DisplayName("TC-EMG-076: too-short and too-long codes are rejected before any lookup")
     void malformedCodesAreRejectedBeforeLookup() {
         assertThat(service.scan("short")).isEmpty();
         assertThat(service.scan("x".repeat(200))).isEmpty();
@@ -171,7 +175,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("a revoked code shows nothing")
+    @DisplayName("TC-EMG-077: a revoked code shows nothing")
     void revokedCodeShowsNothing() {
         String raw = "revokedTokenAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
         EmergencyPassportToken token = activeToken(raw);
@@ -182,7 +186,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("a code with the right prefix but the wrong secret shows nothing")
+    @DisplayName("TC-EMG-078: a code with the right prefix but the wrong secret shows nothing")
     void rightPrefixWrongSecretShowsNothing() {
         String raw = "sharedPrefix0000realSecretAAAAAAAAAAAAAAAAA";
         when(tokens.findByTokenLookup(raw.substring(0, 16))).thenReturn(Optional.of(activeToken(raw)));
@@ -193,7 +197,7 @@ class EmergencyPassportServiceTest {
     // ---- What a scan reveals ----
 
     @Test
-    @DisplayName("with nothing shared, a scan shows name and age only")
+    @DisplayName("TC-EMG-079: with nothing shared, a scan shows name and age only")
     void nothingSharedShowsNameAndAgeOnly() {
         String raw = stubActiveCode();
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
@@ -210,7 +214,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("a scan shows exactly the shared sections, and only approved medications")
+    @DisplayName("TC-EMG-080: a scan shows exactly the shared sections, and only approved medications")
     void sharedSectionsAreShownAndHiddenOnesAreNot() {
         String raw = stubActiveCode();
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(
@@ -232,7 +236,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("a shared section with nothing in it is left out, not shown as empty")
+    @DisplayName("TC-EMG-081: a shared section with nothing in it is left out, not shown as empty")
     void emptySharedListIsAbsent() {
         String raw = stubActiveCode();
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(PassportField.ALLERGIES));
@@ -242,7 +246,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("a successful scan records when it happened")
+    @DisplayName("TC-EMG-082: a successful scan records when it happened")
     void scanRecordsLastScannedAt() {
         String raw = stubActiveCode();
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
@@ -257,7 +261,7 @@ class EmergencyPassportServiceTest {
     // ---- How current a passport is ----
 
     @Test
-    @DisplayName("a scan's lastUpdated is the latest change to the shown sections; a newer hidden section never counts")
+    @DisplayName("TC-EMG-083: a scan's lastUpdated is the latest change to the shown sections; a newer hidden section never counts")
     void scanLastUpdatedCountsShownSectionsOnly() {
         String raw = stubActiveCode();
         stubSectionDates();
@@ -272,7 +276,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("a recently edited hidden profile section does not move a scan's lastUpdated")
+    @DisplayName("TC-EMG-084: a recently edited hidden profile section does not move a scan's lastUpdated")
     void hiddenProfileEditDoesNotCount() {
         String raw = stubActiveCode();
         stubSectionDates();
@@ -285,7 +289,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("a medication that is not approved does not make the passport look newer")
+    @DisplayName("TC-EMG-085: a medication that is not approved does not make the passport look newer")
     void unapprovedMedicationDoesNotCount() {
         String raw = stubActiveCode();
         stubSectionDates();
@@ -296,7 +300,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("with nothing shown, a scan has no lastUpdated")
+    @DisplayName("TC-EMG-086: with nothing shown, a scan has no lastUpdated")
     void nothingShownHasNoLastUpdated() {
         String raw = stubActiveCode();
         stubSectionDates();
@@ -309,7 +313,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("the patient's view dates every section with content, shared or not, and falls back to created_at")
+    @DisplayName("TC-EMG-087: the patient's view dates every section with content, shared or not, and falls back to created_at")
     void patientViewDatesEverySection() {
         stubSectionDates();
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
@@ -330,7 +334,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("an empty section has no date in the patient's view")
+    @DisplayName("TC-EMG-088: an empty section has no date in the patient's view")
     void emptySectionHasNoDate() {
         stubSectionDates();
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
@@ -348,7 +352,7 @@ class EmergencyPassportServiceTest {
     // ---- The patient's own view and edits ----
 
     @Test
-    @DisplayName("the passport is ready only with an active code and at least one shared section")
+    @DisplayName("TC-EMG-089: the passport is ready only with an active code and at least one shared section")
     void readyNeedsActiveCodeAndASharedSection() {
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(PassportField.ALLERGIES));
         when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of());
@@ -367,7 +371,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("saving the profile trims values and stores blanks as empty")
+    @DisplayName("TC-EMG-090: saving the profile trims values and stores blanks as empty")
     void profileIsTrimmedAndBlanksCleared() {
         when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of());
         when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
@@ -384,7 +388,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("an over-long field is rejected with 400")
+    @DisplayName("TC-EMG-091: an over-long field is rejected with 400")
     void overLongFieldIsRejected() {
         ProfileRequest tooLong = new ProfileRequest(null, null, null, null, "1".repeat(33));
 
@@ -394,7 +398,7 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @DisplayName("age is read from ISO and MM/DD/YYYY birth dates, and is absent otherwise")
+    @DisplayName("TC-EMG-092: age is read from ISO and MM/DD/YYYY birth dates, and is absent otherwise")
     void ageHandlesBothStoredFormats() {
         assertThat(service.ageOf("1985-06-14")).isEqualTo(41);
         assertThat(service.ageOf("06/14/1985")).isEqualTo(41);
@@ -402,6 +406,193 @@ class EmergencyPassportServiceTest {
         assertThat(service.ageOf("June 1985")).isNull();
         assertThat(service.ageOf("2030-01-01")).as("future").isNull();
         assertThat(service.ageOf(null)).isNull();
+    }
+
+    // ---- Testing Lead cases (TC-EMG-105…115) ----
+
+    @Test
+    @DisplayName("TC-EMG-105: every patient operation on a patient that does not exist is 404, and nothing is written")
+    void unknownPatientIsNotFoundEverywhere() {
+        long nobody = 999L;
+        when(patients.findById(nobody)).thenReturn(Optional.empty());
+        List<Runnable> operations = List.of(
+                () -> service.getPassport(nobody),
+                () -> service.updateProfile(nobody, new ProfileRequest(BloodType.A_POSITIVE, null, null, null, null)),
+                () -> service.setVisibility(nobody, PassportField.ALLERGIES, true),
+                () -> service.regenerateToken(nobody),
+                () -> service.revokeToken(nobody));
+
+        for (Runnable operation : operations) {
+            assertThatThrownBy(operation::run)
+                    .isInstanceOf(AppException.class)
+                    .extracting(e -> ((AppException) e).getStatus())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+        }
+        verify(profiles, never()).save(any());
+        verify(visibility, never()).save(any());
+        verify(tokens, never()).saveAndFlush(any());
+        verify(tokens, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("TC-EMG-106: a profile update with no body is 400 and saves nothing")
+    void missingProfileBodyIsBadRequest() {
+        assertThatThrownBy(() -> service.updateProfile(PATIENT_ID, null))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getStatus())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(profiles, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-EMG-107: a valid code whose patient record is gone shows nothing and records no scan")
+    void codeForMissingPatientShowsNothing() {
+        String raw = stubActiveCode();
+        when(patients.findById(PATIENT_ID)).thenReturn(Optional.empty());
+
+        assertThat(service.scan(raw)).isEmpty();
+        verify(tokens, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-EMG-108: a first sharing choice creates the patient's row for that field; a later one changes "
+            + "the same row")
+    void visibilityCreatesThenUpdatesTheRow() {
+        when(visibility.findByPatientIdAndFieldKey(PATIENT_ID, PassportField.ALLERGIES)).thenReturn(Optional.empty());
+        service.setVisibility(PATIENT_ID, PassportField.ALLERGIES, true);
+        ArgumentCaptor<EmergencyPassportFieldVisibility> created =
+                ArgumentCaptor.forClass(EmergencyPassportFieldVisibility.class);
+        verify(visibility).save(created.capture());
+        EmergencyPassportFieldVisibility row = created.getValue();
+        assertThat(row.getPatientId()).isEqualTo(PATIENT_ID);
+        assertThat(row.getFieldKey()).isEqualTo(PassportField.ALLERGIES);
+        assertThat(row.getIsPublic()).isTrue();
+
+        when(visibility.findByPatientIdAndFieldKey(PATIENT_ID, PassportField.ALLERGIES)).thenReturn(Optional.of(row));
+        service.setVisibility(PATIENT_ID, PassportField.ALLERGIES, false);
+        assertThat(row.getIsPublic()).isFalse();
+        verify(visibility, times(2)).save(row);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-109: the first profile save creates the patient's profile row")
+    void firstProfileSaveCreatesTheRow() {
+        when(profiles.findByPatientId(PATIENT_ID)).thenReturn(Optional.empty());
+
+        service.updateProfile(PATIENT_ID, new ProfileRequest(BloodType.B_NEGATIVE, null, null, null, null));
+
+        ArgumentCaptor<EmergencyPassportProfile> saved = ArgumentCaptor.forClass(EmergencyPassportProfile.class);
+        verify(profiles).save(saved.capture());
+        assertThat(saved.getValue().getPatientId()).isEqualTo(PATIENT_ID);
+        assertThat(saved.getValue().getBloodType()).isEqualTo(BloodType.B_NEGATIVE);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-110: a contact with only a phone is shown; one with neither name nor phone is absent and "
+            + "has no date")
+    void contactNeedsANameOrAPhone() {
+        String raw = stubActiveCode();
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(PassportField.EMERGENCY_CONTACT));
+        EmergencyPassportProfile phoneOnly = EmergencyPassportProfile.builder()
+                .patientId(PATIENT_ID).emergencyContactPhone("(555) 010-0110").build();
+        when(profiles.findByPatientId(PATIENT_ID)).thenReturn(Optional.of(phoneOnly));
+        assertThat(service.scan(raw).orElseThrow().emergencyContact())
+                .satisfies(c -> {
+                    assertThat(c.phone()).isEqualTo("(555) 010-0110");
+                    assertThat(c.name()).isNull();
+                });
+
+        EmergencyPassportProfile relationshipOnly = EmergencyPassportProfile.builder()
+                .patientId(PATIENT_ID).emergencyContactRelationship("Neighbour").build();
+        relationshipOnly.setUpdatedAt(LocalDateTime.ofInstant(PROFILE_CHANGED, ZoneId.systemDefault()));
+        when(profiles.findByPatientId(PATIENT_ID)).thenReturn(Optional.of(relationshipOnly));
+        PublicPassport passport = service.scan(raw).orElseThrow();
+        assertThat(passport.emergencyContact()).isNull();
+        assertThat(passport.lastUpdated()).isNull();
+        assertThat(service.getPassport(PATIENT_ID).lastUpdatedBySection())
+                .doesNotContainKey(PassportField.EMERGENCY_CONTACT);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-111: revoking catches every ACTIVE row for the patient, even one that should not exist")
+    void everyActiveRowIsRevoked() {
+        EmergencyPassportToken first = activeToken("firstActiveCodeAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        EmergencyPassportToken second = activeToken("secondActiveCodeAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE))
+                .thenReturn(List.of(first, second));
+
+        service.revokeToken(PATIENT_ID);
+
+        assertThat(List.of(first, second)).allSatisfy(t -> {
+            assertThat(t.getStatus()).isEqualTo(EmergencyPassportToken.Status.REVOKED);
+            assertThat(t.getRevokedAt()).isEqualTo(CLOCK.instant());
+        });
+        verify(tokens).saveAllAndFlush(List.of(first, second));
+    }
+
+    @Test
+    @Disabled("DEF-EMG-04: blood type, conditions and contact share one profile updated_at, so an edit to a hidden "
+            + "profile section moves a scan's lastUpdated. Enable when the fix lands (suggested patch, PR #334 review).")
+    @DisplayName("TC-EMG-112: when a profile section with content is hidden, the profile row's date does not set a "
+            + "scan's lastUpdated, so a hidden edit cannot show through a shared section")
+    void hiddenProfileSectionKeepsTheProfileDateOutOfTheScan() {
+        String raw = stubActiveCode();
+        stubSectionDates();
+        // Conditions are hidden and were just edited; blood type is shared and has not changed since March.
+        profiles.findByPatientId(PATIENT_ID).orElseThrow()
+                .setUpdatedAt(LocalDateTime.ofInstant(Instant.parse("2026-10-01T09:00:00Z"), ZoneId.systemDefault()));
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(
+                PassportField.BLOOD_TYPE, PassportField.ALLERGIES));
+
+        PublicPassport passport = service.scan(raw).orElseThrow();
+
+        assertThat(passport.bloodType()).isEqualTo(BloodType.O_POSITIVE);
+        assertThat(passport.lastUpdated()).as("the allergies' date, not the hidden conditions' edit")
+                .isEqualTo(ALLERGY_CHANGED);
+    }
+
+    @Test
+    @DisplayName("TC-EMG-113: two codes made one after the other are different 43-character URL-safe strings")
+    void codesAreRandomAndUrlSafe() {
+        when(tokens.findByPatientIdAndStatus(PATIENT_ID, EmergencyPassportToken.Status.ACTIVE)).thenReturn(List.of());
+
+        String first = service.regenerateToken(PATIENT_ID).token();
+        String second = service.regenerateToken(PATIENT_ID).token();
+
+        assertThat(first).matches("[A-Za-z0-9_-]{43}");
+        assertThat(second).matches("[A-Za-z0-9_-]{43}");
+        assertThat(second).isNotEqualTo(first);
+        assertThat(second.substring(0, 16)).isNotEqualTo(first.substring(0, 16));
+    }
+
+    @Test
+    @DisplayName("TC-EMG-114: a scan's name is trimmed and tolerates a missing first or last name")
+    void displayNameIsTrimmedAndNullSafe() {
+        String raw = stubActiveCode();
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.noneOf(PassportField.class));
+        when(patients.findById(PATIENT_ID)).thenReturn(Optional.of(Patient.builder()
+                .id(PATIENT_ID).firstName("  Ana ").lastName(null).dob(null).build()));
+
+        PublicPassport passport = service.scan(raw).orElseThrow();
+
+        assertThat(passport.name()).isEqualTo("Ana");
+        assertThat(passport.age()).isNull();
+    }
+
+    @Test
+    @DisplayName("TC-EMG-115: shared profile sections for a patient with no profile row are absent and undated")
+    void sharedProfileSectionsWithoutAProfileAreAbsent() {
+        String raw = stubActiveCode();
+        when(profiles.findByPatientId(PATIENT_ID)).thenReturn(Optional.empty());
+        when(visibility.findPublicFields(PATIENT_ID)).thenReturn(EnumSet.of(
+                PassportField.BLOOD_TYPE, PassportField.CHRONIC_CONDITIONS, PassportField.EMERGENCY_CONTACT));
+
+        PublicPassport passport = service.scan(raw).orElseThrow();
+
+        assertThat(passport.bloodType()).isNull();
+        assertThat(passport.chronicConditions()).isNull();
+        assertThat(passport.emergencyContact()).isNull();
+        assertThat(passport.lastUpdated()).isNull();
     }
 
     // ---- Helpers ----

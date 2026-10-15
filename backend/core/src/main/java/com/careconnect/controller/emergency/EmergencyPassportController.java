@@ -14,6 +14,7 @@ import com.careconnect.service.emergency.EmergencyPassportService;
 import com.careconnect.service.emergency.PassportScanRateLimiter;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -102,9 +103,14 @@ public class EmergencyPassportController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Public. What a phone camera's scan of the QR shows (design screens 3 and 4). */
-    @GetMapping("/scan/{token}")
-    public ResponseEntity<?> scan(@PathVariable final String token, final HttpServletRequest request) {
+    /**
+     * Public. What a phone camera's scan of the QR shows (design screens 3 and 4). {@code /scan/} with no code is
+     * mapped too: {@code SecurityConfig}'s {@code /scan/*} lets it through, and without a handler it became the
+     * global handler's 500 (DEF-EMG-06). It gets the same 404 as any other code that is not active.
+     */
+    @GetMapping({"/scan/{token}", "/scan/"})
+    public ResponseEntity<?> scan(
+            @PathVariable(required = false) final String token, final HttpServletRequest request) {
         if (!rateLimiter.tryAcquire(clientKey(request))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .cacheControl(CacheControl.noStore())
@@ -134,6 +140,18 @@ public class EmergencyPassportController {
             return ResponseEntity.badRequest().body(Map.of("error", field + " must be one of: " + allowed));
         }
         return ResponseEntity.badRequest().body(Map.of("error", "Request body is malformed"));
+    }
+
+    /**
+     * Two saves for the same patient at the same moment, such as a double tap on "make a new code", can both pass
+     * the service's checks and then collide on a unique index (one ACTIVE code, one profile, one row per field).
+     * The database keeps exactly one; the loser is told to retry with 409 instead of the global handler's 500
+     * (DEF-EMG-05).
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, String>> concurrentSave(final DataIntegrityViolationException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Another change to this passport was saved at the same moment; try again"));
     }
 
     private Long currentPatientId(final Authentication authentication) {

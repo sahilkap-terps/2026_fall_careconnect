@@ -32,8 +32,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Every test runs in the {@code @DataJpaTest} transaction and is rolled back. PostgreSQL aborts the
  * transaction on a constraint violation, so an expected violation is always the last statement.
  * <p>
- * Test IDs TC-EMG-036…040 (the author's) and TC-EMG-050…053 (the Testing Lead's) are permanent,
- * Test Plan §3.23. Never renumber, never reuse.
+ * Test IDs TC-EMG-036…040 and 067…071 (the author's) and TC-EMG-050…053, 127, 128 (the Testing Lead's) are permanent,
+ * Test Plan §3.23 (Increment 1) and §3.24 (Increment 2). Never renumber, never reuse.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -169,7 +169,7 @@ class EmergencyPassportSchemaPostgresTest {
     // ---- Increment 2: emergency_passport_token ----
 
     @Test
-    @DisplayName("a patient cannot hold two ACTIVE passport codes")
+    @DisplayName("TC-EMG-067: a patient cannot hold two ACTIVE passport codes")
     void secondActiveCodeIsRejected() {
         long patient = newPatient();
         insertToken(patient, "lookup-active-01", "ACTIVE");
@@ -179,7 +179,7 @@ class EmergencyPassportSchemaPostgresTest {
     }
 
     @Test
-    @DisplayName("revoked codes do not count against the one-active rule")
+    @DisplayName("TC-EMG-068: revoked codes do not count against the one-active rule")
     void revokedCodesDoNotBlockANewActiveOne() {
         long patient = newPatient();
         insertToken(patient, "lookup-revoked-1", "REVOKED");
@@ -193,14 +193,14 @@ class EmergencyPassportSchemaPostgresTest {
     }
 
     @Test
-    @DisplayName("a passport code for a patient that does not exist is rejected")
+    @DisplayName("TC-EMG-069: a passport code for a patient that does not exist is rejected")
     void codeForUnknownPatientIsRejected() {
         assertThatThrownBy(() -> insertToken(unknownPatient(), "lookup-orphan-01", "ACTIVE"))
                 .hasMessageContaining("fk_emergency_passport_token_patient");
     }
 
     @Test
-    @DisplayName("deleting a patient removes their passport codes")
+    @DisplayName("TC-EMG-070: deleting a patient removes their passport codes")
     void deletingAPatientRemovesTheirCodes() {
         long patient = newPatient();
         insertToken(patient, "lookup-cascade-1", "ACTIVE");
@@ -215,7 +215,7 @@ class EmergencyPassportSchemaPostgresTest {
     }
 
     @Test
-    @DisplayName("created_at and updated_at on emergency_passport_token are TIMESTAMPTZ")
+    @DisplayName("TC-EMG-071: created_at and updated_at on emergency_passport_token are TIMESTAMPTZ")
     void tokenTimestampsAreZoneAware() {
         @SuppressWarnings("unchecked")
         List<Object> types = entityManager
@@ -225,6 +225,40 @@ class EmergencyPassportSchemaPostgresTest {
                 .getResultList();
 
         assertThat(types).hasSize(2).containsOnly("timestamp with time zone");
+    }
+
+    @Test
+    @DisplayName("TC-EMG-127: emergency_passport_token's columns have the types, lengths and nullability the entity "
+            + "states, and revoked_at / last_scanned_at are TIMESTAMPTZ")
+    void tokenColumnsMatchTheEntity() {
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager
+                .createNativeQuery("select column_name, data_type, character_maximum_length, is_nullable"
+                        + " from information_schema.columns where table_schema = current_schema()"
+                        + " and table_name = 'emergency_passport_token' order by column_name")
+                .getResultList();
+        java.util.Map<String, String> columns = new java.util.TreeMap<>();
+        for (Object[] row : rows) {
+            columns.put((String) row[0], row[1] + "/" + row[2] + "/" + row[3]);
+        }
+        assertThat(columns)
+                .containsEntry("patient_id", "bigint/null/NO")
+                .containsEntry("token_lookup", "character varying/32/NO")
+                .containsEntry("token_hash", "character varying/255/NO")
+                .containsEntry("status", "character varying/20/NO")
+                .containsEntry("revoked_at", "timestamp with time zone/null/YES")
+                .containsEntry("last_scanned_at", "timestamp with time zone/null/YES");
+    }
+
+    @Test
+    @DisplayName("TC-EMG-128: the database accepts only ACTIVE and REVOKED as a code's status (Hibernate's CHECK), "
+            + "so a new status needs a patch that replaces the CHECK")
+    void tokenStatusIsCheckedByTheDatabase() {
+        long patient = newPatient();
+        insertToken(patient, "lookup-status-01", "REVOKED");
+
+        assertThatThrownBy(() -> insertToken(patient, "lookup-status-02", "EXPIRED"))
+                .hasMessageContaining("emergency_passport_token_status_check");
     }
 
     private long newPatient() {

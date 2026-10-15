@@ -23,10 +23,10 @@ import static org.mockito.Mockito.when;
 
 /**
  * The CC-12 Increment 1 patches V2610131200a…f that {@code SchemaPatchRunner} applies on PostgreSQL
- * (Test Plan §3.23, TC-EMG-041…043). The JDBC objects are mocks, so this pins the statements the
+ * (Test Plan §3.23, TC-EMG-041…043; §3.24, TC-EMG-064). The JDBC objects are mocks, so this pins the statements the
  * runner issues; {@code EmergencyPassportSchemaPostgresTest} shows what they do to a real database.
  * <p>
- * Test IDs TC-EMG-041…043 are permanent. Never renumber, never reuse.
+ * Test IDs TC-EMG-041…043 and 064 (Increment 2, the author's) are permanent. Never renumber, never reuse.
  */
 class SchemaPatchRunnerEmergencyPassportTest {
 
@@ -89,7 +89,7 @@ class SchemaPatchRunnerEmergencyPassportTest {
     }
 
     @Test
-    @DisplayName("on PostgreSQL the runner then issues V2610131300a…d for the token table: lookup and one-active "
+    @DisplayName("TC-EMG-064: on PostgreSQL the runner then issues V2610131300a…d for the token table: lookup and one-active "
             + "unique indexes, a cascading foreign key to patient and two TIMESTAMPTZ conversions")
     void postgresIssuesEveryTokenPatchAfterIncrementOne() throws Exception {
         runnerOn("PostgreSQL").applyEmergencyPassportPatches();
