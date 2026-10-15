@@ -21,6 +21,7 @@ import 'package:care_connect_app/features/stml/presentation/pages/stml_checkin_p
 import 'package:care_connect_app/features/stml/presentation/pages/stml_checkin_patient_selection_page.dart';
 import 'package:care_connect_app/features/summary/summary_confirmation_list.dart';
 import 'package:care_connect_app/features/health/symptom-tracker/pages/symptom_allergies_tracker_screen.dart';
+import 'package:care_connect_app/features/emergency_passport/pages/passport_scan_page.dart';
 import 'package:care_connect_app/features/health/health_data/pages/dob_confirmation_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_data_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/medicare_connect_page.dart';
@@ -251,6 +252,13 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       builder: (_, __) => MedicareConnectPage(
         result: MedicareConnectPage.takePendingResult(),
       ),
+    ),
+    // CC-12: what a phone camera opens after scanning a patient's emergency
+    // QR code. Public on purpose: whoever scans it at a scene has no account.
+    GoRoute(
+      path: '/passport/:token',
+      builder: (_, state) =>
+          PassportScanPage(token: state.pathParameters['token'] ?? ''),
     ),
     GoRoute(
       path: '/ui-preview',
