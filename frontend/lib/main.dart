@@ -222,7 +222,6 @@ class _CareConnectAppState extends State<CareConnectApp>
     with WidgetsBindingObserver {
   StreamSubscription? _linkSubscription;
   late AppLinks _appLinks;
-  Locale? _localeOverride;
 
   @override
   void initState() {
