@@ -11,6 +11,8 @@ import com.careconnect.repository.UserRepository;
 import com.careconnect.repository.ehr.EhrCoverageRecordRepository;
 import com.careconnect.repository.ehr.EhrPatientCrosswalkRepository;
 import com.careconnect.repository.ehr.EhrVisitRecordRepository;
+import com.careconnect.exception.AppException;
+import com.careconnect.security.MedicareAccessPolicy;
 import org.hl7.fhir.r4.model.Coverage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.context.SecurityContextImpl;
@@ -29,6 +32,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -37,7 +42,7 @@ import static org.mockito.Mockito.when;
  * {@code EhrService}: finding the signed-in patient's linked Medicare row, the acting user for the audit
  * log, upserting coverage and visit rows, and the shared FHIR context's HTTP client setup (DEF-MCR-06).
  * <p>
- * Test IDs TC-MCR-CACHE-043..052 are permanent. Never renumber, never reuse.
+ * Test IDs TC-MCR-CACHE-043..052 and TC-MCR-AUTHZ-037, 041, 042 are permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
 class EhrServiceTest {
@@ -55,6 +60,8 @@ class EhrServiceTest {
     EhrCoverageRecordRepository coverages;
     @Mock
     EhrVisitRecordRepository visits;
+    @Mock
+    MedicareAccessPolicy accessPolicy;
     @InjectMocks
     EhrService service;
 
@@ -216,5 +223,42 @@ class EhrServiceTest {
         assertThat(EhrService.ctxR4.getRestfulClientFactory())
                 .isInstanceOf(ApacheRestfulClientFactory.class)
                 .isNotExactlyInstanceOf(ApacheRestfulClientFactory.class);
+    }
+
+    // FR-MCR-16, FR-MCR-17, BR-02: who may read a patient's Medicare data by patient id is
+    // MedicareAccessPolicy's decision (TC-MCR-AUTHZ-001…030); EhrService only hands it the signed-in caller.
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-041: the signed-in caller, loaded by the token's email, and the patient id go to the access policy")
+    void requireMedicareAccessAsksThePolicy() {
+        signIn();
+        final User caller = User.builder().id(12L).email(EMAIL).build();
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(caller));
+
+        service.requireMedicareAccess(2L);
+
+        verify(accessPolicy).requireMedicareAccess(caller, 2L);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-042: signed out, the policy is asked with no caller, nothing is looked up, and its 404 reaches the caller")
+    void signedOutIsRefusedByThePolicy() {
+        doThrow(new AppException(HttpStatus.NOT_FOUND, "Medicare data not found"))
+                .when(accessPolicy).requireMedicareAccess(null, 2L);
+
+        assertThatThrownBy(() -> service.requireMedicareAccess(2L))
+                .isInstanceOf(AppException.class)
+                .satisfies(e -> assertThat(((AppException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-037: a patient's crosswalk by patient id is returned only when the link is complete")
+    void crosswalkForPatientNeedsCompletedLink() {
+        when(crosswalks.findByPatientIdAndSourceId(2L, MEDICARE)).thenReturn(Optional.of(crosswalk("encrypted-token")));
+        assertThat(service.getCrosswalkForPatient(2L, MEDICARE)).isPresent();
+
+        when(crosswalks.findByPatientIdAndSourceId(3L, MEDICARE)).thenReturn(Optional.of(crosswalk(null)));
+        assertThat(service.getCrosswalkForPatient(3L, MEDICARE)).isEmpty();
     }
 }
