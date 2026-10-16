@@ -102,24 +102,32 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
     if (_code != null) {
       final ok = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Make a new code?'),
-          content: const Text(
-            'Your current QR code will stop working right away. If you saved '
-            'it as a picture or lock screen, save the new one too.',
-            style: TextStyle(fontSize: 16, height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
+        builder: (ctx) {
+          // DEF-EMG-12: the light theme's cyan button text was 2.85:1 on the
+          // white dialog; the theme's own text colour reads in both themes.
+          final actionStyle = TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.onSurface);
+          return AlertDialog(
+            title: const Text('Make a new code?'),
+            content: const Text(
+              'Your current QR code will stop working right away. If you saved '
+              'it as a picture or lock screen, save the new one too.',
+              style: TextStyle(fontSize: 16, height: 1.4),
             ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Make new code'),
-            ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                style: actionStyle,
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                style: actionStyle,
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Make new code'),
+              ),
+            ],
+          );
+        },
       );
       if (ok != true || !mounted) return;
     }
@@ -385,14 +393,21 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
           child: Row(
             children: [
               Expanded(
+                flex: 3,
                 child: Text(label,
                     style: const TextStyle(fontSize: 16, color: _text)),
               ),
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: shown ? _green : _muted)),
+              // DEF-EMG-13: wraps at large text sizes instead of pushing the
+              // row off screen.
+              Flexible(
+                flex: 2,
+                child: Text(value,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: shown ? _green : _muted)),
+              ),
             ],
           ),
         ),
@@ -448,8 +463,10 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
     required IconData icon,
     required VoidCallback? onPressed,
   }) =>
-      SizedBox(
-        height: 52,
+      // DEF-EMG-13: a minimum, not a fixed, height, so a label that wraps at
+      // large text sizes is not cut off.
+      ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 52),
         child: ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: _teal,
@@ -469,8 +486,9 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
     required String label,
     required VoidCallback? onPressed,
   }) =>
-      SizedBox(
-        height: 48,
+      // DEF-EMG-13: as for the primary button.
+      ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
         child: OutlinedButton(
           style: OutlinedButton.styleFrom(
             foregroundColor: _teal,
@@ -494,9 +512,14 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
         child: child,
       );
 
-  Widget _title(String text) => Text(text,
-      style: const TextStyle(
-          fontSize: 20, fontWeight: FontWeight.w700, color: _text));
+  // DEF-EMG-14: a card's title is a heading for screen readers, as it is on
+  // screen.
+  Widget _title(String text) => Semantics(
+        header: true,
+        child: Text(text,
+            style: const TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w700, color: _text)),
+      );
 
   Widget _body(String text) => Text(text,
       style: const TextStyle(fontSize: 16, height: 1.4, color: _muted));

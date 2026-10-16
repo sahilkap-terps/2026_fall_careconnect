@@ -1,11 +1,15 @@
-// CC-12 Increment 2: the patient's own passport calls. Test Plan IDs to be assigned by the Testing Lead.
+// CC-12 Increment 2: the patient's own passport calls. Test Plan §3.27:
+// TC-EMG-267…271 (the pull request's), 295…298 (Testing Lead: timeout,
+// refresh that fails, answers the screen cannot use, the retried header).
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:care_connect_app/config/env_constant.dart';
 import 'package:care_connect_app/features/emergency_passport/services/passport_service.dart';
 
 import '../passport_test_support.dart';
@@ -20,8 +24,11 @@ PassportService _service(
       refresh: refresh ?? () async => null,
     );
 
+Matcher _fails(PassportError error) => throwsA(
+    isA<PassportException>().having((e) => e.error, 'error', error));
+
 void main() {
-  test('GET /v1/api/passport with the sign-in header', () async {
+  test('TC-EMG-267: GET /v1/api/passport with the sign-in header', () async {
     late http.Request sent;
     final v = await _service((req) async {
       sent = req;
@@ -33,7 +40,8 @@ void main() {
     expect(v.name, 'Mary Johnson');
   });
 
-  test('POST /token returns the code once, with a working # link', () async {
+  test('TC-EMG-268: POST /token returns the code once, with a working # link',
+      () async {
     late http.Request sent;
     final code = await _service((req) async {
       sent = req;
@@ -51,7 +59,7 @@ void main() {
     expect(code.createdAt, DateTime.utc(2026, 10, 15, 18));
   });
 
-  test('a 401 refreshes the sign-in once and retries', () async {
+  test('TC-EMG-269: a 401 refreshes the sign-in once and retries', () async {
     var calls = 0;
     final v = await _service((req) async {
       calls++;
@@ -69,22 +77,132 @@ void main() {
     (409, PassportError.server),
     (500, PassportError.server),
   ]) {
-    test('HTTP ${c.$1} -> ${c.$2}', () async {
+    test('TC-EMG-270: HTTP ${c.$1} -> ${c.$2}', () async {
       expect(
         () => _service((_) async => http.Response('{"error":"x"}', c.$1))
             .makeNewCode(),
-        throwsA(isA<PassportException>()
-            .having((e) => e.error, 'error', c.$2)),
+        _fails(c.$2),
       );
     });
   }
 
-  test('no answer from the server -> network', () async {
+  test('TC-EMG-271: no answer from the server -> network', () async {
     expect(
       () => _service((_) async => throw http.ClientException('offline'))
           .getPassport(),
-      throwsA(isA<PassportException>()
-          .having((e) => e.error, 'error', PassportError.network)),
+      _fails(PassportError.network),
     );
+  });
+
+  // ---------- Testing Lead ----------
+
+  testWidgets(
+      'TC-EMG-295: a server that never answers is "network" after 20 seconds, '
+      'for both calls, and not before', (t) async {
+    for (final call in <String, Future<Object> Function(PassportService)>{
+      'GET': (s) => s.getPassport(),
+      'POST': (s) => s.makeNewCode(),
+    }.entries) {
+      final never = Completer<http.Response>();
+      Object? outcome;
+      call.value(_service((_) => never.future)).then(
+          (v) => outcome = v, onError: (Object e) => outcome = e);
+      await t.pump(const Duration(seconds: 19));
+      expect(outcome, isNull, reason: '${call.key} gave up early');
+      await t.pump(const Duration(seconds: 2));
+      expect(outcome,
+          isA<PassportException>()
+              .having((e) => e.error, 'error', PassportError.network),
+          reason: call.key);
+    }
+  });
+
+  test(
+      'TC-EMG-296: a 401 is "signedOut" when the refresh gives no session, '
+      'throws, or the retry is refused again, and the request is never sent '
+      'more than twice', () async {
+    for (final c in <String, (Future<Object?> Function(), int)>{
+      'refresh gives no session': (() async => null, 1),
+      'refresh throws': (() async => throw StateError('offline'), 1),
+      'retry refused': (() async => 'new session', 2),
+    }.entries) {
+      var calls = 0;
+      var refreshes = 0;
+      final s = _service((_) async {
+        calls++;
+        return http.Response('', 401);
+      }, refresh: () {
+        refreshes++;
+        return c.value.$1();
+      });
+      await expectLater(s.getPassport(), _fails(PassportError.signedOut),
+          reason: c.key);
+      expect(calls, c.value.$2, reason: c.key);
+      expect(refreshes, 1, reason: c.key);
+    }
+  });
+
+  test(
+      'TC-EMG-297: answers the screen cannot use are "server": a new code '
+      'without its code or link, 200 where 201 is expected, a body that is '
+      'not a JSON object, and bytes that are not UTF-8', () async {
+    final cases = <String, (int, List<int>, bool)>{
+      'no token': (
+        201,
+        utf8.encode(jsonEncode({'url': 'http://x/#/passport/a'})),
+        true
+      ),
+      'no url': (201, utf8.encode(jsonEncode({'token': 'a'})), true),
+      'POST answered 200': (
+        200,
+        utf8.encode(jsonEncode(
+            {'token': 'a', 'url': 'http://x/#/passport/a', 'createdAt': ''})),
+        true
+      ),
+      'GET a list': (200, utf8.encode('[]'), false),
+      'GET not JSON': (200, utf8.encode('<html>'), false),
+      'GET not UTF-8': (200, [0xff, 0xfe, 0x7b], false),
+      'GET 201': (201, utf8.encode(jsonEncode(passportJson)), false),
+    };
+    for (final c in cases.entries) {
+      final s = _service((_) async => http.Response.bytes(c.value.$2, c.value.$1));
+      await expectLater(
+          c.value.$3 ? s.makeNewCode() : s.getPassport(),
+          _fails(PassportError.server),
+          reason: c.key);
+    }
+  });
+
+  test(
+      'TC-EMG-298: the retry after a refresh carries the new sign-in header, '
+      'both calls go to the configured backend, and a name with accents '
+      'survives the UTF-8 body', () async {
+    var token = 'old';
+    final sent = <http.Request>[];
+    final s = PassportService(
+      client: MockClient((req) async {
+        sent.add(req);
+        if (req.headers['Authorization'] == 'Bearer old') {
+          return http.Response('', 401);
+        }
+        return http.Response.bytes(
+            utf8.encode(jsonEncode({...passportJson, 'name': 'José Núñez'})),
+            200);
+      }),
+      headers: () async => {'Authorization': 'Bearer $token'},
+      refresh: () async {
+        token = 'new';
+        return 'session';
+      },
+    );
+    final v = await s.getPassport();
+    expect(v.name, 'José Núñez');
+    expect(sent.map((r) => r.headers['Authorization']),
+        ['Bearer old', 'Bearer new']);
+    final backend = Uri.parse(getBackendBaseUrl());
+    for (final r in sent) {
+      expect(r.url.host, backend.host);
+      expect(r.url.port, backend.port);
+    }
   });
 }

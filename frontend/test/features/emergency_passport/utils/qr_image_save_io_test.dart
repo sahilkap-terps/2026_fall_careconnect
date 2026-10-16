@@ -1,8 +1,8 @@
 // CC-12 Increment 2: saving the QR picture on a phone (share sheet). Test
-// Plan IDs to be assigned by the Testing Lead.
+// Plan §3.27: TC-EMG-278, 279 (the pull request's), 303 (Testing Lead: what
+// the share sheet is given, and no temporary folder).
 
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,7 +38,7 @@ void main() {
     if (temp.existsSync()) temp.deleteSync(recursive: true);
   });
 
-  test('writes the picture and opens the share sheet with it', () async {
+  test('TC-EMG-278: writes the picture and opens the share sheet with it', () async {
     final png = Uint8List.fromList([137, 80, 78, 71]);
     final ok = await saveQrImage(png, 'careconnect-emergency-qr.png');
 
@@ -48,10 +48,33 @@ void main() {
     expect(shared, hasLength(1));
   });
 
-  test('a share sheet that fails gives false, not a crash', () async {
+  test('TC-EMG-279: a share sheet that fails gives false, not a crash', () async {
     messenger.setMockMethodCallHandler(share, (call) async {
       throw PlatformException(code: 'error');
     });
     expect(await saveQrImage(Uint8List(4), 'x.png'), isFalse);
+  });
+
+  // ---------- Testing Lead ----------
+
+  test(
+      'TC-EMG-303: the share sheet gets the one saved PNG, typed image/png, '
+      'and with no temporary folder nothing is shared and the answer is false',
+      () async {
+    final png = Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(await saveQrImage(png, 'careconnect-emergency-qr.png'), isTrue);
+    final args = shared.single.arguments as Map;
+    expect(shared.single.method, 'share');
+    expect(args['paths'], hasLength(1));
+    expect(File(args['paths'][0] as String).readAsBytesSync(), png);
+    expect(args['mimeTypes'], ['image/png']);
+    expect(args.containsKey('text'), isFalse);
+
+    shared.clear();
+    messenger.setMockMethodCallHandler(pathProvider, (call) async {
+      throw PlatformException(code: 'no_directory');
+    });
+    expect(await saveQrImage(png, 'careconnect-emergency-qr.png'), isFalse);
+    expect(shared, isEmpty);
   });
 }
