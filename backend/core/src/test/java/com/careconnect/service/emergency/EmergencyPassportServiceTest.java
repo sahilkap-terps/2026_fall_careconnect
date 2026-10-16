@@ -21,7 +21,6 @@ import com.careconnect.repository.emergency.EmergencyPassportProfileRepository;
 import com.careconnect.repository.emergency.EmergencyPassportTokenRepository;
 import com.careconnect.security.TokenHashService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -531,8 +530,6 @@ class EmergencyPassportServiceTest {
     }
 
     @Test
-    @Disabled("DEF-EMG-04: blood type, conditions and contact share one profile updated_at, so an edit to a hidden "
-            + "profile section moves a scan's lastUpdated. Enable when the fix lands (suggested patch, PR #334 review).")
     @DisplayName("TC-EMG-112: when a profile section with content is hidden, the profile row's date does not set a "
             + "scan's lastUpdated, so a hidden edit cannot show through a shared section")
     void hiddenProfileSectionKeepsTheProfileDateOutOfTheScan() {

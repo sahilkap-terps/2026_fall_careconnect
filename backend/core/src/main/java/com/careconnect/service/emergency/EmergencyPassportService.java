@@ -73,6 +73,9 @@ public class EmergencyPassportService {
     /** The registration screen sends MM/DD/YYYY; seed data and older rows use ISO dates. */
     private static final DateTimeFormatter US_DATE = DateTimeFormatter.ofPattern("MM/dd/uuuu");
     private static final String APPROVED = "APPROVED";
+    /** The sections stored on the one profile row, and so dated by its single updated_at. */
+    private static final Set<PassportField> PROFILE_SECTIONS = Set.of(
+            PassportField.BLOOD_TYPE, PassportField.CHRONIC_CONDITIONS, PassportField.EMERGENCY_CONTACT);
 
     static final int MAX_CHRONIC_CONDITIONS = 2000;
     static final int MAX_CONTACT_NAME = 255;
@@ -98,7 +101,7 @@ public class EmergencyPassportService {
             final AllergyRepository allergies,
             final MedicationRepository medications,
             final TokenHashService tokenHashService,
-            @Value("${careconnect.passport.base-url:${frontend.base-url}/passport}") final String scanBaseUrl) {
+            @Value("${careconnect.passport.base-url:${frontend.base-url}/#/passport}") final String scanBaseUrl) {
         this(profiles, visibility, tokens, patients, allergies, medications, tokenHashService, scanBaseUrl,
                 Clock.systemUTC());
     }
@@ -240,7 +243,13 @@ public class EmergencyPassportService {
                 ? allergies.findActiveAllergiesByPatientId(patientId) : List.of();
         final List<Medication> medicationRows = shared.contains(PassportField.MEDICATIONS)
                 ? approvedMedications(patientId) : List.of();
-        final Instant lastUpdated = latest(sectionDates(profile, allergyRows, medicationRows).entrySet().stream()
+        final Map<PassportField, Instant> dates = sectionDates(profile, allergyRows, medicationRows);
+        // Blood type, conditions and contact share the profile row's updated_at. When one of them has content
+        // but is hidden, that date may be an edit to the hidden one, so the scan leaves it out (DEF-EMG-04).
+        if (PROFILE_SECTIONS.stream().anyMatch(field -> dates.containsKey(field) && !shared.contains(field))) {
+            PROFILE_SECTIONS.forEach(dates::remove);
+        }
+        final Instant lastUpdated = latest(dates.entrySet().stream()
                 .filter(section -> shared.contains(section.getKey()))
                 .map(Map.Entry::getValue)).orElse(null);
         return Optional.of(new PublicPassport(
