@@ -267,40 +267,48 @@ class _PassportScanPageState extends State<PassportScanPage> {
         a.severity == 'SEVERE' || a.severity == 'LIFE_THREATENING';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(a.allergen,
-                    style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: _text)),
-                if (a.reaction != null) _body('Reaction: ${a.reaction}'),
-              ],
-            ),
-          ),
-          if (severity != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: serious ? _red : Colors.white,
-                border: Border.all(color: serious ? _red : _muted),
-                borderRadius: BorderRadius.circular(6),
+      // DEF-EMG-10: at large text sizes the badge wraps inside its share of
+      // the row instead of pushing the row off screen.
+      child: LayoutBuilder(
+        builder: (context, box) => Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(a.allergen,
+                      style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: _text)),
+                  if (a.reaction != null) _body('Reaction: ${a.reaction}'),
+                ],
               ),
-              child: Text(
-                severity,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: serious ? Colors.white : _text,
+            ),
+            if (severity != null)
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.45),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: serious ? _red : Colors.white,
+                    border: Border.all(color: serious ? _red : _muted),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    severity,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: serious ? Colors.white : _text,
+                    ),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -406,6 +414,11 @@ class _PassportScanPageState extends State<PassportScanPage> {
                 SizedBox(
                   height: 48,
                   child: OutlinedButton(
+                    // DEF-EMG-09: the theme's cyan text was 2.85:1 on white.
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _text,
+                      side: const BorderSide(color: _muted),
+                    ),
                     onPressed: _load,
                     child: const Text('Try again',
                         style: TextStyle(fontSize: 16)),
@@ -493,12 +506,15 @@ class _PassportScanPageState extends State<PassportScanPage> {
                 children: [
                   Icon(icon, size: 18, color: accent),
                   const SizedBox(width: 6),
-                  Text(title,
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: accent,
-                          letterSpacing: 0.5)),
+                  // DEF-EMG-10: wraps at large text sizes instead of overflowing.
+                  Flexible(
+                    child: Text(title,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: accent,
+                            letterSpacing: 0.5)),
+                  ),
                 ],
               ),
             ),

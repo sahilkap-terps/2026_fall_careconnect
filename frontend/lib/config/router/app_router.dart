@@ -119,7 +119,7 @@ class TelemetryGoRouterObserver extends NavigatorObserver {
       return;
     }
 
-    final screen = uri.path.isEmpty ? '/' : uri.path;
+    final screen = _screenName(uri.path);
 
     try {
       await Telemetry.event('screen_view', {'screen': screen});
@@ -151,6 +151,15 @@ class TelemetryGoRouterObserver extends NavigatorObserver {
     super.didRemove(route, previousRoute);
     unawaited(_logScreenView());
   }
+}
+
+/// The screen name telemetry records for a path. A scanned emergency QR code
+/// (/passport/<code>) is the only credential for that passport, so it is
+/// reported as the route pattern and the code never leaves the page (DEF-EMG-08).
+String _screenName(String path) {
+  if (path.isEmpty) return '/';
+  if (path.startsWith('/passport/')) return '/passport/:token';
+  return path;
 }
 
 final _telemetryGoRouterObserver = TelemetryGoRouterObserver();
