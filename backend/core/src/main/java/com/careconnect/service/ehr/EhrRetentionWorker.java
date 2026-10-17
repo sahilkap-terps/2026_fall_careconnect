@@ -2,8 +2,11 @@ package com.careconnect.service.ehr;
 
 import com.careconnect.ehr.StoredDateOfBirth;
 import com.careconnect.repository.ehr.EhrAuditEventRepository;
+import com.careconnect.repository.ehr.EhrConditionRecordRepository;
 import com.careconnect.repository.ehr.EhrCoverageRecordRepository;
 import com.careconnect.repository.ehr.EhrIdentityConflictRepository;
+import com.careconnect.repository.ehr.EhrMedicationRecordRepository;
+import com.careconnect.repository.ehr.EhrObservationRecordRepository;
 import com.careconnect.repository.ehr.EhrRawPayloadRepository;
 import com.careconnect.repository.ehr.EhrResourceRepository;
 import com.careconnect.repository.ehr.EhrSourceIdentityRepository;
@@ -64,6 +67,10 @@ import java.util.function.Function;
  *   <li>{@code ehr_coverage_record} and {@code ehr_visit_record}: {@code updated_at}, as for
  *       {@code ehr_source_identity}. Rows still being synced are rewritten, so they do not age
  *       out.</li>
+ *   <li>{@code ehr_medication_record}, {@code ehr_condition_record} and
+ *       {@code ehr_observation_record}: {@code updated_at}, as for {@code ehr_source_identity}.
+ *       These typed projections of the canonical data are rewritten by the next sync, so only data
+ *       nobody has refreshed in the period ages out.</li>
  * </ul>
  * Each of those dates is at or after the moment the record was made, so nothing is purged early.
  * <p>
@@ -113,6 +120,9 @@ public class EhrRetentionWorker {
             final EhrResourceRepository resources,
             final EhrCoverageRecordRepository coverages,
             final EhrVisitRecordRepository visits,
+            final EhrMedicationRecordRepository medications,
+            final EhrConditionRecordRepository conditions,
+            final EhrObservationRecordRepository observations,
             @Value("${careconnect.ehr.retention.years:7}") final int retentionYears,
             @Value("${careconnect.ehr.retention.retain-until-age:25}") final int retainUntilAge) {
         if (retainUntilAge < 0) {
@@ -142,7 +152,16 @@ public class EhrRetentionWorker {
                         (cutoff, ids) -> coverages.deleteUpdatedBeforeForPatients(auditableTime(cutoff), ids)),
                 new Target("ehr_visit_record",
                         cutoff -> visits.findPatientsWithVisitUpdatedBefore(auditableTime(cutoff)),
-                        (cutoff, ids) -> visits.deleteUpdatedBeforeForPatients(auditableTime(cutoff), ids)));
+                        (cutoff, ids) -> visits.deleteUpdatedBeforeForPatients(auditableTime(cutoff), ids)),
+                new Target("ehr_medication_record",
+                        cutoff -> medications.findPatientsWithMedicationUpdatedBefore(auditableTime(cutoff)),
+                        (cutoff, ids) -> medications.deleteUpdatedBeforeForPatients(auditableTime(cutoff), ids)),
+                new Target("ehr_condition_record",
+                        cutoff -> conditions.findPatientsWithConditionUpdatedBefore(auditableTime(cutoff)),
+                        (cutoff, ids) -> conditions.deleteUpdatedBeforeForPatients(auditableTime(cutoff), ids)),
+                new Target("ehr_observation_record",
+                        cutoff -> observations.findPatientsWithObservationUpdatedBefore(auditableTime(cutoff)),
+                        (cutoff, ids) -> observations.deleteUpdatedBeforeForPatients(auditableTime(cutoff), ids)));
         if (retentionYears <= 0) {
             log.warn("EHR retention purge is OFF (careconnect.ehr.retention.years={}); the ehr_* tables "
                     + "hold PHI and nothing will be purged (issue #214)", retentionYears);
