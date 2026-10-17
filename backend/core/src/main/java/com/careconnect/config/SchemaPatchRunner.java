@@ -731,9 +731,13 @@ public class SchemaPatchRunner implements CommandLineRunner {
     }
 
     /**
-     * CC-12 Increment 1 — Emergency Care Passport storage: {@code emergency_passport_profile} and
-     * {@code emergency_passport_field_visibility}. Mirrors db/migration
-     * V2610131200__create_emergency_passport_tables.sql.
+     * CC-12 Emergency Care Passport storage: {@code emergency_passport_profile} and
+     * {@code emergency_passport_field_visibility} (Increment 1, mirrors db/migration
+     * V2610131200__create_emergency_passport_tables.sql) and {@code emergency_passport_token}
+     * (Increment 2, mirrors V2610131300__create_emergency_passport_token.sql).
+     * <p>
+     * The token table's partial unique index allows one ACTIVE code per patient, so making a new
+     * code without revoking the old one fails instead of leaving two live codes.
      * <p>
      * Hibernate {@code ddl-auto=update} creates both tables from their entities; this supplies what
      * it will not. The foreign keys are applied here because the entities store bare {@code Long}
@@ -787,6 +791,30 @@ public class SchemaPatchRunner implements CommandLineRunner {
                         timestamptzIfZoneless(table, column)
                 );
             }
+        }
+
+        // CC-12 Increment 2 — the QR code. Mirrors V2610131300__create_emergency_passport_token.sql.
+        // Runs after every Increment 1 patch so their order stays as TC-EMG-041 pins it.
+        applyRequiredPatch(
+                "V2610131300a - unique emergency_passport_token(token_lookup)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_token_lookup "
+                        + "ON emergency_passport_token (token_lookup)"
+        );
+        applyRequiredPatch(
+                "V2610131300b - at most one ACTIVE emergency_passport_token per patient",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_token_one_active "
+                        + "ON emergency_passport_token (patient_id) WHERE status = 'ACTIVE'"
+        );
+        applyRequiredPatch(
+                "V2610131300c - FK emergency_passport_token.patient_id -> patient.id",
+                foreignKeyIfMissing("fk_emergency_passport_token_patient", "emergency_passport_token",
+                        "patient_id", "patient", "id", " ON DELETE CASCADE")
+        );
+        for (final String column : new String[]{"created_at", "updated_at"}) {
+            applyRequiredPatch(
+                    "V2610131300d - emergency_passport_token." + column + " is TIMESTAMPTZ",
+                    timestamptzIfZoneless("emergency_passport_token", column)
+            );
         }
     }
 
