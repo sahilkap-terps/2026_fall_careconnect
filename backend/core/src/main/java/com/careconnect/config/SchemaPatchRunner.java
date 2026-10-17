@@ -317,10 +317,11 @@ public class SchemaPatchRunner implements CommandLineRunner {
             "DROP INDEX IF EXISTS uq_ai_held_item_open_surface_hash");
         // H2 has no filtered indexes. A generated nullable key keeps the same
         // pending-only uniqueness rule; closed rows and missing hashes stay independent.
-        applyRequiredPatch(
-            "H2 – ai_held_item pending hash",
-            "ALTER TABLE ai_held_item ADD COLUMN IF NOT EXISTS pending_review_query_hash VARCHAR(64) "
-                + "GENERATED ALWAYS AS (CASE WHEN status = 'PENDING_REVIEW' THEN query_text_hash ELSE NULL END)");
+    applyRequiredPatch(
+        "H2 – ai_held_item pending hash",
+        "ALTER TABLE ai_held_item ADD COLUMN IF NOT EXISTS "
+            + "pending_review_query_hash VARCHAR(64) GENERATED ALWAYS AS "
+            + "(CASE WHEN status = 'PENDING_REVIEW' THEN query_text_hash ELSE NULL END)");
         applyRequiredPatch(
             "H2 – ai_held_item open unique",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_held_item_open_patient_surface_hash "
@@ -478,10 +479,10 @@ public class SchemaPatchRunner implements CommandLineRunner {
             "CREATE INDEX IF NOT EXISTS idx_consent_grants_lookup "
                 + "ON consent_grants (patient_user_id, grantee_user_id, scope, status)");
         // Keep inactive grant history while enforcing one active grant per scope.
-        applyRequiredPatch(
-            "H2 – consent_grants active scope",
-            "ALTER TABLE consent_grants ADD COLUMN IF NOT EXISTS active_scope VARCHAR(64) "
-                + "GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN scope ELSE NULL END)");
+    applyRequiredPatch(
+        "H2 – consent_grants active scope",
+        "ALTER TABLE consent_grants ADD COLUMN IF NOT EXISTS active_scope VARCHAR(64) "
+            + "GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN scope ELSE NULL END)");
         applyRequiredPatch(
             "H2 – consent_grants active unique",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_consent_grants_active "
