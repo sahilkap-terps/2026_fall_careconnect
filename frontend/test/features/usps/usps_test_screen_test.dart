@@ -1,13 +1,13 @@
 // Tests for UspsTestScreen
 // (lib/features/usps/presentation/usps_test_screen.dart).
 
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:care_connect_app/features/usps/presentation/usps_test_screen.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 
 import '../../mock_user_provider.dart';
@@ -18,9 +18,15 @@ import '../../mock_user_provider.dart';
 
 /// Wrap with a null-user provider so _checkGoogleConnection returns early
 /// (no Dio call, no pending timers).
-Widget _wrap({UserProvider? provider}) {
+Widget _wrap({
+  UserProvider? provider,
+  Locale locale = const Locale('en'),
+}) {
   final prov = provider ?? _NullUserProvider();
   return MaterialApp(
+    locale: locale,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<UserProvider>.value(
       value: prov,
       child: const UspsTestScreen(),
@@ -67,6 +73,16 @@ void main() {
   // Group 1 – Initial render
   // =========================================================================
   group('UspsTestScreen – initial render', () {
+    testWidgets('shows Spanish labels when Spanish is selected',
+        (tester) async {
+      _setLargeViewport(tester);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(_wrap(locale: const Locale('es')));
+      await tester.pump();
+      expect(find.text('Resumen de correo de USPS'), findsOneWidget);
+      expect(find.text('Integración con Gmail'), findsOneWidget);
+    });
+
     testWidgets('renders without crashing', (tester) async {
       _setLargeViewport(tester);
       addTearDown(tester.view.resetPhysicalSize);
@@ -98,7 +114,7 @@ void main() {
       await tester.pumpWidget(_wrap());
       await tester.pump();
       expect(
-        find.textContaining('Connect your Google account'),
+        find.text('Please log in to connect Gmail.'),
         findsOneWidget,
       );
     });
@@ -403,8 +419,7 @@ void main() {
       expect(find.byType(Column), findsWidgets);
     });
 
-    testWidgets('has Row widget for date/search side-by-side',
-        (tester) async {
+    testWidgets('has Row widget for date/search side-by-side', (tester) async {
       _setLargeViewport(tester);
       addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(_wrap());
@@ -413,8 +428,7 @@ void main() {
       expect(find.byType(Row), findsWidgets);
     });
 
-    testWidgets('has an Expanded widget wrapping the ListView',
-        (tester) async {
+    testWidgets('has an Expanded widget wrapping the ListView', (tester) async {
       _setLargeViewport(tester);
       addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(_wrap());
@@ -463,10 +477,6 @@ void main() {
 
     testWidgets('tapping Clear Cache with null user shows snackbar',
         (tester) async {
-      final origOnError = FlutterError.onError;
-      FlutterError.onError = (details) {};
-      addTearDown(() => FlutterError.onError = origOnError);
-
       _setLargeViewport(tester);
       addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(_wrap());
@@ -474,8 +484,7 @@ void main() {
       await tester.tap(find.text('Clear Cache'));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
-      // Dio call will fail; SnackBar with "Failed to clear cache" expected
-      expect(find.text('Failed to clear cache'), findsOneWidget);
+      expect(find.text('Please log in first'), findsOneWidget);
     });
 
     testWidgets('tapping Connect Google Account with null user shows snackbar',
@@ -611,7 +620,7 @@ void main() {
       await tester.pump();
 
       final textWidget = tester.widget<Text>(
-        find.textContaining('Connect your Google account'),
+        find.textContaining('Please log in to connect Gmail'),
       );
       expect(textWidget.style?.color, equals(Colors.grey));
     });
