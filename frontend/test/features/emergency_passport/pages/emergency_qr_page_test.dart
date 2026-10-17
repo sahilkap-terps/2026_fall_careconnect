@@ -44,14 +44,23 @@ PassportView _view({bool withCode = true, DateTime? lastScanned}) => PassportVie
     );
 
 class _FakeService extends PassportService {
-  _FakeService({required this.view, this.loadError, this.makeError})
+  _FakeService(
+      {required this.view, this.loadError, this.makeError, this.turnOffError})
       : super(headers: () async => {}, refresh: () async => null);
 
   final PassportView view;
   final PassportError? loadError;
   final PassportError? makeError;
+  final PassportError? turnOffError;
   int loads = 0;
   int made = 0;
+  int turnedOff = 0;
+
+  @override
+  Future<void> turnOffCode() async {
+    if (turnOffError != null) throw PassportException(turnOffError!);
+    turnedOff++;
+  }
 
   @override
   Future<PassportView> getPassport() async {
@@ -81,6 +90,14 @@ class _MemoryStore extends QrCodeStore {
 
   @override
   Future<void> save(StoredQrCode c) async => code = c;
+
+  int clears = 0;
+
+  @override
+  Future<void> clear() async {
+    clears++;
+    code = null;
+  }
 }
 
 class _Saver {
@@ -115,6 +132,83 @@ Future<void> _open(WidgetTester t, _FakeService service, _MemoryStore store,
 }
 
 void main() {
+  group('Turn off QR code', () {
+    StoredQrCode kept() => StoredQrCode(
+        url: 'http://localhost:3000/#/passport/kept', createdAt: _created);
+
+    testWidgets('after confirming, the code is turned off and forgotten here',
+        (t) async {
+      final service = _FakeService(view: _view());
+      final store = _MemoryStore(kept());
+      await _open(t, service, store);
+
+      await t.tap(find.text('Turn off QR code'));
+      await t.pumpAndSettle();
+      expect(find.text('Turn off your QR code?'), findsOneWidget);
+      await t.tap(find.text('Turn off'));
+      await t.pumpAndSettle();
+
+      expect(service.turnedOff, 1);
+      expect(store.clears, 1);
+      expect(store.code, isNull);
+      expect(find.byType(QrImageView), findsNothing);
+      expect(find.text('You don\'t have an emergency QR yet'), findsOneWidget);
+      expect(find.text('Your QR code is turned off.'), findsOneWidget);
+      expect(find.text('Turn off QR code'), findsNothing);
+    });
+
+    testWidgets('Cancel leaves the code on', (t) async {
+      final service = _FakeService(view: _view());
+      final store = _MemoryStore(kept());
+      await _open(t, service, store);
+
+      await t.tap(find.text('Turn off QR code'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Cancel'));
+      await t.pumpAndSettle();
+
+      expect(service.turnedOff, 0);
+      expect(store.clears, 0);
+      expect(find.byType(QrImageView), findsOneWidget);
+    });
+
+    testWidgets('also offered when the code is not kept on this device',
+        (t) async {
+      final service = _FakeService(view: _view());
+      await _open(t, service, _MemoryStore());
+      expect(find.text('Your QR isn\'t saved on this device'), findsOneWidget);
+
+      await t.tap(find.text('Turn off QR code'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Turn off'));
+      await t.pumpAndSettle();
+
+      expect(service.turnedOff, 1);
+      expect(find.text('You don\'t have an emergency QR yet'), findsOneWidget);
+    });
+
+    testWidgets('a failure keeps the code and says so', (t) async {
+      final service =
+          _FakeService(view: _view(), turnOffError: PassportError.server);
+      final store = _MemoryStore(kept());
+      await _open(t, service, store);
+
+      await t.tap(find.text('Turn off QR code'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Turn off'));
+      await t.pumpAndSettle();
+
+      expect(store.clears, 0);
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.textContaining('couldn\'t turn off'), findsOneWidget);
+    });
+
+    testWidgets('not offered when there is no code', (t) async {
+      await _open(t, _FakeService(view: _view(withCode: false)), _MemoryStore());
+      expect(find.text('Turn off QR code'), findsNothing);
+    });
+  });
+
   testWidgets('TC-EMG-281: no code yet: Create my emergency QR makes one, shows and keeps it',
       (t) async {
     final service = _FakeService(view: _view(withCode: false));

@@ -59,4 +59,16 @@ class QrCodeStore {
       // Not kept: the QR still shows now; next time the screen offers a new code.
     }
   }
+
+  /// Forgets this patient's code, after it is turned off.
+  Future<void> clear() async {
+    try {
+      final key = await _key();
+      if (key == null) return;
+      await _storage.delete(key: key);
+    } catch (_) {
+      // Nothing kept, or storage unavailable: the code is off on the server
+      // either way, and read() never shows a code the server says is off.
+    }
+  }
 }

@@ -63,6 +63,24 @@ class PassportService {
     return code;
   }
 
+  /// Turns the patient's code off. Anyone who scans it then sees "This code
+  /// isn't active". Turning off a code that is already off is fine (204).
+  Future<void> turnOffCode() async {
+    final resp = await _send(
+        (h) => _client.delete(Uri.parse('$_base/token'), headers: h));
+    switch (resp.statusCode) {
+      case 204:
+      case 200:
+        return;
+      case 401:
+        throw const PassportException(PassportError.signedOut);
+      case 403:
+        throw const PassportException(PassportError.notPatient);
+      default:
+        throw const PassportException(PassportError.server);
+    }
+  }
+
   /// Sends a request; on 401 refreshes the sign-in once and retries.
   Future<http.Response> _send(
       Future<http.Response> Function(Map<String, String> headers) request) async {

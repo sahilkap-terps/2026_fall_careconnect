@@ -175,4 +175,23 @@ void main() {
           isEmpty);
     }, skip: 'DEF-EMG-11: sign-out does not remove the kept QR code yet');
   }
+
+  test('clear forgets only this patient\'s code', () async {
+    final a = QrCodeStore(patientId: () async => 1);
+    final b = QrCodeStore(patientId: () async => 2);
+    await a.save(StoredQrCode(url: 'a', createdAt: DateTime.utc(2026)));
+    await b.save(StoredQrCode(url: 'b', createdAt: DateTime.utc(2026)));
+    await a.clear();
+    expect(await a.read(), isNull);
+    expect((await b.read())!.url, 'b');
+  });
+
+  test('clear with no patient id or failing storage does not throw', () async {
+    await QrCodeStore(patientId: () async => null).clear();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      throw PlatformException(code: 'unavailable');
+    });
+    await QrCodeStore(patientId: () async => 5).clear();
+  });
 }

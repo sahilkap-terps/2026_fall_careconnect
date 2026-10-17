@@ -205,4 +205,36 @@ void main() {
       expect(r.url.port, backend.port);
     }
   });
+
+  group('turn off', () {
+    test('DELETE /v1/api/passport/token with the sign-in header', () async {
+      late http.Request sent;
+      await _service((req) async {
+        sent = req;
+        return http.Response('', 204);
+      }).turnOffCode();
+      expect(sent.method, 'DELETE');
+      expect(sent.url.path, '/v1/api/passport/token');
+      expect(sent.headers['Authorization'], 'Bearer test');
+    });
+
+    for (final c in [
+      (401, PassportError.signedOut),
+      (403, PassportError.notPatient),
+      (500, PassportError.server),
+    ]) {
+      test('HTTP ${c.$1} -> ${c.$2}', () async {
+        expect(
+            () => _service((_) async => http.Response('', c.$1)).turnOffCode(),
+            _fails(c.$2));
+      });
+    }
+
+    test('no answer from the server -> network', () async {
+      expect(
+          () => _service((_) async => throw http.ClientException('offline'))
+              .turnOffCode(),
+          _fails(PassportError.network));
+    });
+  });
 }

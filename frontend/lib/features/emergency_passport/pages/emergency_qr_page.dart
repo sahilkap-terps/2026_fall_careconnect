@@ -98,38 +98,49 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
     return diff < 1000 ? saved.url : null;
   }
 
+  /// Asks before an action that stops the current code working.
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String action,
+  }) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        // DEF-EMG-12: the light theme's cyan button text was 2.85:1 on the
+        // white dialog; the theme's own text colour reads in both themes.
+        final actionStyle = TextButton.styleFrom(
+            foregroundColor: Theme.of(ctx).colorScheme.onSurface);
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message, style: const TextStyle(fontSize: 16, height: 1.4)),
+          actions: [
+            TextButton(
+              style: actionStyle,
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: actionStyle,
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(action),
+            ),
+          ],
+        );
+      },
+    );
+    return ok == true && mounted;
+  }
+
   Future<void> _makeNewCode() async {
     if (_code != null) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) {
-          // DEF-EMG-12: the light theme's cyan button text was 2.85:1 on the
-          // white dialog; the theme's own text colour reads in both themes.
-          final actionStyle = TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.onSurface);
-          return AlertDialog(
-            title: const Text('Make a new code?'),
-            content: const Text(
-              'Your current QR code will stop working right away. If you saved '
-              'it as a picture or lock screen, save the new one too.',
-              style: TextStyle(fontSize: 16, height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                style: actionStyle,
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                style: actionStyle,
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Make new code'),
-              ),
-            ],
-          );
-        },
+      final ok = await _confirm(
+        title: 'Make a new code?',
+        message: 'Your current QR code will stop working right away. If you '
+            'saved it as a picture or lock screen, save the new one too.',
+        action: 'Make new code',
       );
-      if (ok != true || !mounted) return;
+      if (!ok) return;
     }
 
     setState(() => _making = true);
@@ -148,6 +159,34 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
       if (!mounted) return;
       setState(() => _making = false);
       _snack('We couldn\'t make a new code. Please try again.');
+    }
+  }
+
+  Future<void> _turnOff() async {
+    final ok = await _confirm(
+      title: 'Turn off your QR code?',
+      message: 'Anyone who scans it will see "This code isn\'t active". A '
+          'saved picture or lock screen stops working too. You can make a new '
+          'code at any time.',
+      action: 'Turn off',
+    );
+    if (!ok) return;
+
+    setState(() => _making = true);
+    try {
+      await _service.turnOffCode();
+      await _store.clear();
+      if (!mounted) return;
+      setState(() {
+        _code = null;
+        _saved = null;
+        _making = false;
+      });
+      _snack('Your QR code is turned off.');
+    } on PassportException {
+      if (!mounted) return;
+      setState(() => _making = false);
+      _snack('We couldn\'t turn off your code. Please try again.');
     }
   }
 
@@ -280,6 +319,8 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
               label: _making ? 'Making a new code…' : 'Make a new code',
               onPressed: _making ? null : _makeNewCode,
             ),
+            const SizedBox(height: 4),
+            _turnOffButton(),
           ],
         ),
       );
@@ -328,6 +369,8 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
               icon: Icons.qr_code_2,
               onPressed: _making ? null : _makeNewCode,
             ),
+            const SizedBox(height: 4),
+            _turnOffButton(),
           ],
         ),
       );
@@ -479,6 +522,17 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
           label: Text(label,
               style:
                   const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        ),
+      );
+
+  /// A quieter, red action: turning the code off can't be undone (a new code
+  /// is a different code). Red B91C1C on white is 6.5:1.
+  Widget _turnOffButton() => ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: TextButton(
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
+          onPressed: _making ? null : _turnOff,
+          child: const Text('Turn off QR code', style: TextStyle(fontSize: 16)),
         ),
       );
 
