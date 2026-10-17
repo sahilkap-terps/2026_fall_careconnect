@@ -21,6 +21,7 @@ import 'package:care_connect_app/features/stml/presentation/pages/stml_checkin_p
 import 'package:care_connect_app/features/stml/presentation/pages/stml_checkin_patient_selection_page.dart';
 import 'package:care_connect_app/features/summary/summary_confirmation_list.dart';
 import 'package:care_connect_app/features/health/symptom-tracker/pages/symptom_allergies_tracker_screen.dart';
+import 'package:care_connect_app/features/emergency_passport/pages/passport_scan_page.dart';
 import 'package:care_connect_app/features/health/health_data/pages/dob_confirmation_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_data_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/medicare_connect_page.dart';
@@ -117,7 +118,7 @@ class TelemetryGoRouterObserver extends NavigatorObserver {
       return;
     }
 
-    final screen = uri.path.isEmpty ? '/' : uri.path;
+    final screen = _screenName(uri.path);
 
     try {
       await Telemetry.event('screen_view', {'screen': screen});
@@ -149,6 +150,15 @@ class TelemetryGoRouterObserver extends NavigatorObserver {
     super.didRemove(route, previousRoute);
     unawaited(_logScreenView());
   }
+}
+
+/// The screen name telemetry records for a path. A scanned emergency QR code
+/// (/passport/<code>) is the only credential for that passport, so it is
+/// reported as the route pattern and the code never leaves the page (DEF-EMG-08).
+String _screenName(String path) {
+  if (path.isEmpty) return '/';
+  if (path.startsWith('/passport/')) return '/passport/:token';
+  return path;
 }
 
 final _telemetryGoRouterObserver = TelemetryGoRouterObserver();
@@ -251,6 +261,13 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       builder: (_, __) => MedicareConnectPage(
         result: MedicareConnectPage.takePendingResult(),
       ),
+    ),
+    // CC-12: what a phone camera opens after scanning a patient's emergency
+    // QR code. Public on purpose: whoever scans it at a scene has no account.
+    GoRoute(
+      path: '/passport/:token',
+      builder: (_, state) =>
+          PassportScanPage(token: state.pathParameters['token'] ?? ''),
     ),
     GoRoute(
       path: '/ui-preview',
