@@ -1,5 +1,15 @@
 # Team C Milestone 1 Technical Design and Software Test Plan Baseline
 
+## Update — October 17, 2026
+
+The 26-row M1 trace and current M3 trace already exist in docs/testing. The October 17 review links the missing fixed-fixture checks. Controlled requirements, contract approval, and Test Lead acceptance remain separate.
+
+See [the current docs and fixture review](testing/team-c-docs-fixtures-review-2026-10-17.md). It names the reviewed commit, overlap, tests, and open gates.
+
+## Historical baseline
+
+The dated text below is retained as history. Its old statements about missing code or pending PRs do not describe the October 17 branch.
+
 **WBS:** C1.6.2  
 **Baseline date:** 2026-09-03  
 **Prepared for:** Terence Boyce, Technical Lead  

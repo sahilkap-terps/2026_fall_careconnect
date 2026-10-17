@@ -1,5 +1,15 @@
 # Team C Repository, Build, and CI Baseline
 
+## Update — October 17, 2026
+
+The current branch includes the previously pending mapper, storage prototype, and PRs #330/#331. Use the dated review for focused results and CI limits; earlier full-suite counts below describe their original runs.
+
+See [the current docs and fixture review](testing/team-c-docs-fixtures-review-2026-10-17.md). It names the reviewed commit, overlap, tests, and open gates.
+
+## Historical baseline
+
+The dated text below is retained as history. Its old statements about missing code or pending PRs do not describe the October 17 branch.
+
 **WBS:** C1.2.2  
 **Assessment date:** 2026-09-03  
 **Repository:** `umgc/2026_fall_careconnect`  

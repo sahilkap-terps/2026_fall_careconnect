@@ -1,5 +1,15 @@
 # Team C Cerner Trust-Boundary and Accessibility Design
 
+## Update — October 17, 2026
+
+The allergy route is off by default through careconnect.cerner.allergies.enabled. Mock controller and pure mapper tests do not prove the real security chain, consent, storage, or accessible UI states.
+
+See [the current docs and fixture review](testing/team-c-docs-fixtures-review-2026-10-17.md). It names the reviewed commit, overlap, tests, and open gates.
+
+## Historical baseline
+
+The dated text below is retained as history. Its old statements about missing code or pending PRs do not describe the October 17 branch.
+
 **WBS:** C1.4.4  
 **Assessment date:** 2026-09-03  
 **Prepared for:** Terence Boyce, Technical Lead  
