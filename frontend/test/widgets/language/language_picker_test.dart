@@ -138,6 +138,74 @@ void main() {
 
   group('LanguagePicker.show', () {
     testWidgets(
+        'WBS-4.2.5 changing language updates visible text without restarting',
+        (tester) async {
+      tester.binding.platformDispatcher.localeTestValue = const Locale('en');
+      addTearDown(tester.binding.platformDispatcher.clearLocaleTestValue);
+      final localeProvider = LocaleProvider();
+      addTearDown(localeProvider.dispose);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<LocaleProvider>.value(
+          value: localeProvider,
+          child: Consumer<LocaleProvider>(
+            builder: (context, provider, child) => MaterialApp(
+              locale: provider.locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  appBar: AppBar(
+                    title: Text(AppLocalizations.of(context)!.settings),
+                  ),
+                  body: ElevatedButton(
+                    onPressed: () => LanguagePicker.show(context),
+                    child: const Text('Open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Settings'), findsOneWidget);
+
+      Future<void> selectLanguage(String label) async {
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.text(label),
+          100,
+          scrollable: find.byType(Scrollable).last,
+        );
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      }
+
+      final english = await AppLocalizations.delegate.load(const Locale('en'));
+      final spanish = await AppLocalizations.delegate.load(const Locale('es'));
+      await selectLanguage(
+          LanguagePicker.labelFor(const Locale('es'), english));
+      expect(find.text('Configuración'), findsOneWidget);
+      expect(find.text('Settings'), findsNothing);
+      final preferences = await SharedPreferences.getInstance();
+      expect(preferences.getString('selected_locale'), 'es');
+
+      await selectLanguage(
+          LanguagePicker.labelFor(const Locale('en'), spanish));
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Configuración'), findsNothing);
+      expect(preferences.getString('selected_locale'), 'en');
+
+      await selectLanguage(english.systemDefault);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(localeProvider.locale, isNull);
+      expect(preferences.containsKey('selected_locale'), isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
         'TC-S4-REG-L10N-002 selecting Spanish updates and persists locale',
         (tester) async {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));

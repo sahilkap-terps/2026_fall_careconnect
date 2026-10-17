@@ -1055,6 +1055,267 @@
   "homecarereview_reviewed": "(reviewed)",
   "homecarereview_savedForm": "Saved digitized form",
   "homecarereview_failedToSave": "Failed to save digitized form",
+
+  "socialFeedInvalidUser": "Invalid user ID. Please re-login.",
+  "socialFeedLoadError": "Error: {message}",
+  "@socialFeedLoadError": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "socialFeedComments": "{count, plural, =1{1 comment} other{{count} comments}}",
+  "@socialFeedComments": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "socialFeedTitle": "My Feed",
+  "socialFeedEmpty": "No posts yet. Pull to refresh.",
+  "socialFeedAddFriend": "Add Friend",
+  "socialFeedFriendRequests": "Friend Requests",
+  "socialFeedMessages": "Messages",
+  "socialFeedCreatePost": "Create Post",
+
+  "gamificationTitle": "Achievements",
+  "gamificationHeading": "Gamification",
+  "gamificationLevel": "Level {level}",
+  "@gamificationLevel": {
+    "placeholders": {
+      "level": {"type": "int"}
+    }
+  },
+  "gamificationAchievements": "Achievements",
+  "gamificationLeaderboard": "View Leaderboard",
+  "gamificationUnnamedAchievement": "Unnamed Achievement",
+  "gamificationDailyMessage1": "You're doing great — keep going! 💪",
+  "gamificationDailyMessage2": "Small steps every day lead to big results.",
+  "gamificationDailyMessage3": "Believe in yourself and all that you are.",
+  "gamificationDailyMessage4": "Progress, not perfection.",
+  "gamificationDailyMessage5": "One day at a time — you got this!",
+
+  "uspsTitle": "USPS Mail Digest",
+  "uspsGmailIntegration": "Gmail Integration",
+  "uspsIntegrationDescription": "CareConnect reads USPS Informed Delivery emails from Gmail using read-only access. We never send, delete, or modify your email.",
+  "uspsGoogleConnected": "Google account connected. You can fetch USPS digests automatically.",
+  "uspsGmailExpired": "Gmail access expired. Reconnect to continue syncing mail.",
+  "uspsConnectPrompt": "Connect your Google account to automatically fetch USPS digests from Gmail.",
+  "uspsReconnectGoogle": "Reconnect Google Account",
+  "uspsConnectGoogle": "Connect Google Account",
+  "uspsDisconnectGmail": "Disconnect Gmail",
+  "uspsSelectDigestDate": "Select Digest Date",
+  "uspsDateDescription": "Choose any date to view historical USPS digest data.",
+  "uspsGoToday": "Go to Today",
+  "uspsSearchHistory": "Search Mail History",
+  "uspsSearchDescription": "Search for mail by sender, subject, or any keyword.",
+  "uspsKeywordHint": "Enter keyword to search...",
+  "uspsSearch": "Search",
+  "uspsFetchDigest": "Fetch Digest",
+  "uspsClearCache": "Clear Cache",
+  "uspsClearSearch": "Clear Search",
+  "uspsSearchResults": "Search Results",
+  "uspsFoundItems": "Found {count} mail items matching \"{keyword}\"",
+  "@uspsFoundItems": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "keyword": {"type": "String"}
+    }
+  },
+  "uspsSearchFailed": "Search failed: {message}",
+  "@uspsSearchFailed": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "uspsNoMatches": "No mail items matched \"{keyword}\".",
+  "@uspsNoMatches": {
+    "placeholders": {
+      "keyword": {"type": "String"}
+    }
+  },
+  "uspsShowTodayMail": "Show Today's Mail",
+  "uspsShowingDate": "Showing digest for {date}",
+  "@uspsShowingDate": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "uspsItemCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@uspsItemCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "uspsNoItems": "No items",
+  "uspsPackages": "Packages",
+  "uspsMailPieces": "Mail Pieces",
+  "uspsPackage": "Package",
+  "uspsMail": "Mail",
+  "uspsUnknownSender": "Unknown sender",
+  "uspsUnknownSenderTitle": "Unknown Sender",
+  "uspsFrom": "From: {sender}",
+  "@uspsFrom": {
+    "placeholders": {
+      "sender": {"type": "String"}
+    }
+  },
+  "uspsTracking": "Tracking: {trackingNumber}",
+  "@uspsTracking": {
+    "placeholders": {
+      "trackingNumber": {"type": "String"}
+    }
+  },
+  "uspsExpected": "Expected: {date}",
+  "@uspsExpected": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "uspsDelivered": "Delivered: {date}",
+  "@uspsDelivered": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "uspsDetails": "Details",
+  "uspsSubject": "Subject",
+  "uspsTrackingNumber": "Tracking Number",
+  "uspsExpectedDelivery": "Expected Delivery",
+  "uspsDeliveredLabel": "Delivered",
+  "uspsTrack": "Track",
+  "uspsTrackPackage": "Track Package",
+  "uspsViewDashboard": "View in USPS Dashboard",
+  "uspsNoSubject": "No subject available",
+  "uspsNoSummary": "No summary",
+  "uspsNoDigestItems": "No items in digest",
+  "uspsSelectDateHelp": "Select digest date",
+  "uspsCancel": "Cancel",
+  "uspsSelect": "Select",
+  "uspsOpenLinkError": "Could not open link",
+  "uspsGmailDisconnected": "Gmail disconnected.",
+  "uspsDisconnectError": "Failed to disconnect Gmail",
+  "uspsLoginRequired": "Please log in first",
+  "uspsLoginToView": "Please log in to view USPS mail.",
+  "uspsLoginToSearch": "Please log in to search USPS mail.",
+  "uspsLoginToConnect": "Please log in to connect Gmail.",
+  "uspsCacheCleared": "Cache cleared! Try fetching digest again.",
+  "uspsClearCacheError": "Failed to clear cache",
+  "uspsGmailStatusError": "Unable to check Gmail connection status.",
+  "uspsGoogleAuthError": "Could not open Google authentication",
+  "uspsGmailConnectError": "Could not start Gmail connection",
+  "uspsDigestNotFound": "No USPS digest found for {date}.",
+  "@uspsDigestNotFound": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "uspsUSPSPackage": "USPS Package",
+
+  "hhaTitle": "Submit to HHAExchange",
+  "hhaRefresh": "Refresh",
+  "hhaInfo": "Select APPROVED visits to send to the Virginia HHAExchange aggregator (https://implementation.hhaexchange.com/api/v2/visits). Only VA-state records are forwarded.",
+  "hhaDeselectAll": "Deselect all",
+  "hhaSelectAll": "Select all ({count})",
+  "@hhaSelectAll": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hhaSelectedCount": "{count} selected",
+  "@hhaSelectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hhaSubmitting": "Submitting…",
+  "hhaSubmitVisits": "Submit {count} Visit(s)",
+  "@hhaSubmitVisits": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hhaErrorLoading": "Error loading records: {message}",
+  "@hhaErrorLoading": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "hhaDownloading": "Downloading HHAExchange payload...",
+  "hhaDownloadedAs": "Payload downloaded as {filename}",
+  "@hhaDownloadedAs": {
+    "placeholders": {
+      "filename": {"type": "String"}
+    }
+  },
+  "hhaDownloadFailed": "Failed to download payload: {message}",
+  "@hhaDownloadFailed": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "hhaFetchingPayload": "Fetching payload for download...",
+  "hhaPayloadDownloadedSubmitting": "Payload downloaded. Submitting to HHAExchange...",
+  "hhaPayloadDownloadWarning": "Warning: Could not download payload ({message}). Continuing with submission...",
+  "@hhaPayloadDownloadWarning": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "hhaSubmittedCount": "{count} visit(s) successfully submitted to HHAExchange.",
+  "@hhaSubmittedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hhaSubmissionFailed": "Submission failed: {message}",
+  "@hhaSubmissionFailed": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "hhaNoEligibleVisits": "No eligible visits",
+  "hhaNoEligibleDescription": "All approved visits have already been submitted,\nor there are no approved visits yet.",
+  "hhaAllApproved": "All approved visits have already been submitted",
+  "hhaCheckIn": "Check-in: {time}",
+  "@hhaCheckIn": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "hhaCheckOut": "Check-out: {time}",
+  "@hhaCheckOut": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "hhaState": "State: {state}",
+  "@hhaState": {
+    "placeholders": {
+      "state": {"type": "String"}
+    }
+  },
+  "hhaStatusApproved": "APPROVED",
+
+  "shiftTitle": "Caregiver Shift Scheduling",
+  "shiftRecurring": "Recurring Shift",
+  "shiftStartTime": "Start Time",
+  "shiftEndTime": "End Time",
+  "shiftNoTimeSelected": "No time selected",
+  "shiftDays": "Days",
+  "shiftSunday": "S",
+  "shiftMonday": "M",
+  "shiftTuesday": "T",
+  "shiftWednesday": "W",
+  "shiftThursday": "T",
+  "shiftFriday": "F",
+  "shiftSaturday": "S",
+  "shiftSave": "Save",
+  "shiftVisitSaved": "Visit saved: {patient}",
+  "@shiftVisitSaved": {
+    "placeholders": {
+      "patient": {"type": "String"}
+    }
+  },
+
   "medicarehelp_title": "Help with Medicare",
   "@medicarehelp_title": {"description": "Heading for the Medicare help section (WBS 6.4.33)."},
   "medicarehelp_connectTitle": "Connecting your Medicare account",

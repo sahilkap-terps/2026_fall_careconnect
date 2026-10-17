@@ -1,5 +1,14 @@
 # Cerner M3 Test Fixture Guide
 
+## Checked-in compatibility baseline — October 17, 2026
+
+`CernerAllergyFixtureCompatibilityTest` uses all six existing allergy JSON files
+and `backend/core/src/test/resources/cerner/expected/allergy-mapper.json`.
+That fixed baseline was recorded on October 9. It checks mapper output, unchanged
+input, and wrong-patient rejection without a source call or database. It does
+not approve the public API or verify the original sandbox captures. Existing
+fixture metadata and authorship are unchanged. See [the review](team-c-docs-fixtures-review-2026-10-17.md).
+
 ## Fixture root
 
 Place backend M3 fixtures under the repository's Spring Boot test-resource root:

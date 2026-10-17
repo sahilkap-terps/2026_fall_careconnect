@@ -9,7 +9,7 @@
 
 This plan defines how Team C will verify Cerner FHIR R4 retrieval, mapping, API behavior, and the critical frontend-to-backend workflow for Milestone 3. It applies the approved six-level testing strategy and assigns each scenario to the lowest level that proves the behavior. A scenario is repeated at a higher level only when that level proves a new boundary, such as HTTP serialization, the approved API contract, or actual sandbox interoperability.
 
-The initial repeatable example is AllergyIntolerance. The repository does not yet contain an AllergyIntolerance mapper or approved normalized allergy response, so allergy expected-output assertions remain provisional until the canonical model and OpenAPI 1.0 are approved.
+The initial repeatable example is AllergyIntolerance. As of October 17, Team C contains the pure allergy mapper, provisional controller, six shared fixtures, fixed expected outputs, and offline tests. The response shape remains provisional until the canonical model and OpenAPI contract are approved. See [the current validation report](team-c-task-validation-2026-10-17.md) for executed results and [the Test Lead packet](team-c-m1-test-lead-review-2026-10-17.md) for review decisions. The September 26 snapshot below is retained as history.
 
 This plan is intended for active use during implementation. QA artifacts, fixtures, tests, and traceability will evolve alongside WBS 4.7 and WBS 4.8 rather than being completed after development. An unresolved dependency does not prevent semantic or lower-level testing when the temporary assumption is recorded in Section 12; affected assertions must be updated after the authoritative decision is approved.
 
