@@ -28,17 +28,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The retention queries {@code EhrRetentionWorker} runs against {@code ehr_identity_conflict},
- * {@code ehr_source_identity}, {@code ehr_audit_event} and {@code ehr_resource}, on a real
- * PostgreSQL. The unit test mocks the repositories, so it cannot tell whether the JPQL selects and
- * deletes the right rows. ({@code ehr_raw_payload}'s pair is TC-EHR-RAW-007 in
- * {@code EhrRawPayloadPostgresJsonbTest}.)
+ * {@code ehr_source_identity}, {@code ehr_audit_event}, {@code ehr_resource},
+ * {@code ehr_coverage_record} and {@code ehr_visit_record}, on a real PostgreSQL. The unit test
+ * mocks the repositories, so it cannot tell whether the JPQL selects and deletes the right rows.
+ * ({@code ehr_raw_payload}'s pair is TC-EHR-RAW-007 in {@code EhrRawPayloadPostgresJsonbTest}.)
  * <p>
  * Every case uses a cutoff of 2001-01-01, older than anything a real sync could have stored, so
  * the delete statements cannot touch rows this test did not create. Opt-in, like the other
  * PostgreSQL tests here: skipped unless {@code EHR_IT_JDBC_URI} is set, and the target database
  * must hold at least one {@code patient} row.
  * <p>
- * Test IDs TC-EHR-RET-005..007 and 009 are permanent. Never renumber, never reuse.
+ * Test IDs TC-EHR-RET-005..007, 009 and 011 are permanent. Never renumber, never reuse.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
