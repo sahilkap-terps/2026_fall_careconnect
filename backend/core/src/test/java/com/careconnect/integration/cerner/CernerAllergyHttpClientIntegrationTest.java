@@ -25,6 +25,7 @@ class CernerAllergyHttpClientIntegrationTest {
     private final AtomicInteger calls = new AtomicInteger();
     private volatile int upstream = 200;
     private volatile String body;
+    private volatile byte[] rawBody;
     private volatile long delay;
     private volatile String query;
     private volatile String authorization;
@@ -44,7 +45,7 @@ class CernerAllergyHttpClientIntegrationTest {
             authorization = exchange.getRequestHeaders().getFirst("Authorization");
             try {
                 Thread.sleep(delay);
-                byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+                byte[] bytes = rawBody == null ? body.getBytes(StandardCharsets.UTF_8) : rawBody;
                 exchange.getResponseHeaders().set("Content-Type", "application/fhir+json");
                 exchange.getResponseHeaders().set("Location", "/fhir/AllergyIntolerance");
                 exchange.sendResponseHeaders(upstream, bytes.length);
@@ -87,6 +88,17 @@ class CernerAllergyHttpClientIntegrationTest {
 
     @Test
     void malformedJsonIsNotEmptySuccess() { body = "{private"; assertFailure("CERNER_INVALID_RESPONSE", false); }
+
+    @Test
+    void malformedUtf8Rejected() {
+        // Invalid two-byte UTF-8 sequence in a clinical text field must not be replaced silently.
+        rawBody = body.replace("aspirin", "PLACEHOLDER").getBytes(StandardCharsets.UTF_8);
+        int position = new String(rawBody, StandardCharsets.UTF_8).indexOf("PLACEHOLDER");
+        assertTrue(position >= 0);
+        rawBody[position] = (byte) 0xc3;
+        rawBody[position + 1] = (byte) 0x28;
+        assertFailure("CERNER_INVALID_RESPONSE", false);
+    }
 
     @Test
     void trailingJsonRejected() {
