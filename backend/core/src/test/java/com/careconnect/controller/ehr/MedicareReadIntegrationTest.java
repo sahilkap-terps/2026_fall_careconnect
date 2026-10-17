@@ -46,6 +46,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
@@ -98,8 +101,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * smoke test in the PR #272 execution record, not here.
  * <p>
  * Test IDs TC-MCR-CACHE-026…032 (Testing Lead, 2026-10-06, PR #272 review), TC-MCR-AUTHZ-038…040
- * (PR #310 author's, named by the Testing Lead, 2026-10-11) and TC-MCR-AUTHZ-043…046 (Testing Lead,
- * 2026-10-11) are permanent. Never
+ * (PR #310 author's, named by the Testing Lead, 2026-10-11), TC-MCR-AUTHZ-043…046 (Testing Lead,
+ * 2026-10-11), TC-MCR-AUTHZ-047…068 (PR #326 author's, named by the Testing Lead, 2026-10-13) and
+ * TC-MCR-AUTHZ-069…074 (Testing Lead, 2026-10-13) are permanent. Never
  * renumber, never reuse.
  */
 @DataJpaTest
@@ -581,5 +585,180 @@ class MedicareReadIntegrationTest {
         assertThat(refusals).extracting(r -> r.getResponse().getContentAsString()).containsOnly(first);
         assertThat(objectMapper.readTree(first).has("resources")).isFalse();
         verifyNoInteractions(medicare);
+    }
+
+    // #324 (WBS 6.3.9): every way a caregiver-side caller can lack access, on each Medicare read
+    // endpoint over HTTP. One result per case and endpoint, so a test report can name each line. The
+    // IDs are written out, not derived from the enum order, so they never move. They refine SRS
+    // TC-24.2 and 24.3; TC-24.4 is FR-MCR-18's, so the 24.x series is not extended.
+
+    enum Refusal {
+        NO_LINK("a caregiver with consent but no link"),
+        NO_CONSENT("a linked caregiver with no MEDICARE_VIEW consent"),
+        REVOKED_CONSENT("a linked caregiver whose consent was revoked"),
+        EXPIRED_CONSENT("a linked caregiver whose consent expired"),
+        EXPIRED_LINK("a caregiver with consent whose link expired"),
+        WRONG_PATIENT("another patient's linked, consented caregiver"),
+        FAMILY_MEMBER("a linked family member with consent"),
+        REVOKED_LINK("a caregiver with consent whose link was revoked"),
+        OTHER_SCOPE_CONSENT("a linked caregiver whose only consent is for another scope");
+
+        private final String who;
+
+        Refusal(final String who) {
+            this.who = who;
+        }
+
+        @Override
+        public String toString() {
+            return who;
+        }
+    }
+
+    static List<Arguments> refusals() {
+        return List.of(
+                Arguments.of("TC-MCR-AUTHZ-047", Refusal.NO_LINK, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-048", Refusal.NO_LINK, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-049", Refusal.NO_LINK, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-050", Refusal.NO_CONSENT, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-051", Refusal.NO_CONSENT, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-052", Refusal.NO_CONSENT, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-053", Refusal.REVOKED_CONSENT, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-054", Refusal.REVOKED_CONSENT, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-055", Refusal.REVOKED_CONSENT, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-056", Refusal.EXPIRED_CONSENT, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-057", Refusal.EXPIRED_CONSENT, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-058", Refusal.EXPIRED_CONSENT, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-059", Refusal.EXPIRED_LINK, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-060", Refusal.EXPIRED_LINK, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-061", Refusal.EXPIRED_LINK, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-062", Refusal.WRONG_PATIENT, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-063", Refusal.WRONG_PATIENT, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-064", Refusal.WRONG_PATIENT, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-065", Refusal.FAMILY_MEMBER, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-066", Refusal.FAMILY_MEMBER, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-067", Refusal.FAMILY_MEMBER, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-069", Refusal.REVOKED_LINK, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-070", Refusal.REVOKED_LINK, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-071", Refusal.REVOKED_LINK, "patient"),
+                Arguments.of("TC-MCR-AUTHZ-072", Refusal.OTHER_SCOPE_CONSENT, "coverage"),
+                Arguments.of("TC-MCR-AUTHZ-073", Refusal.OTHER_SCOPE_CONSENT, "visits"),
+                Arguments.of("TC-MCR-AUTHZ-074", Refusal.OTHER_SCOPE_CONSENT, "patient"));
+    }
+
+    /** A grant as the consent API leaves it after a revoke: status REVOKED and revokedAt set. */
+    private void revokedMedicareView(final Patient p, final User grantee) {
+        final Instant now = Instant.now();
+        consentGrants.save(ConsentGrant.builder()
+                .patientUserId(p.getUser().getId())
+                .granteeUserId(grantee.getId())
+                .granteeRole(grantee.getRole().name())
+                .scope(MedicareAccessPolicy.SCOPE_MEDICARE_VIEW)
+                .status(ConsentGrant.STATUS_REVOKED)
+                .grantedAt(now.minusSeconds(86_400))
+                .revokedAt(now.minusSeconds(60))
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    }
+
+    /** Sets up {@code r}'s caller against patient1 and returns them. */
+    private User refusedCaller(final Refusal r) {
+        final User u = r == Refusal.FAMILY_MEMBER
+                ? account("v324-family@example.test", Role.FAMILY_MEMBER)
+                : caregiver("v324-" + r.name().toLowerCase() + "@example.test");
+        switch (r) {
+            case NO_LINK -> medicareView(patient1, u);
+            case NO_CONSENT -> caregiverLink(u, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+            case REVOKED_CONSENT -> {
+                caregiverLink(u, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+                revokedMedicareView(patient1, u);
+            }
+            case EXPIRED_CONSENT -> {
+                caregiverLink(u, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+                grant(patient1, u, MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, Instant.now().minusSeconds(60), null);
+            }
+            case EXPIRED_LINK -> {
+                caregiverLink(u, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, LocalDateTime.now().minusDays(1));
+                medicareView(patient1, u);
+            }
+            case WRONG_PATIENT -> {
+                caregiverLink(u, patient2, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+                medicareView(patient2, u);
+            }
+            case FAMILY_MEMBER -> {
+                familyLinks.save(new FamilyMemberLink(u, patient1.getUser(), patient1.getUser(), "Son"));
+                medicareView(patient1, u);
+            }
+            case REVOKED_LINK -> {
+                caregiverLink(u, patient1, CaregiverPatientLink.LinkStatus.REVOKED, null);
+                medicareView(patient1, u);
+            }
+            case OTHER_SCOPE_CONSENT -> {
+                caregiverLink(u, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+                grant(patient1, u, ConsentGrant.SCOPE_AI_RETRIEVAL, null, null);
+            }
+        }
+        return u;
+    }
+
+    private MockMvc httpMvc() {
+        return MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
+
+    private long storedMedicareRows() {
+        return rawPayloads.count() + coverages.count() + visits.count() + identities.count();
+    }
+
+    @ParameterizedTest(name = "{0}: {1} gets the 404 on /v1/api/medicare/{2}")
+    @MethodSource("refusals")
+    void caregiverVerificationRefusalOverHttp(final String id, final Refusal r, final String read)
+            throws Exception {
+        link(patient1, "enc");
+        link(patient2, "enc");
+        final MockMvc mvc = httpMvc();
+        final long rowsBefore = storedMedicareRows();
+        signIn(refusedCaller(r));
+
+        final MvcResult refused = mvc.perform(get("/v1/api/medicare/" + read)
+                .param("patientId", patient1.getId().toString())).andReturn();
+        // The same answer as for a patient that does not exist, so the refusal discloses nothing.
+        final MvcResult noSuchPatient = mvc.perform(get("/v1/api/medicare/" + read)
+                .param("patientId", "987654321")).andReturn();
+
+        assertThat(refused.getResponse().getStatus()).isEqualTo(404);
+        final String body = refused.getResponse().getContentAsString();
+        assertThat(body).isEqualTo(noSuchPatient.getResponse().getContentAsString());
+        assertThat(objectMapper.readTree(body).has("resources")).isFalse();
+        assertThat(storedMedicareRows()).as("Medicare rows stored").isEqualTo(rowsBefore);
+        verifyNoInteractions(medicare);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-AUTHZ-068: a linked caregiver holding the patient's MEDICARE_VIEW consent reads coverage, visits and patient over HTTP, with resources in each body, Blue Button asked and rows stored, so the refusals come from the policy and not the setup")
+    void caregiverVerificationControlOverHttp() throws Exception {
+        link(patient1, "enc");
+        final MockMvc mvc = httpMvc();
+        final User allowed = caregiver("v324-allowed@example.test");
+        caregiverLink(allowed, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        medicareView(patient1, allowed);
+        signIn(allowed);
+        blueButtonServesFixtures();
+        final long rowsBefore = storedMedicareRows();
+
+        for (final String read : List.of("coverage", "visits", "patient")) {
+            final MvcResult ok = mvc.perform(get("/v1/api/medicare/" + read)
+                    .param("patientId", patient1.getId().toString())).andReturn();
+            assertThat(ok.getResponse().getStatus()).as(read).isEqualTo(200);
+            // The field the refusals must not carry is present on success, so that check is not vacuous.
+            assertThat(objectMapper.readTree(ok.getResponse().getContentAsString()).get("resources"))
+                    .as(read).isNotEmpty();
+        }
+        assertThat(storedMedicareRows()).as("Medicare rows stored").isGreaterThan(rowsBefore);
+        verify(medicare).requestMedicareCoverageInfo(anyString());
+        verify(medicare).requestMedicareEOBInfo(anyString());
+        verify(medicare).requestMedicarePatientInfo(anyString());
     }
 }

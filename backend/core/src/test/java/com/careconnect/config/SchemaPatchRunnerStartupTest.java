@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@code SchemaPatchRunner.run()} end to end against a scripted JDBC double, one for PostgreSQL and one for H2
- * (Test Plan §3.11, TC-EHR-SCH-030…039). The double records every statement and answers the runner's catalog
+ * (Test Plan §3.11, TC-EHR-SCH-030…040). The double records every statement and answers the runner's catalog
  * queries (advisory lock, index status, foreign-key counts, schema verifications) the way a healthy database
  * would, unless a test sets one of its knobs to break a single answer.
  * <p>
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
  * SQL is valid PostgreSQL. {@code EhrCanonicalSchemaPostgresTest} and {@code EmergencyPassportSchemaPostgresTest}
  * do that against a real database.
  * <p>
- * Test IDs TC-EHR-SCH-030…039 are permanent. Never renumber, never reuse.
+ * Test IDs TC-EHR-SCH-030…040 are permanent. Never renumber, never reuse.
  */
 class SchemaPatchRunnerStartupTest {
 
@@ -309,5 +309,37 @@ class SchemaPatchRunnerStartupTest {
         assertThatThrownBy(() -> new SchemaPatchRunner(dataSource, mock(SchemaPatchLedger.class)).run())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Unable to identify database for schema patches");
+    }
+
+    @Test
+    @DisplayName("TC-EHR-SCH-040: on PostgreSQL, startup sends the CC-12 Increment 2 token patches after every "
+            + "Increment 1 passport patch and before the demo seed; on H2 it sends none")
+    void tokenPatchesRunAfterIncrementOneOnPostgresOnly() throws Exception {
+        final FakeDatabase postgres = new FakeDatabase();
+
+        postgres.runnerOn("PostgreSQL").run();
+
+        int lastIncrementOne = -1;
+        for (int i = 0; i < postgres.events.size(); i++) {
+            if (postgres.events.get(i).contains("table_name = 'emergency_passport_field_visibility'")) {
+                lastIncrementOne = i;
+            }
+        }
+        final int lookup = postgres.indexOf("uq_emergency_passport_token_lookup");
+        final int oneActive = postgres.indexOf("uq_emergency_passport_token_one_active");
+        final int foreignKey = postgres.indexOf("fk_emergency_passport_token_patient");
+        final int zone = postgres.indexOf("table_name = 'emergency_passport_token'");
+        final int seed = postgres.indexOf("INSERT INTO scheduled_visits");
+        assertThat(lastIncrementOne).isGreaterThanOrEqualTo(0);
+        assertThat(lookup).as("token patches follow Increment 1's").isGreaterThan(lastIncrementOne);
+        assertThat(oneActive).isGreaterThan(lookup);
+        assertThat(foreignKey).isGreaterThan(oneActive);
+        assertThat(zone).isGreaterThan(foreignKey);
+        assertThat(seed).isGreaterThan(zone);
+        assertThat(postgres.events.get(oneActive)).contains("WHERE status = 'ACTIVE'");
+
+        final FakeDatabase h2 = new FakeDatabase();
+        h2.runnerOn("H2").run();
+        assertThat(h2.sent("emergency_passport_token")).isFalse();
     }
 }

@@ -23,15 +23,16 @@ import static org.mockito.Mockito.when;
 
 /**
  * The CC-12 Increment 1 patches V2610131200a…f that {@code SchemaPatchRunner} applies on PostgreSQL
- * (Test Plan §3.23, TC-EMG-041…043). The JDBC objects are mocks, so this pins the statements the
+ * (Test Plan §3.23, TC-EMG-041…043; §3.24, TC-EMG-064). The JDBC objects are mocks, so this pins the statements the
  * runner issues; {@code EmergencyPassportSchemaPostgresTest} shows what they do to a real database.
  * <p>
- * Test IDs TC-EMG-041…043 are permanent. Never renumber, never reuse.
+ * Test IDs TC-EMG-041…043 and 064 (Increment 2, the author's) are permanent. Never renumber, never reuse.
  */
 class SchemaPatchRunnerEmergencyPassportTest {
 
     private static final String PROFILE = "emergency_passport_profile";
     private static final String VISIBILITY = "emergency_passport_field_visibility";
+    private static final String TOKEN = "emergency_passport_token";
 
     private final DataSource dataSource = mock(DataSource.class);
     private final Connection connection = mock(Connection.class);
@@ -60,8 +61,8 @@ class SchemaPatchRunnerEmergencyPassportTest {
     void postgresIssuesEveryPassportPatchInOrder() throws Exception {
         runnerOn("PostgreSQL").applyEmergencyPassportPatches();
 
-        final List<String> sql = patchStatements();
-        assertThat(sql).hasSize(9);
+        // Increment 1's nine come first; Increment 2's token patches follow (checked separately below).
+        final List<String> sql = patchStatements().subList(0, 9);
 
         assertThat(sql.get(0)).isEqualTo("CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_profile_patient "
                 + "ON " + PROFILE + " (patient_id)");
@@ -84,6 +85,32 @@ class SchemaPatchRunnerEmergencyPassportTest {
                         .contains("ALTER TABLE " + table + " ALTER COLUMN " + column
                                 + " TYPE TIMESTAMPTZ USING " + column + " AT TIME ZONE 'UTC'");
             }
+        }
+    }
+
+    @Test
+    @DisplayName("TC-EMG-064: on PostgreSQL the runner then issues V2610131300a…d for the token table: lookup and one-active "
+            + "unique indexes, a cascading foreign key to patient and two TIMESTAMPTZ conversions")
+    void postgresIssuesEveryTokenPatchAfterIncrementOne() throws Exception {
+        runnerOn("PostgreSQL").applyEmergencyPassportPatches();
+
+        final List<String> sql = patchStatements();
+        assertThat(sql).hasSize(14);
+
+        assertThat(sql.get(9)).isEqualTo("CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_token_lookup "
+                + "ON " + TOKEN + " (token_lookup)");
+        assertThat(sql.get(10)).isEqualTo("CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_token_one_active "
+                + "ON " + TOKEN + " (patient_id) WHERE status = 'ACTIVE'");
+        assertForeignKey(sql.get(11), "fk_emergency_passport_token_patient", TOKEN);
+
+        int i = 12;
+        for (final String column : new String[]{"created_at", "updated_at"}) {
+            assertThat(sql.get(i++))
+                    .as("TIMESTAMPTZ patch for %s.%s", TOKEN, column)
+                    .contains("table_name = '" + TOKEN + "'")
+                    .contains("column_name = '" + column + "'")
+                    .contains("ALTER TABLE " + TOKEN + " ALTER COLUMN " + column
+                            + " TYPE TIMESTAMPTZ USING " + column + " AT TIME ZONE 'UTC'");
         }
     }
 
