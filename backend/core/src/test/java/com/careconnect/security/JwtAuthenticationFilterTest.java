@@ -4,11 +4,13 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
@@ -43,6 +45,15 @@ class JwtAuthenticationFilterTest {
     void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
         jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService);
+    }
+
+    /**
+     * The filter puts its sign-in on this thread. Clear it, or a later test on the thread (such as
+     * EmergencyAccessRealAuthorizationTest) starts its request signed in as a user with no name.
+     */
+    @AfterEach
+    void clearSignIn() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
