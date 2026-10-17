@@ -3,7 +3,9 @@ package com.careconnect.integration.cerner;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -98,10 +100,15 @@ public final class CernerAllergyMapper {
         if (value == null || value.isBlank()) {
             return null;
         }
-        if (value.matches("\\d{4}(-\\d{2}(-\\d{2})?)?")) {
-            return value;
-        }
         try {
+            if (value.matches("\\d{4}(-\\d{2}(-\\d{2})?)?")) {
+                if (value.length() == 7) {
+                    YearMonth.parse(value);
+                } else if (value.length() == 10) {
+                    LocalDate.parse(value);
+                }
+                return value;
+            }
             return Instant.from(OffsetDateTime.parse(value)).toString();
         } catch (DateTimeParseException e) {
             return null;

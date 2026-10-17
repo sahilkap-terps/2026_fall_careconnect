@@ -2,6 +2,7 @@ package com.careconnect.integration.cerner;
 
 import com.careconnect.integration.cerner.CernerAllergyService.CernerSourceException;
 import com.careconnect.integration.cerner.CernerAllergyService.UnknownPatientException;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +17,7 @@ import java.util.Map;
 
 /** Provisional endpoint; path and envelope are subject to OpenAPI 1.0 approval. */
 @RestController
+@ConditionalOnProperty(prefix = "careconnect.cerner.allergies", name = "enabled", havingValue = "true")
 @RequestMapping("/v1/api/cerner/patients/{patientId}/allergies")
 public class CernerAllergyController {
 
