@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../config/theme/app_theme.dart';
 import '../models/medical_passport.dart';
 import '../services/medical_passport_service.dart';
 
@@ -22,7 +23,9 @@ class MedicalPassportPage extends StatefulWidget {
 }
 
 const _ink = Color(0xFF0F172A);
-const _muted = Color(0xFF64748B);
+// DEF-EMG-20: 0xFF64748B was 4.35:1 on the page grey; this is at least 5.1:1
+// on every background the page puts muted text on.
+const _muted = Color(0xFF526277);
 const _brand = Color(0xFF0D6B5E);
 const _brandSoft = Color(0xFFE6F4F1);
 const _page = Color(0xFFF3F5F4);
@@ -67,6 +70,9 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
       if (mounted) setState(() => _passport = passport);
     } catch (e) {
       if (mounted) setState(() => _loadError = e);
+      // DEF-EMG-15: with a passport already on screen the error state is not
+      // shown, so say the refresh failed.
+      if (_passport != null) _toast('Couldn\'t refresh your passport. Try again.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -169,7 +175,7 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _brand),
+              style: FilledButton.styleFrom(backgroundColor: _brand, foregroundColor: Colors.white),
               onPressed: () => Navigator.pop(context, true),
               child: Text(action),
             ),
@@ -182,8 +188,13 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
 
   /// Dialogs are built from the app's theme, not the page's: give them the
   /// passport's green for links, focus and selection too.
+  ///
+  /// DEF-EMG-20: the page is light in every app theme, so its dialogs are too;
+  /// on the dark dialog surface its green "Cancel" was 2.69:1 and its muted text
+  /// 2.77:1.
   static Widget _branded(BuildContext context, Widget dialog) {
-    final theme = Theme.of(context);
+    final current = Theme.of(context);
+    final theme = current.brightness == Brightness.dark ? AppTheme.lightTheme : current;
     return Theme(
       data: theme.copyWith(
         colorScheme: theme.colorScheme.copyWith(primary: _brand),
@@ -245,15 +256,19 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
         );
       }
       if (error is MedicalPassportException && error.signedOut) {
-        return const _Notice(
+        // DEF-EMG-17: a way out, not a dead end.
+        return _Notice(
           icon: Icons.lock_outline,
           text: 'Your session has ended. Sign in again to see your passport.',
+          action: 'Sign in',
+          onAction: () => context.go('/login'),
         );
       }
       return _Notice(
         icon: Icons.cloud_off_outlined,
         text: 'Couldn\'t load your passport.',
-        onRetry: _load,
+        action: 'Try again',
+        onAction: _load,
       );
     }
     return RefreshIndicator(
@@ -416,6 +431,8 @@ class _Header extends StatelessWidget {
         FilledButton.icon(
           style: FilledButton.styleFrom(
             backgroundColor: _brand,
+            // DEF-EMG-20: the app theme's onPrimary is near-black (3.03:1 here).
+            foregroundColor: Colors.white,
             minimumSize: const Size(0, 48),
             padding: const EdgeInsets.symmetric(horizontal: 18),
           ),
@@ -839,11 +856,15 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Icon(icon, size: 20, color: _brand),
                     const SizedBox(width: 10),
-                    Semantics(
-                      header: true,
-                      child: Text(title,
-                          style: const TextStyle(
-                              color: _ink, fontSize: 16, fontWeight: FontWeight.w700)),
+                    // DEF-EMG-21: the title and the switch wrap rather than run off
+                    // the card at 200% text.
+                    Flexible(
+                      child: Semantics(
+                        header: true,
+                        child: Text(title,
+                            style: const TextStyle(
+                                color: _ink, fontSize: 16, fontWeight: FontWeight.w700)),
+                      ),
                     ),
                     if (count != null) ...[
                       const SizedBox(width: 8),
@@ -855,13 +876,15 @@ class _SectionCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (action != null) action!,
-                    _ShareSwitch(
-                      key: shareSwitchKey(field),
-                      label: title.toLowerCase(),
-                      shared: passport.isShared(field),
-                      saving: saving,
-                      enabled: hasContent,
-                      onChanged: onShare,
+                    Flexible(
+                      child: _ShareSwitch(
+                        key: shareSwitchKey(field),
+                        label: title.toLowerCase(),
+                        shared: passport.isShared(field),
+                        saving: saving,
+                        enabled: hasContent,
+                        onChanged: onShare,
+                      ),
                     ),
                   ],
                 ),
@@ -916,10 +939,14 @@ class _ShareSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final on = shared && enabled;
+    final canChange = enabled && !saving;
     return Semantics(
       label: 'Show $label on QR code',
       toggled: on,
-      enabled: enabled && !saving,
+      enabled: canChange,
+      // DEF-EMG-19: excludeSemantics drops the Switch's own tap action, so give
+      // this node one; without it TalkBack and VoiceOver cannot toggle it.
+      onTap: canChange ? () => onChanged(!on) : null,
       excludeSemantics: true,
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -935,7 +962,7 @@ class _ShareSwitch extends StatelessWidget {
           Switch(
             value: on,
             activeTrackColor: _brand,
-            onChanged: enabled && !saving ? onChanged : null,
+            onChanged: canChange ? onChanged : null,
           ),
         ],
       ),
@@ -1070,6 +1097,8 @@ class _QrCodeDialog extends StatelessWidget {
             Semantics(
               image: true,
               label: 'QR code for your medical passport',
+              // DEF-EMG-23: QrImageView adds its own "qr code" to the name.
+              excludeSemantics: true,
               child: QrImageView(data: code.url, size: 220, backgroundColor: Colors.white),
             ),
             const SizedBox(height: 12),
@@ -1084,7 +1113,7 @@ class _QrCodeDialog extends StatelessWidget {
       ),
       actions: [
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: _brand),
+          style: FilledButton.styleFrom(backgroundColor: _brand, foregroundColor: Colors.white),
           onPressed: () => Navigator.pop(context),
           child: const Text('Done'),
         ),
@@ -1179,7 +1208,7 @@ class _EditDetailsDialogState extends State<_EditDetailsDialog> {
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: _brand),
+          style: FilledButton.styleFrom(backgroundColor: _brand, foregroundColor: Colors.white),
           onPressed: () => Navigator.pop(
             context,
             PassportProfileUpdate(
@@ -1236,9 +1265,13 @@ class _Avatar extends StatelessWidget {
           color: warm ? const Color(0xFFFEF0C7) : _brandSoft,
           borderRadius: BorderRadius.circular(size / 3),
         ),
-        child: Text(initials,
-            style: TextStyle(
-                color: warm ? _warn : _brand, fontWeight: FontWeight.w700, fontSize: size / 3)),
+        // DEF-EMG-21: decorative, in a fixed box, so it shrinks to fit at large text.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(initials,
+              style: TextStyle(
+                  color: warm ? _warn : _brand, fontWeight: FontWeight.w700, fontSize: size / 3)),
+        ),
       ),
     );
   }
@@ -1282,11 +1315,12 @@ class _PrivacyNote extends StatelessWidget {
 }
 
 class _Notice extends StatelessWidget {
-  const _Notice({required this.icon, required this.text, this.onRetry});
+  const _Notice({required this.icon, required this.text, this.action, this.onAction});
 
   final IconData icon;
   final String text;
-  final VoidCallback? onRetry;
+  final String? action;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -1298,13 +1332,19 @@ class _Notice extends StatelessWidget {
           children: [
             Icon(icon, size: 40, color: _muted),
             const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center, style: const TextStyle(color: _ink, fontSize: 16)),
-            if (onRetry != null) ...[
+            // DEF-EMG-22: it replaces the spinner without moving focus, so tell a
+            // screen reader.
+            Semantics(
+              liveRegion: true,
+              child: Text(text,
+                  textAlign: TextAlign.center, style: const TextStyle(color: _ink, fontSize: 16)),
+            ),
+            if (action != null && onAction != null) ...[
               const SizedBox(height: 12),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _brand),
-                onPressed: onRetry,
-                child: const Text('Try again'),
+                style: FilledButton.styleFrom(backgroundColor: _brand, foregroundColor: Colors.white),
+                onPressed: onAction,
+                child: Text(action!),
               ),
             ],
           ],

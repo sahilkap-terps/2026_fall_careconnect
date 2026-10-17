@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -27,9 +28,13 @@ class MedicalPassportException implements Exception {
 class MedicalPassportService {
   static String get _baseUrl => '${getBackendBaseUrl()}/v1/api/passport';
 
+  /// DEF-EMG-16: without a limit, a server that never answers leaves the page
+  /// on its spinner. 20 s, as the QR screen's PassportService.
+  static const _timeout = Duration(seconds: 20);
+
   static Future<MedicalPassport> fetch() async {
     final response =
-        await http.get(Uri.parse(_baseUrl), headers: await _headers());
+        await http.get(Uri.parse(_baseUrl), headers: await _headers()).timeout(_timeout);
     return MedicalPassport.fromJson(_decode(response));
   }
 
@@ -41,7 +46,7 @@ class MedicalPassportService {
       Uri.parse('$_baseUrl/profile'),
       headers: await _headers(json: true),
       body: jsonEncode(update.toJson()),
-    );
+    ).timeout(_timeout);
     return MedicalPassport.fromJson(_decode(response));
   }
 
@@ -52,22 +57,24 @@ class MedicalPassportService {
       Uri.parse('$_baseUrl/visibility/${field.apiName}'),
       headers: await _headers(json: true),
       body: jsonEncode({'isPublic': shared}),
-    );
+    ).timeout(_timeout);
     return MedicalPassport.fromJson(_decode(response));
   }
 
   /// Makes a new QR code and revokes any current one at once. The result is
   /// the only time the code's link is available.
   static Future<NewPassportCode> createCode() async {
-    final response =
-        await http.post(Uri.parse('$_baseUrl/token'), headers: await _headers());
+    final response = await http
+        .post(Uri.parse('$_baseUrl/token'), headers: await _headers())
+        .timeout(_timeout);
     return NewPassportCode.fromJson(_decode(response));
   }
 
   /// Stops the current QR code working, without making a new one.
   static Future<void> revokeCode() async {
-    final response = await http.delete(Uri.parse('$_baseUrl/token'),
-        headers: await _headers());
+    final response = await http
+        .delete(Uri.parse('$_baseUrl/token'), headers: await _headers())
+        .timeout(_timeout);
     _check(response);
   }
 

@@ -2,13 +2,17 @@
 // consent_api_service_test.dart: each call's method, path and body, and how
 // errors surface.
 //
-// No Test Plan IDs yet: they are issued by the Testing Lead.
+// Test Plan §3.28: TC-EMG-344…352 are the author's; TC-EMG-377 and 378 are
+// the Testing Lead's.
 
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:care_connect_app/features/medical_passport/models/medical_passport.dart';
 import 'package:care_connect_app/features/medical_passport/services/medical_passport_service.dart';
@@ -30,7 +34,7 @@ Future<T> _with<T>(
     http.runWithClient(call, () => MockClient(handler));
 
 void main() {
-  test('fetch GETs /v1/api/passport and parses it', () async {
+  test('TC-EMG-344: fetch GETs /v1/api/passport and parses it', () async {
     late http.Request sent;
     final p = await _with(MedicalPassportService.fetch, (req) async {
       sent = req;
@@ -44,7 +48,7 @@ void main() {
     expect(p.isShared(PassportField.allergies), isTrue);
   });
 
-  test('setShared PUTs isPublic to the field\'s API name', () async {
+  test('TC-EMG-345: setShared PUTs isPublic to the field\'s API name', () async {
     late http.Request sent;
     await _with(() => MedicalPassportService.setShared(PassportField.chronicConditions, false),
         (req) async {
@@ -58,7 +62,7 @@ void main() {
     expect(jsonDecode(sent.body), {'isPublic': false});
   });
 
-  test('updateProfile PUTs every field', () async {
+  test('TC-EMG-346: updateProfile PUTs every field', () async {
     late http.Request sent;
     await _with(
         () => MedicalPassportService.updateProfile(const PassportProfileUpdate(
@@ -80,7 +84,7 @@ void main() {
     });
   });
 
-  test('createCode POSTs /token and returns the one-time link', () async {
+  test('TC-EMG-347: createCode POSTs /token and returns the one-time link', () async {
     late http.Request sent;
     final code = await _with(MedicalPassportService.createCode, (req) async {
       sent = req;
@@ -93,7 +97,7 @@ void main() {
     expect(code.url, 'http://x/passport/t0k');
   });
 
-  test('revokeCode DELETEs /token and accepts an empty 204', () async {
+  test('TC-EMG-348: revokeCode DELETEs /token and accepts an empty 204', () async {
     late http.Request sent;
     await _with(MedicalPassportService.revokeCode, (req) async {
       sent = req;
@@ -105,7 +109,7 @@ void main() {
   });
 
   group('errors', () {
-    test('a 400 carries the backend\'s error text', () async {
+    test('TC-EMG-349: a 400 carries the backend\'s error text', () async {
       final error = await _with(
         () => MedicalPassportService.updateProfile(const PassportProfileUpdate())
             .then<Object?>((_) => null, onError: (Object e) => e),
@@ -119,7 +123,7 @@ void main() {
       expect(e.toString(), contains('400'));
     });
 
-    test('403 is "not a patient" and 401 is "signed out"; an empty body has no message', () async {
+    test('TC-EMG-350: 403 is "not a patient" and 401 is "signed out"; an empty body has no message', () async {
       Future<MedicalPassportException> failWith(int status) => _with(
             () => MedicalPassportService.fetch().then<MedicalPassportException>(
                 (_) => fail('expected an error'),
@@ -137,18 +141,72 @@ void main() {
       expect(unauthorized.notAPatient, isFalse);
     });
 
-    test('a non-object body is a FormatException', () async {
+    test('TC-EMG-351: a non-object body is a FormatException', () async {
       await expectLater(
         _with(MedicalPassportService.fetch, (_) async => http.Response('[]', 200)),
         throwsA(isA<FormatException>()),
       );
     });
 
-    test('a revoke that fails throws', () async {
+    test('TC-EMG-352: a revoke that fails throws', () async {
       await expectLater(
         _with(MedicalPassportService.revokeCode, (_) async => http.Response('{"error":"nope"}', 500)),
         throwsA(isA<MedicalPassportException>().having((e) => e.message, 'message', 'nope')),
       );
     });
+  });
+
+  test(
+      'TC-EMG-377: a save that loses a race (409) is a MedicalPassportException '
+      'with the backend\'s text, neither "not a patient" nor "signed out"',
+      () async {
+    final error = await _with(
+      () => MedicalPassportService.setShared(PassportField.allergies, true)
+          .then<Object?>((_) => null, onError: (Object e) => e),
+      (_) async => http.Response(
+          jsonEncode({'error': 'Your passport was changed at the same time'}), 409),
+    );
+    expect(error, isA<MedicalPassportException>());
+    final e = error as MedicalPassportException;
+    expect(e.statusCode, 409);
+    expect(e.message, 'Your passport was changed at the same time');
+    expect(e.notAPatient, isFalse);
+    expect(e.signedOut, isFalse);
+  });
+
+  // A widget test only for its fake clock: no widget is pumped.
+  testWidgets(
+      'TC-EMG-378: every call gives up after 20 s when the server never '
+      'answers, with a TimeoutException (DEF-EMG-16)', (t) async {
+    // The sign-in header is read first; answer it at once, inside the fake clock.
+    const secure = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(secure, (call) async => null);
+    addTearDown(() => messenger.setMockMethodCallHandler(secure, null));
+    SharedPreferences.setMockInitialValues({});
+    final calls = <String, Future<Object?> Function()>{
+      'fetch': MedicalPassportService.fetch,
+      'updateProfile': () => MedicalPassportService.updateProfile(const PassportProfileUpdate()),
+      'setShared': () => MedicalPassportService.setShared(PassportField.allergies, true),
+      'createCode': MedicalPassportService.createCode,
+      'revokeCode': MedicalPassportService.revokeCode,
+    };
+    for (final c in calls.entries) {
+      Object? error;
+      var done = false;
+      http.runWithClient(
+        () => c.value().then<void>((_) {
+          done = true;
+        }, onError: (Object e) {
+          error = e;
+          done = true;
+        }),
+        () => MockClient((_) => Completer<http.Response>().future),
+      );
+      await t.pump(const Duration(seconds: 19));
+      expect(done, isFalse, reason: '${c.key} still waiting at 19 s');
+      await t.pump(const Duration(seconds: 2));
+      expect(error, isA<TimeoutException>(), reason: c.key);
+    }
   });
 }

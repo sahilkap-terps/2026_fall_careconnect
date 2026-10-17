@@ -259,7 +259,7 @@ void main() {
       expect(allPaths, contains('/dashboard/caregiver'));
     });
 
-    test('medical passport route exists and requires sign-in', () {
+    test('TC-ROUTE-180: medical passport route exists and requires sign-in', () {
       expect(allPaths, contains('/medical-passport'));
       final route = _findRoute(appRouter.configuration.routes, '/medical-passport');
       expect(route!.redirect, isNotNull);

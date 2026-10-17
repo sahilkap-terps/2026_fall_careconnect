@@ -1,7 +1,8 @@
 // MedicalPassport and friends parse what GET /v1/api/passport returns
 // (backend PassportDtos.PassportView) and build the PUT /profile body.
 //
-// No Test Plan IDs yet: they are issued by the Testing Lead.
+// Test Plan §3.28: TC-EMG-335…343 are the author's; TC-EMG-376 is the
+// Testing Lead's.
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -45,7 +46,7 @@ Map<String, dynamic> _full() => {
 
 void main() {
   group('MedicalPassport.fromJson', () {
-    test('reads every field of a full passport', () {
+    test('TC-EMG-335: reads every field of a full passport', () {
       final p = MedicalPassport.fromJson(_full());
 
       expect(p.name, 'Jordan Miller');
@@ -76,7 +77,7 @@ void main() {
       expect(p.initials, 'JM');
     });
 
-    test('a new passport with nothing set reads as empty, not shared and not ready', () {
+    test('TC-EMG-336: a new passport with nothing set reads as empty, not shared and not ready', () {
       final p = MedicalPassport.fromJson({
         'name': 'Sam',
         'age': null,
@@ -106,7 +107,7 @@ void main() {
       expect(p.initials, 'S');
     });
 
-    test('unknown sharing keys, unknown blood types and bad dates are ignored', () {
+    test('TC-EMG-337: unknown sharing keys, unknown blood types and bad dates are ignored', () {
       final json = _full()
         ..['bloodType'] = 'Z_POS'
         ..['sharing'] = {'SHOE_SIZE': true, 'ALLERGIES': true}
@@ -119,14 +120,14 @@ void main() {
       expect(p.lastUpdatedBySection, isEmpty);
     });
 
-    test('an inactive token is treated as no code', () {
+    test('TC-EMG-338: an inactive token is treated as no code', () {
       final json = _full()..['token'] = {'active': false, 'createdAt': '2026-10-01T12:00:00Z'};
       expect(MedicalPassport.fromJson(json).hasCode, isFalse);
     });
   });
 
   group('enums', () {
-    test('every PassportField and BloodType round-trips through its API name', () {
+    test('TC-EMG-339: every PassportField and BloodType round-trips through its API name', () {
       for (final field in PassportField.values) {
         expect(PassportField.fromApi(field.apiName), field);
       }
@@ -141,7 +142,7 @@ void main() {
   });
 
   group('NewPassportCode', () {
-    test('reads the one-time token and link', () {
+    test('TC-EMG-340: reads the one-time token and link', () {
       final code = NewPassportCode.fromJson({
         'token': 'abc',
         'url': 'https://app.example/passport/abc',
@@ -154,7 +155,7 @@ void main() {
   });
 
   group('PassportProfileUpdate', () {
-    test('from() carries the current values, so a PUT does not clear what was not edited', () {
+    test('TC-EMG-341: from() carries the current values, so a PUT does not clear what was not edited', () {
       final update = PassportProfileUpdate.from(MedicalPassport.fromJson(_full()));
       expect(update.toJson(), {
         'bloodType': 'O_POSITIVE',
@@ -165,14 +166,44 @@ void main() {
       });
     });
 
-    test('empty fields are sent as null, which clears them', () {
+    test('TC-EMG-342: empty fields are sent as null, which clears them', () {
       expect(const PassportProfileUpdate().toJson().values, everyElement(isNull));
     });
   });
 
-  test('initialsOf handles blanks and extra spaces', () {
+  test('TC-EMG-343: initialsOf handles blanks and extra spaces', () {
     expect(initialsOf('  jordan   lee  miller '), 'JM');
     expect(initialsOf(''), '?');
     expect(initialsOf(null), '?');
+  });
+
+  test(
+      'TC-EMG-376: what the real backend sends parses: an Instant with '
+      'microseconds, an age as 41.0, a contact with only a phone, and rows '
+      'with nothing but their name', () {
+    final p = MedicalPassport.fromJson({
+      ..._full(),
+      'age': 41.0,
+      'emergencyContact': {'name': null, 'relationship': null, 'phone': '555-0100'},
+      'allergies': [
+        {'allergen': 'Latex', 'severity': null, 'reaction': null},
+      ],
+      'medications': [
+        {'name': 'Aspirin', 'dosage': null, 'frequency': null},
+      ],
+      'token': {
+        'active': true,
+        'createdAt': '2026-10-16T09:00:00.123456Z',
+        'lastScannedAt': '2026-10-16T21:30:00.5Z',
+      },
+    });
+    expect(p.age, 41);
+    expect(p.emergencyContact!.name, isNull);
+    expect(p.emergencyContact!.phone, '555-0100');
+    expect(p.allergies.single.severity, isNull);
+    expect(p.medications.single.dosage, isNull);
+    expect(p.code!.createdAt!.toUtc(), DateTime.utc(2026, 10, 16, 9, 0, 0, 123, 456));
+    expect(p.code!.createdAt!.isUtc, isFalse, reason: 'shown in local time');
+    expect(p.code!.lastScannedAt!.toUtc(), DateTime.utc(2026, 10, 16, 21, 30, 0, 500));
   });
 }
