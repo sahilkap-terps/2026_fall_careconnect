@@ -1,6 +1,6 @@
 // CC-12 Increment 2: the patient's emergency QR screen (design screen 2).
-// Test Plan §3.27: TC-EMG-281…291 (the pull request's), 305…319 and 334
-// (Testing Lead: states, the app's own router, accessibility).
+// Test Plan §3.27: TC-EMG-281…291 and 454…458 (the pull request's), 305…319,
+// 334 and 464…467 (Testing Lead: states, the app's own router, accessibility).
 
 import 'dart:async';
 import 'dart:convert';
@@ -136,7 +136,7 @@ void main() {
     StoredQrCode kept() => StoredQrCode(
         url: 'http://localhost:3000/#/passport/kept', createdAt: _created);
 
-    testWidgets('after confirming, the code is turned off and forgotten here',
+    testWidgets('TC-EMG-454: after confirming, the code is turned off and forgotten here',
         (t) async {
       final service = _FakeService(view: _view());
       final store = _MemoryStore(kept());
@@ -157,7 +157,7 @@ void main() {
       expect(find.text('Turn off QR code'), findsNothing);
     });
 
-    testWidgets('Cancel leaves the code on', (t) async {
+    testWidgets('TC-EMG-455: Cancel leaves the code on', (t) async {
       final service = _FakeService(view: _view());
       final store = _MemoryStore(kept());
       await _open(t, service, store);
@@ -172,7 +172,7 @@ void main() {
       expect(find.byType(QrImageView), findsOneWidget);
     });
 
-    testWidgets('also offered when the code is not kept on this device',
+    testWidgets('TC-EMG-456: also offered when the code is not kept on this device',
         (t) async {
       final service = _FakeService(view: _view());
       await _open(t, service, _MemoryStore());
@@ -187,7 +187,7 @@ void main() {
       expect(find.text('You don\'t have an emergency QR yet'), findsOneWidget);
     });
 
-    testWidgets('a failure keeps the code and says so', (t) async {
+    testWidgets('TC-EMG-457: a failure keeps the code and says so', (t) async {
       final service =
           _FakeService(view: _view(), turnOffError: PassportError.server);
       final store = _MemoryStore(kept());
@@ -203,7 +203,7 @@ void main() {
       expect(find.textContaining('couldn\'t turn off'), findsOneWidget);
     });
 
-    testWidgets('not offered when there is no code', (t) async {
+    testWidgets('TC-EMG-458: not offered when there is no code', (t) async {
       await _open(t, _FakeService(view: _view(withCode: false)), _MemoryStore());
       expect(find.text('Turn off QR code'), findsNothing);
     });
@@ -603,6 +603,67 @@ void main() {
     expect(find.textContaining('Active'), findsNothing);
   });
 
+  testWidgets(
+      'TC-EMG-464: while a code is being turned off its button says '
+      '"Turning off…" and both buttons are off, so a second tap sends nothing '
+      'more; nothing says a new code is being made', (t) async {
+    final s = _Scripted()..turnOffGate = Completer();
+    final store = _MemoryStore(_kept());
+    await _openThemed(t, s, store);
+    await t.tap(find.text('Turn off QR code'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Turn off'));
+    await t.pump();
+
+    expect(find.text('Turning off…'), findsOneWidget);
+    expect(_enabled(t, 'Turning off…'), isFalse);
+    expect(find.text('Making a new code…'), findsNothing);
+    expect(_enabled(t, 'Make a new code'), isFalse);
+    await t.tap(find.text('Turning off…'), warnIfMissed: false);
+    await t.tap(find.text('Make a new code'), warnIfMissed: false);
+    await t.pump();
+    expect(s.turnedOff, 1);
+    expect(s.made, 0);
+
+    s.turnOffGate!.complete();
+    await t.pumpAndSettle();
+    expect(store.code, isNull);
+    expect(find.text('You don\'t have an emergency QR yet'), findsOneWidget);
+    expect(_enabled(t, 'Create my emergency QR'), isTrue);
+  });
+
+  testWidgets(
+      'TC-EMG-465: leaving the page while a code is being turned off is safe: '
+      'the code is still forgotten on this device, and a late failure raises '
+      'no error and keeps it', (t) async {
+    final ok = _Scripted()..turnOffGate = Completer();
+    final store = _MemoryStore(_kept());
+    await _openThemed(t, ok, store);
+    await t.tap(find.text('Turn off QR code'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Turn off'));
+    await t.pump();
+    await t.pumpWidget(const MaterialApp(home: Text('elsewhere')));
+    ok.turnOffGate!.complete();
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    expect(store.code, isNull);
+
+    final failing = _Scripted()..turnOffGate = Completer();
+    final kept = _MemoryStore(_kept());
+    await _openThemed(t, failing, kept);
+    await t.tap(find.text('Turn off QR code'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Turn off'));
+    await t.pump();
+    await t.pumpWidget(const MaterialApp(home: Text('elsewhere')));
+    failing.turnOffGate!
+        .completeError(const PassportException(PassportError.server));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    expect(kept.code, isNotNull, reason: 'still on at the server, so kept');
+  });
+
   // ---------- Testing Lead: the app's own router, end to end in process ----------
 
   group('the app router, the real service and HTTP', () {
@@ -687,6 +748,11 @@ void main() {
                   }),
                   201);
             }
+            if (req.method == 'DELETE' &&
+                req.url.path == '/v1/api/passport/token') {
+              current = {...current, 'token': null};
+              return http.Response('', 204);
+            }
             return http.Response('{}', 404);
           }));
     }
@@ -764,6 +830,54 @@ void main() {
       await t.pumpWidget(const SizedBox());
       appRouter.go('/');
     });
+
+    testWidgets(
+        'TC-EMG-466: through the app\'s own router, Turn off sends DELETE '
+        '/v1/api/passport/token with the stored sign-in, removes the code '
+        'kept under that patient, and the next visit offers a new code',
+        (t) async {
+      await t.runAsync(() => UserRoleStorageService.instance
+          .setUserData(role: 'PATIENT', userId: 70, patientId: 7));
+      addTearDown(
+          () => t.runAsync(UserRoleStorageService.instance.clearUserData));
+
+      await run(t, () async {
+        appRouter.go('/emergency-qr');
+        await t.pumpWidget(MaterialApp.router(routerConfig: appRouter));
+        await settle(t);
+        await t.tap(find.text('Make a new code'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('Make new code'));
+        await settle(t);
+        expect(secure.containsKey('cc12_emergency_qr_7'), isTrue);
+
+        await t.tap(find.text('Turn off QR code'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('Turn off'));
+        await settle(t);
+        expect(find.byType(QrImageView), findsNothing);
+        expect(find.text('Your QR code is turned off.'), findsOneWidget);
+
+        await t.pumpWidget(const SizedBox());
+        await t.pumpWidget(MaterialApp.router(routerConfig: appRouter));
+        await settle(t);
+        expect(
+            find.text('You don\'t have an emergency QR yet'), findsOneWidget);
+      });
+
+      expect(passportCalls(), [
+        'GET /v1/api/passport',
+        'POST /v1/api/passport/token',
+        'DELETE /v1/api/passport/token',
+        'GET /v1/api/passport',
+      ]);
+      final delete = sent.singleWhere((r) => r.method == 'DELETE');
+      expect(delete.headers['Authorization'], 'Bearer $jwt');
+      expect(secure.keys.where((k) => k.startsWith('cc12_emergency_qr_')),
+          isEmpty);
+      await t.pumpWidget(const SizedBox());
+      appRouter.go('/');
+    });
   });
 
   // ---------- Testing Lead: accessibility (WCAG 2.1 AA) ----------
@@ -789,6 +903,35 @@ void main() {
       await t.tap(find.text('Make new code'));
       await t.pumpAndSettle();
       failures.addAll(lowContrastText(t).map((f) => 'new code message: $f'));
+      expect(failures, isEmpty);
+    });
+
+    testWidgets(
+        'TC-EMG-467: the Turn off button, its confirm dialog and both of its '
+        'messages are at least 4.5:1 against what is behind them (SC 1.4.3), '
+        'app ${theme.key} theme', (t) async {
+      final failures = <String>[];
+      for (final fails in [false, true]) {
+        final s = _Scripted()
+          ..turnOffError = fails ? PassportError.server : null;
+        await _openThemed(t, s, _MemoryStore(_kept()), theme: theme.value);
+        failures.addAll(lowContrastText(t)
+            .where((f) => f.contains('Turn off'))
+            .map((f) => 'button: $f'));
+        await t.tap(find.text('Turn off QR code'));
+        await t.pumpAndSettle();
+        expect(find.text('Turn off your QR code?'), findsOneWidget);
+        failures.addAll(lowContrastText(t).map((f) => 'dialog: $f'));
+        await t.tap(find.text('Turn off'));
+        await t.pumpAndSettle();
+        expect(
+            find.text(fails
+                ? 'We couldn\'t turn off your code. Please try again.'
+                : 'Your QR code is turned off.'),
+            findsOneWidget);
+        failures.addAll(lowContrastText(t)
+            .map((f) => '${fails ? 'failure' : 'done'} message: $f'));
+      }
       expect(failures, isEmpty);
     });
   }
@@ -949,8 +1092,22 @@ class _Scripted extends PassportService {
   PassportError? loadError;
   Completer<PassportView>? loadGate;
   Completer<NewQrCode>? makeGate;
+  Completer<void>? turnOffGate;
+  PassportError? turnOffError;
   int loads = 0;
   int made = 0;
+  int turnedOff = 0;
+
+  @override
+  Future<void> turnOffCode() {
+    turnedOff++;
+    if (turnOffGate != null) return turnOffGate!.future;
+    if (turnOffError != null) {
+      return Future.error(PassportException(turnOffError!));
+    }
+    view = _view(withCode: false);
+    return Future.value();
+  }
 
   @override
   Future<PassportView> getPassport() async {

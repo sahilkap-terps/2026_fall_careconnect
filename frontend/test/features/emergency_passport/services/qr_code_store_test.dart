@@ -1,6 +1,6 @@
 // CC-12 Increment 2: keeping the QR code on the device. Test Plan §3.27:
-// TC-EMG-272…275 (the pull request's), 299…301 (Testing Lead: the signed-in
-// patient's id, what is stored, and sign-out).
+// TC-EMG-272…275 and 462, 463 (the pull request's), 299…301 (Testing Lead:
+// the signed-in patient's id, what is stored, and sign-out).
 
 import 'dart:convert';
 
@@ -176,7 +176,7 @@ void main() {
     }, skip: 'DEF-EMG-11: sign-out does not remove the kept QR code yet');
   }
 
-  test('clear forgets only this patient\'s code', () async {
+  test('TC-EMG-462: clear forgets only this patient\'s code', () async {
     final a = QrCodeStore(patientId: () async => 1);
     final b = QrCodeStore(patientId: () async => 2);
     await a.save(StoredQrCode(url: 'a', createdAt: DateTime.utc(2026)));
@@ -186,7 +186,8 @@ void main() {
     expect((await b.read())!.url, 'b');
   });
 
-  test('clear with no patient id or failing storage does not throw', () async {
+  test('TC-EMG-463: clear with no patient id or failing storage does not throw',
+      () async {
     await QrCodeStore(patientId: () async => null).clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {

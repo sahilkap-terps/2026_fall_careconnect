@@ -57,6 +57,9 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
   PassportError? _error;
   bool _loading = true;
   bool _making = false;
+  // DEF-EMG-26: turning off has its own flag, so the screen says "Turning
+  // off…" and never "Making a new code…" while a code is being turned off.
+  bool _turningOff = false;
   bool _saving = false;
 
   @override
@@ -172,7 +175,7 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
     );
     if (!ok) return;
 
-    setState(() => _making = true);
+    setState(() => _turningOff = true);
     try {
       await _service.turnOffCode();
       await _store.clear();
@@ -180,12 +183,12 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
       setState(() {
         _code = null;
         _saved = null;
-        _making = false;
+        _turningOff = false;
       });
       _snack('Your QR code is turned off.');
     } on PassportException {
       if (!mounted) return;
-      setState(() => _making = false);
+      setState(() => _turningOff = false);
       _snack('We couldn\'t turn off your code. Please try again.');
     }
   }
@@ -317,7 +320,7 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
             const SizedBox(height: 12),
             _secondaryButton(
               label: _making ? 'Making a new code…' : 'Make a new code',
-              onPressed: _making ? null : _makeNewCode,
+              onPressed: _making || _turningOff ? null : _makeNewCode,
             ),
             const SizedBox(height: 4),
             _turnOffButton(),
@@ -367,7 +370,7 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
             _primaryButton(
               label: _making ? 'Making a new code…' : 'Make a new code',
               icon: Icons.qr_code_2,
-              onPressed: _making ? null : _makeNewCode,
+              onPressed: _making || _turningOff ? null : _makeNewCode,
             ),
             const SizedBox(height: 4),
             _turnOffButton(),
@@ -531,8 +534,9 @@ class _EmergencyQrPageState extends State<EmergencyQrPage> {
         constraints: const BoxConstraints(minHeight: 48),
         child: TextButton(
           style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
-          onPressed: _making ? null : _turnOff,
-          child: const Text('Turn off QR code', style: TextStyle(fontSize: 16)),
+          onPressed: _making || _turningOff ? null : _turnOff,
+          child: Text(_turningOff ? 'Turning off…' : 'Turn off QR code',
+              style: const TextStyle(fontSize: 16)),
         ),
       );
 

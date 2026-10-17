@@ -1,6 +1,7 @@
 // CC-12 Increment 2: the patient's own passport calls. Test Plan §3.27:
-// TC-EMG-267…271 (the pull request's), 295…298 (Testing Lead: timeout,
-// refresh that fails, answers the screen cannot use, the retried header).
+// TC-EMG-267…271 and 459…461 (the pull request's), 295…298 and 468 (Testing
+// Lead: timeout, refresh that fails, answers the screen cannot use, the retried
+// header, turning off).
 
 import 'dart:async';
 import 'dart:convert';
@@ -207,7 +208,7 @@ void main() {
   });
 
   group('turn off', () {
-    test('DELETE /v1/api/passport/token with the sign-in header', () async {
+    test('TC-EMG-459: DELETE /v1/api/passport/token with the sign-in header', () async {
       late http.Request sent;
       await _service((req) async {
         sent = req;
@@ -223,18 +224,42 @@ void main() {
       (403, PassportError.notPatient),
       (500, PassportError.server),
     ]) {
-      test('HTTP ${c.$1} -> ${c.$2}', () async {
+      test('TC-EMG-460: HTTP ${c.$1} -> ${c.$2}', () async {
         expect(
             () => _service((_) async => http.Response('', c.$1)).turnOffCode(),
             _fails(c.$2));
       });
     }
 
-    test('no answer from the server -> network', () async {
+    test('TC-EMG-461: no answer from the server -> network', () async {
       expect(
           () => _service((_) async => throw http.ClientException('offline'))
               .turnOffCode(),
           _fails(PassportError.network));
+    });
+
+    // ---------- Testing Lead ----------
+
+    test(
+        'TC-EMG-468: a 401 refreshes the sign-in once and sends DELETE again; '
+        'a 200 is success like 204; a second 401 is signedOut', () async {
+      final methods = <String>[];
+      await _service((req) async {
+        methods.add(req.method);
+        return http.Response('', methods.length == 1 ? 401 : 204);
+      }, refresh: () async => 'new session').turnOffCode();
+      expect(methods, ['DELETE', 'DELETE']);
+
+      await _service((_) async => http.Response('{}', 200)).turnOffCode();
+
+      var calls = 0;
+      await expectLater(
+          _service((_) async {
+            calls++;
+            return http.Response('', 401);
+          }, refresh: () async => 'new session').turnOffCode(),
+          _fails(PassportError.signedOut));
+      expect(calls, 2);
     });
   });
 }
