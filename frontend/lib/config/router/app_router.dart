@@ -25,6 +25,7 @@ import 'package:care_connect_app/features/emergency_passport/pages/passport_scan
 import 'package:care_connect_app/features/health/health_data/pages/dob_confirmation_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_data_screen.dart';
 import 'package:care_connect_app/features/health/health_data/pages/medicare_connect_page.dart';
+import 'package:care_connect_app/features/health/health_data/pages/medicare_sharing_page.dart';
 import 'package:care_connect_app/features/health/health_data/services/medicare_connect_service.dart';
 import 'package:care_connect_app/features/invoices/screens/invoice_tabbed_page.dart';
 import 'package:care_connect_app/features/profile/presentation/pages/profile_settings_page.dart';
@@ -261,6 +262,12 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       builder: (_, __) => MedicareConnectPage(
         result: MedicareConnectPage.takePendingResult(),
       ),
+    ),
+    // WBS 6.2.59: the patient chooses which caregivers see their Medicare data.
+    GoRoute(
+      path: '/medicare-sharing',
+      redirect: _requireSignIn,
+      builder: (_, __) => const MedicareSharingPage(),
     ),
     // CC-12: what a phone camera opens after scanning a patient's emergency
     // QR code. Public on purpose: whoever scans it at a scene has no account.
