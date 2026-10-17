@@ -29,6 +29,10 @@ class MedicareSharingService {
   static Future<int?> Function() currentUserId =
       () async => (await AuthService.getCurrentUser())?.id;
 
+  /// The signed-in user's role. Replaceable in tests.
+  static Future<String?> Function() currentUserRole =
+      () async => (await AuthService.getCurrentUser())?.role;
+
   static String get _host => '${getBackendBaseUrl()}/v1/api';
 
   static Future<http.Response> _send(
@@ -51,6 +55,12 @@ class MedicareSharingService {
     final patientUserId = await currentUserId();
     if (patientUserId == null) {
       throw const MedicareSharingException(MedicareSharingError.signedOut);
+    }
+    // The links endpoint answers any signed-in user for their own id, so a
+    // caregiver would see an empty list rather than being told (DEF-MCR-31).
+    final role = await currentUserRole();
+    if (role != null && role.toUpperCase() != 'PATIENT') {
+      throw const MedicareSharingException(MedicareSharingError.notPatient);
     }
 
     final http.Response resp;
