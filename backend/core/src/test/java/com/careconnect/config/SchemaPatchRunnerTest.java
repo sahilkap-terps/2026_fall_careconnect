@@ -239,6 +239,37 @@ class SchemaPatchRunnerTest {
     }
 
     @Test
+    void applyEhrResourceJsonb_convertsInPlacePreservingPayloads() throws Exception {
+        // The oid -> jsonb patch must read each large object back and keep the payload, not drop and
+        // recreate the column (which would null every existing row until a full Epic re-sync). Guard
+        // the SQL so a regression back to the destructive form is caught here.
+        final java.nio.file.Path sourcePath = java.nio.file.Path.of(
+                "src/main/java/com/careconnect/config/SchemaPatchRunner.java");
+        final java.nio.file.Path resolved = java.nio.file.Files.exists(sourcePath)
+                ? sourcePath
+                : java.nio.file.Path.of(
+                "backend/core/src/main/java/com/careconnect/config/SchemaPatchRunner.java");
+        final String source = java.nio.file.Files.readString(resolved);
+        final String method = source.substring(
+                source.indexOf("private void applyEhrResourceJsonbPatch()"),
+                source.indexOf("private void applyEhrResourcePatientIdPatch()"));
+
+        // Still gated on the column still being oid, and still lands on jsonb.
+        assertThat(method).contains("data_type = 'oid'");
+        // Preserving conversion: read the LOB back and cast per row.
+        assertThat(method).contains("convert_from(lo_get(r.lo), 'UTF8')::jsonb");
+        // Per-row isolation so one unreadable object does not abort the whole table.
+        assertThat(method).contains("EXCEPTION WHEN others THEN");
+        // Swap the staged column in rather than recreating payload_json empty.
+        assertThat(method).contains("ADD COLUMN IF NOT EXISTS payload_json_jsonb jsonb");
+        assertThat(method).contains("RENAME COLUMN payload_json_jsonb TO payload_json");
+        // Count notice in the boot log.
+        assertThat(method).contains("row(s) preserved");
+        // The old destructive recreate of the real column must be gone.
+        assertThat(method).doesNotContain("ADD COLUMN payload_json jsonb");
+    }
+
+    @Test
     void ehrCanonicalPatches_executeTheirDdlOnPostgres() throws Exception {
         // Drive the three Step-6/Q1/Q3 patch methods on a PostgreSQL-reporting datasource so their
         // DDL actually runs (the non-PostgreSQL path just logs and returns). Each helper opens a

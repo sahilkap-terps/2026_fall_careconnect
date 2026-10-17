@@ -614,11 +614,18 @@ public class SchemaPatchRunner implements CommandLineRunner {
      * <p>
      * The guard fires only when the column is still {@code oid}: on a fresh database the entity's
      * {@code @JdbcTypeCode(JSON)} mapping already creates it as {@code jsonb}, so this is a no-op.
-     * {@code ehr_resource} is a rebuildable mirror — the verbatim bodies are retained in
-     * {@code ehr_raw_payload} — so the conversion drops and recreates the column rather than reading
-     * each large object back; existing rows get a NULL payload until the next Epic re-sync
-     * repopulates them. The large objects orphaned in {@code pg_largeobject} are harmless and can be
-     * reclaimed later with {@code vacuumlo}.
+     * <p>
+     * The conversion <b>preserves existing payloads</b> rather than discarding them: it stages a
+     * {@code jsonb} column, reads each large object back ({@code lo_get} → {@code convert_from} →
+     * {@code ::jsonb}), then swaps the staged column into place. Each row is converted in its own
+     * {@code BEGIN ... EXCEPTION} block, so a single unreadable large object (e.g. one already
+     * reclaimed by {@code vacuumlo}) or a body that is not valid UTF-8 JSON leaves only that row's
+     * payload {@code NULL} and raises a {@code WARNING}, instead of aborting the whole table — the
+     * verbatim body for any skipped row is still held in {@code ehr_raw_payload} and returns on the
+     * next sync. The block runs as one autocommit statement (a single transaction), so a structural
+     * failure (add/drop/rename) rolls back cleanly and boot retries, while row-level skips are
+     * tolerated. After the old {@code oid} column is dropped its large objects are orphaned in
+     * {@code pg_largeobject} — harmless, reclaimable later with {@code vacuumlo}.
      */
     private void applyEhrResourceJsonbPatch() {
         if (!isPostgreSql()) {
@@ -626,12 +633,33 @@ public class SchemaPatchRunner implements CommandLineRunner {
             return;
         }
         applyRequiredPatch(
-                "V2610041200 - ehr_resource.payload_json is jsonb (was @Lob oid)",
-                "DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns "
+                "V2610041200 - ehr_resource.payload_json is jsonb, payloads preserved (was @Lob oid)",
+                "DO $$ DECLARE r RECORD; converted INT := 0; skipped INT := 0; BEGIN "
+                        + "IF EXISTS (SELECT 1 FROM information_schema.columns "
                         + "WHERE table_schema = current_schema() AND table_name = 'ehr_resource' "
                         + "AND column_name = 'payload_json' AND data_type = 'oid') THEN "
+                        // Stage a jsonb column alongside the legacy oid column.
+                        + "ALTER TABLE ehr_resource ADD COLUMN IF NOT EXISTS payload_json_jsonb jsonb; "
+                        // Convert each row in isolation: a bad/missing large object skips one row, not all.
+                        + "FOR r IN SELECT id, payload_json AS lo FROM ehr_resource "
+                        + "WHERE payload_json IS NOT NULL LOOP "
+                        + "BEGIN "
+                        + "UPDATE ehr_resource SET payload_json_jsonb = "
+                        + "convert_from(lo_get(r.lo), 'UTF8')::jsonb WHERE id = r.id; "
+                        + "converted := converted + 1; "
+                        + "EXCEPTION WHEN others THEN "
+                        + "skipped := skipped + 1; "
+                        + "RAISE WARNING 'ehr_resource.payload_json jsonb conversion skipped for id=% "
+                        + "(verbatim body remains in ehr_raw_payload): %', r.id, SQLERRM; "
+                        + "END; "
+                        + "END LOOP; "
+                        // Swap the staged column in for the legacy oid column.
                         + "ALTER TABLE ehr_resource DROP COLUMN payload_json; "
-                        + "ALTER TABLE ehr_resource ADD COLUMN payload_json jsonb; END IF; END $$;"
+                        + "ALTER TABLE ehr_resource RENAME COLUMN payload_json_jsonb TO payload_json; "
+                        // One line in the boot log: how many payloads were kept vs. left NULL.
+                        + "RAISE NOTICE 'ehr_resource.payload_json oid->jsonb: % row(s) preserved, "
+                        + "% skipped (verbatim bodies remain in ehr_raw_payload)', converted, skipped; "
+                        + "END IF; END $$;"
         );
     }
 
