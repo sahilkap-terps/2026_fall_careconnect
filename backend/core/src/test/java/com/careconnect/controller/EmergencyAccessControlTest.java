@@ -157,7 +157,7 @@ class EmergencyAccessControlTest {
             return null;
         }).when(authorizationService).requirePatientAccess(any(), eq(PATIENT_ONE_USER));
 
-        // A token the JWT filter would accept, if it ran on these paths.
+        // A token the JWT filter accepts; since PR #343 (DEF-EMG-02) it runs on these paths.
         lenient().when(jwtTokenProvider.validateToken(VALID_TOKEN)).thenReturn(true);
         lenient().when(jwtTokenProvider.getClaims(VALID_TOKEN)).thenReturn(claims);
         lenient().when(claims.getSubject()).thenReturn(OTHER_USER);
@@ -186,10 +186,13 @@ class EmergencyAccessControlTest {
         }
 
         @Test
-        @DisplayName("TC-EMG-005: a bearer token that does not validate is 401 and generates nothing")
+        @DisplayName("TC-EMG-005: a bearer token that does not validate is 401 and generates nothing; since DEF-EMG-02 "
+                + "is fixed the filter checks it")
         void invalidTokenIsRefused() throws Exception {
             mvc.perform(get(PATIENT_ONE_PDF).header(HttpHeaders.AUTHORIZATION, "Bearer not-a-real-token"))
                     .andExpect(status().isUnauthorized());
+            verify(jwtTokenProvider).validateToken("not-a-real-token");
+            verify(jwtTokenProvider, never()).getClaims(anyString());
             verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
         }
 
