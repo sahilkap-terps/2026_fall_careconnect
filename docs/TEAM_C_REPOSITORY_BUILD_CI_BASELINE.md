@@ -1,5 +1,9 @@
 # Team C Repository, Build, and CI Baseline
 
+## Current validation addendum — October 17, 2026
+
+The fresh assessment and focused fixes are in [the task validation report](testing/team-c-task-validation-2026-10-17.md). It records complete failing broad runs, passing focused language checks, a web release build, and the limits of CI and branch-rule evidence. This assessment is separate from release approval.
+
 ## Update — October 17, 2026
 
 The current branch includes the previously pending mapper, storage prototype, and PRs #330/#331. Use the dated review for focused results and CI limits; earlier full-suite counts below describe their original runs.
