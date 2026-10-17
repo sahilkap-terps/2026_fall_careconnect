@@ -1,5 +1,7 @@
 # Team C personal WBS review
 
+> Historical October 13 review. PRs #330 and #331 have since merged into Team C. Read [the October 17 update](team-c-docs-fixtures-review-2026-10-17.md) for current branch facts. Counts and pending labels below retain their original date; they are not a current release decision.
+
 Prepared October 13, 2026, Eastern Time, for Terence Boyce.
 
 The source is the connected `Team_Charlie_Integrated_Work_Plan_and_EVM.xlsx` workbook. `WBS & Assignments` is authoritative. Both WBS tabs list the same 11 personal tasks and the same completion values. Review baseline: `team-c-develop` at `4e5266e925c3e9cb764958fa415ec32372b9442e`.
