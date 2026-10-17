@@ -56,6 +56,8 @@ class EpicOAuthControllerTest {
     private User userWithId(long id) {
         User me = mock(User.class);
         when(me.getId()).thenReturn(id);
+        // resync is patient-only (EpicOAuthController gates on isPatient); these callers are the patient.
+        when(me.isPatient()).thenReturn(true);
         return me;
     }
 
