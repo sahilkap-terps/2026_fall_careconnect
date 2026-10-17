@@ -315,11 +315,16 @@ public class SchemaPatchRunner implements CommandLineRunner {
         applyRequiredPatch(
             "H2 – drop legacy ai_held_item open unique",
             "DROP INDEX IF EXISTS uq_ai_held_item_open_surface_hash");
+        // H2 has no filtered indexes. A generated nullable key keeps the same
+        // pending-only uniqueness rule; closed rows and missing hashes stay independent.
+        applyRequiredPatch(
+            "H2 – ai_held_item pending hash",
+            "ALTER TABLE ai_held_item ADD COLUMN IF NOT EXISTS pending_review_query_hash VARCHAR(64) "
+                + "GENERATED ALWAYS AS (CASE WHEN status = 'PENDING_REVIEW' THEN query_text_hash ELSE NULL END)");
         applyRequiredPatch(
             "H2 – ai_held_item open unique",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_held_item_open_patient_surface_hash "
-                + "ON ai_held_item (patient_id, source_surface, query_text_hash) "
-                + "WHERE status = 'PENDING_REVIEW' AND query_text_hash IS NOT NULL");
+                + "ON ai_held_item (patient_id, source_surface, pending_review_query_hash)");
         applyRequiredPatch(
             "H2 – user_files.extracted_text",
             "ALTER TABLE user_files ADD COLUMN IF NOT EXISTS extracted_text CLOB");
@@ -472,11 +477,15 @@ public class SchemaPatchRunner implements CommandLineRunner {
             "H2 – consent_grants lookup index",
             "CREATE INDEX IF NOT EXISTS idx_consent_grants_lookup "
                 + "ON consent_grants (patient_user_id, grantee_user_id, scope, status)");
+        // Keep inactive grant history while enforcing one active grant per scope.
+        applyRequiredPatch(
+            "H2 – consent_grants active scope",
+            "ALTER TABLE consent_grants ADD COLUMN IF NOT EXISTS active_scope VARCHAR(64) "
+                + "GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN scope ELSE NULL END)");
         applyRequiredPatch(
             "H2 – consent_grants active unique",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_consent_grants_active "
-                + "ON consent_grants (patient_user_id, grantee_user_id, scope) "
-                + "WHERE status = 'ACTIVE'");
+                + "ON consent_grants (patient_user_id, grantee_user_id, active_scope)");
     }
 
     /** H2/integration-test parity for Ask AI conversation share receipts. */

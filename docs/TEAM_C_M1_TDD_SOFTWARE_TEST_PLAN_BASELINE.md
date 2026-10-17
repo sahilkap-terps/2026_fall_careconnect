@@ -1,5 +1,9 @@
 # Team C Milestone 1 Technical Design and Software Test Plan Baseline
 
+## Current Test Lead packet — October 17, 2026
+
+Use [the 26-row Test Lead packet](testing/team-c-m1-test-lead-review-2026-10-17.md) and [the validation report](testing/team-c-task-validation-2026-10-17.md). The packet names current design boundaries and exact test methods. Controlled SRS links and Test Lead acceptance remain open. The test plan below is dated history, not a fresh result.
+
 ## Update — October 17, 2026
 
 The 26-row M1 trace and current M3 trace already exist in docs/testing. The October 17 review links the missing fixed-fixture checks. Controlled requirements, contract approval, and Test Lead acceptance remain separate.
