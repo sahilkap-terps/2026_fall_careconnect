@@ -20,8 +20,11 @@ public class AIServiceFactory {
     @Value("${careconnect.ai.provider:bedrock}")
     private String provider;
 
+    @Value("${careconnect.ai.model:}")
+    private String model;
+
     public AIServiceFactory(ObjectProvider<DeepSeekService> deepSeekServiceProvider,
-                        ObjectProvider<BedrockAIChatService> bedrockServiceProvider) {
+                            ObjectProvider<BedrockAIChatService> bedrockServiceProvider) {
         this.deepSeekService = deepSeekServiceProvider.getIfAvailable();
         this.bedrockService = bedrockServiceProvider.getIfAvailable();
     }
@@ -33,7 +36,7 @@ public class AIServiceFactory {
 
         switch (provider.toLowerCase()) {
             case "bedrock" -> {
-                log.info("Using AWS Bedrock (Nova Lite / Claude)");
+                log.info("Using AWS Bedrock (model: {})", model.isBlank() ? "default" : model);
                 if (bedrockService == null) {
                     log.error("======================================");
                     log.error("CONFIGURATION ERROR: AI provider is set to 'bedrock'");
@@ -71,9 +74,9 @@ public class AIServiceFactory {
             case "deepseek" -> {
                 if (deepSeekService == null) {
                     throw new IllegalStateException(
-                        "AI provider is configured as 'deepseek' but DeepSeekService " +
-                        "is not available. Check careconnect.deepseek.enabled and " +
-                        "DEEPSEEK_API_KEY in your environment."
+                            "AI provider is configured as 'deepseek' but DeepSeekService " +
+                                    "is not available. Check careconnect.deepseek.enabled and " +
+                                    "DEEPSEEK_API_KEY in your environment."
                     );
                 }
                 yield deepSeekService;
@@ -81,18 +84,18 @@ public class AIServiceFactory {
             case "bedrock" -> {
                 if (bedrockService == null) {
                     throw new IllegalStateException(
-                        "AI provider is configured as 'bedrock' but BedrockAIChatService " +
-                        "is not available. Ensure careconnect.aws.enabled=true and " +
-                        "AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) " +
-                        "are set in your .env file."
+                            "AI provider is configured as 'bedrock' but BedrockAIChatService " +
+                                    "is not available. Ensure careconnect.aws.enabled=true and " +
+                                    "AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) " +
+                                    "are set in your .env file."
                     );
                 }
                 yield bedrockService;
             }
             default -> throw new IllegalStateException(
-                "Unknown AI provider '" + provider + "'. " +
-                "Valid values are: 'bedrock', 'deepseek'. " +
-                "Set AI_MODEL_PROVIDER environment variable to a valid value."
+                    "Unknown AI provider '" + provider + "'. " +
+                            "Valid values are: 'bedrock', 'deepseek'. " +
+                            "Set AI_MODEL_PROVIDER environment variable to a valid value."
             );
         };
     }
