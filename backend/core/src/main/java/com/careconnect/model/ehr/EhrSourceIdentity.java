@@ -1,133 +1,232 @@
 package com.careconnect.model.ehr;
 
 import com.careconnect.model.Auditable;
-import com.careconnect.model.Patient;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
+import org.hl7.fhir.r4.model.ContactPoint;
+import org.hl7.fhir.r4.model.DateType;
+import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.StringType;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 
 /**
- * Per-source demographic snapshot of one patient, as most recently seen at that source.
- *
- * <p>This is the only table an EHR adapter writes. Adapters never touch {@code patient}
- * directly; the shared reconciliation service is the sole writer of canonical values. Each
- * adapter upserts its own row keyed by {@code (patient_id, source_id)}, which makes a sync
- * idempotent and safe to retry after an interrupted fetch.
- *
- * <p>Values here are normalized on the way in — notably {@link #dateOfBirth} is a real
- * {@link LocalDate}, so that {@code 1985-03-02} from one source and {@code 03/02/1985} from
- * another do not register as a conflict when they are the same date.
+ * What one external source currently believes about a patient's identity — the demographic
+ * snapshot reconciliation compares against the canonical {@code patient} record.
+ * <p>
+ * One row per (patient, source), upserted on each sync rather than appended. That shape is
+ * required, not stylistic: {@code RecencyWinsIdentityReconciler} diffs this against
+ * {@code patient} field by field under a row lock, and an append-only history has no stable
+ * row to lock.
+ * <p>
+ * {@code sourceUpdatedAt} is an {@link Instant} deliberately. It is the field every recency
+ * comparison runs on, and it is compared <em>across</em> sources; a zone-less type would let a
+ * snapshot from a source in another offset appear newer than it is and win when it should
+ * lose.
+ * <p>
+ * Carries no organization column — see the 2026-09-26 org-scoping reversal. Stores bare
+ * {@code patientId}/{@code sourceId} rather than {@code @ManyToOne}, matching the rest of this
+ * package; the foreign keys are applied by {@code SchemaPatchRunner}.
+ * <p>
+ * <strong>Retention.</strong> A demographic mirror, so PHI. {@code EhrRetentionWorker} deletes a
+ * row this application last stored more than 7 years ago once the patient is 25 (issue #214). For
+ * a patient who is still syncing, the next sync writes it again.
  */
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Entity
-@Table(name = "ehr_source_identity")
+@Table(
+        name = "ehr_source_identity",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_ehr_source_identity_patient_source",
+                columnNames = {"patient_id", "source_id"}),
+        indexes = @Index(
+                name = "idx_ehr_source_identity_patient",
+                columnList = "patient_id"))
 public class EhrSourceIdentity extends Auditable {
 
-    /** Maximum length of name and address-line columns. */
-    private static final int NAME_LENGTH = 255;
+    public EhrSourceIdentity(Long patientId, Patient patient, Long sourceId){
+        this.patientId = patientId;
+        this.sourceId = sourceId;
+        this.sourceUpdatedAt = patient.getMeta().getLastUpdated().toInstant();
+        this.givenName = patient.getNameFirstRep().getGivenAsSingleString();
+        this.familyName = patient.getNameFirstRep().getFamily();
 
-    /** Maximum length of the phone column. */
-    private static final int PHONE_LENGTH = 64;
+        this.gender = patient.hasGender() ? patient.getGender().getDisplay() : null;
+        this.dateOfBirth = dateOfBirth(patient);
 
-    /** Maximum length of the city column. */
-    private static final int CITY_LENGTH = 128;
 
-    /** Maximum length of the state column. */
-    private static final int STATE_LENGTH = 64;
+        for(ContactPoint point: patient.getTelecom()){
+            if(ContactPoint.ContactPointSystem.PHONE.equals(point.getSystem())){
+                this.phone = point.getValue();
+            }else{
+                if(ContactPoint.ContactPointSystem.EMAIL.equals(point.getSystem())){
+                    this.email = point.getValue();
+                }
+            }
+        }
 
-    /** Maximum length of the postal code column. */
-    private static final int POSTAL_CODE_LENGTH = 32;
+        this.managingOrg = patient.getManagingOrganization().getDisplay();
+        this.language = patient.getCommunicationFirstRep().getLanguage().getText();
+        this.memberId = patient.getIdentifierFirstRep().getValue();
+        // An address may have one line, or none.
+        List<StringType> lines = patient.getAddressFirstRep().getLine();
+        this.addressLine1 = lines.size() > 0 ? lines.get(0).getValue() : null;
+        this.addressLine2 = lines.size() > 1 ? lines.get(1).getValue() : null;
+        this.city = patient.getAddressFirstRep().getCity();
+        this.state = patient.getAddressFirstRep().getState();
+        this.postalCode = patient.getAddressFirstRep().getPostalCode();
+    }
 
-    /** Database primary key. */
+    /**
+     * The birth date as FHIR states it, with no time zone involved. Null when it is missing or
+     * not a full date (FHIR allows a year, or a year and month, alone).
+     * <p>
+     * Not {@code LocalDate.from(getBirthDate().toInstant())}: an Instant has no calendar date, so
+     * that throws DateTimeException for every patient.
+     */
+    private static LocalDate dateOfBirth(Patient patient) {
+        DateType birthDate = patient.getBirthDateElement();
+        if (birthDate == null || birthDate.isEmpty() || birthDate.getPrecision() != TemporalPrecisionEnum.DAY) {
+            return null;
+        }
+        // DateType months are 0-based, as in java.util.Calendar.
+        return LocalDate.of(birthDate.getYear(), birthDate.getMonth() + 1, birthDate.getDay());
+    }
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Patient this snapshot describes. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
+    @Column(name = "patient_id", nullable = false)
+    private Long patientId;
 
-    /** Source the snapshot came from. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "source_id", nullable = false)
-    private EhrSource source;
+    /** References {@code ehr_source.id}. */
+    @Column(name = "source_id", nullable = false)
+    private Long sourceId;
 
-    /** Given name as reported by the source. */
-    @Column(name = "first_name", length = NAME_LENGTH)
-    private String firstName;
+    /**
+     * The source's own last-modified time for this identity, normally FHIR
+     * {@code meta.lastUpdated}. Never the time we fetched it — recency means the source's
+     * recency, not ours.
+     */
+    @Column(name = "source_updated_at", nullable = false)
+    private Instant sourceUpdatedAt;
 
-    /** Family name as reported by the source. */
-    @Column(name = "last_name", length = NAME_LENGTH)
-    private String lastName;
+    @Column(name = "given_name", length = 100)
+    private String givenName;
 
-    /** Date of birth, normalized to a real date at ingest. */
+    @Column(name = "family_name", length = 100)
+    private String familyName;
+
+    /**
+     * Held as a real date, unlike {@code patient.dob} which is currently a String. The
+     * reconciliation library compares field values as strings, so an adapter converts at the
+     * boundary; storing a date as text here would lose that validation for no benefit. The
+     * inconsistency with {@code patient.dob} is pre-existing and worth correcting separately.
+     */
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    /** Contact phone as reported by the source. */
-    @Column(name = "phone", length = PHONE_LENGTH)
+    @Column(name = "phone", length = 32)
     private String phone;
 
-    /** Contact email as reported by the source. */
-    @Column(name = "email", length = NAME_LENGTH)
+    @Column(name = "email", length = 254)
     private String email;
 
-    /** First address line as reported by the source. */
-    @Column(name = "address_line1", length = NAME_LENGTH)
+    @Column(name = "address_line1", length = 255)
     private String addressLine1;
 
-    /** Second address line as reported by the source. */
-    @Column(name = "address_line2", length = NAME_LENGTH)
+    @Column(name = "address_line2", length = 255)
     private String addressLine2;
 
-    /** City as reported by the source. */
-    @Column(name = "city", length = CITY_LENGTH)
+    @Column(name = "city", length = 100)
     private String city;
 
-    /** State or region as reported by the source. */
-    @Column(name = "state", length = STATE_LENGTH)
+    @Column(name = "state", length = 50)
     private String state;
 
-    /** Postal code as reported by the source. */
-    @Column(name = "postal_code", length = POSTAL_CODE_LENGTH)
+    @Column(name = "postal_code", length = 20)
     private String postalCode;
 
-    /**
-     * When the source itself last changed this record, from FHIR {@code meta.lastUpdated}.
-     * This — not {@link #fetchedAt} — is what decides recency when the reconciler auto-applies
-     * a low-risk field, since polling order says nothing about which value is newer.
-     */
-    @Column(name = "source_updated_at")
-    private LocalDateTime sourceUpdatedAt;
+    // ---- Carried but not reconciled (added 2026-09-29) ----
+    //
+    // These four were identified early as fields real sources supply, then deferred so Phase 2 could
+    // ship. Deferring them twice is how a field quietly stops existing, so they are captured here
+    // now: a connector that has the value can store it, and nothing has to be re-derived from
+    // ehr_raw_payload later.
+    //
+    // None of them is in the reconciliation vocabulary, and adding a column here does not put it
+    // there -- that list lives in JpaPatientFieldAccessor and is bounded by what `patient` can
+    // actually hold. Three of these have no counterpart on `patient` at all. The fourth, gender,
+    // does, and is deliberately still excluded; see its note below.
 
-    /** When this snapshot was pulled by the adapter. */
-    @Column(name = "fetched_at", nullable = false)
-    private LocalDateTime fetchedAt;
+    /**
+     * The subscriber or member identifier this source knows the patient by — FHIR
+     * {@code Coverage.subscriberId}, or the equivalent member number on an insurer's own API.
+     * <p>
+     * Not {@code patient.ma_number}: that is a Medical Assistance number for EVV compliance, issued
+     * by the state, and it is not the same identifier even when a source happens to return one that
+     * looks similar. Kept distinct so nobody reconciles one onto the other.
+     */
+    @Column(name = "member_id", length = 128)
+    private String memberId;
 
     /**
-     * Raw FHIR {@code Patient} resource this snapshot was mapped from, retained for debugging
-     * normalization disputes. Lives in its own table ({@link EhrRawPayload}) rather than a
-     * column here, so a fetch that fails to map still leaves the raw response on record.
+     * The source's administrative gender, stored verbatim as the source stated it — FHIR
+     * {@code Patient.gender}, whose value set is {@code male | female | other | unknown}.
+     * <p>
+     * <b>Deliberately not reconciled onto {@code patient.gender}.</b> Our {@code Gender} enum is
+     * {@code MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY}, and the mismatch is not cosmetic: FHIR's
+     * {@code unknown} means <em>this system does not know</em>, while {@code PREFER_NOT_TO_SAY}
+     * means <em>the patient was asked and declined</em>. Mapping one to the other would record a
+     * statement the patient never made, on a field people are entitled to have recorded correctly.
+     * <p>
+     * So the source's answer is kept here, unmapped, until someone decides what the two vocabularies
+     * should mean to each other. Storing it costs nothing and keeps the option open; guessing the
+     * mapping would close it silently.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "raw_payload_id")
-    private EhrRawPayload rawPayload;
+    @Column(name = "gender", length = 16)
+    private String gender;
+
+    /**
+     * The organization the source says is responsible for this patient's record — FHIR
+     * {@code Patient.managingOrganization}, stored as its display name rather than a reference,
+     * since we hold no organization table to point at.
+     * <p>
+     * Worth noting for FR-EHR-10: this is the closest thing to an org affiliation anywhere in the
+     * schema. It is a <em>source's claim about itself</em>, not a tenancy boundary, and must not be
+     * pressed into service as one — but if a tenancy model is ever built, this is real data about
+     * what the sources were already telling us.
+     */
+    @Column(name = "managing_org", length = 255)
+    private String managingOrg;
+
+    /**
+     * The patient's preferred language as the source reports it — FHIR
+     * {@code Patient.communication[].language}, a BCP-47 tag such as {@code en-US}.
+     * <p>
+     * Only the first/preferred entry is carried. A patient may have several, and if that turns out
+     * to matter it wants its own table rather than a delimited column here.
+     */
+    @Column(name = "language", length = 35)
+    private String language;
 }

@@ -10,14 +10,12 @@ import com.careconnect.repository.ehr.EhrAppointmentRecordRepository;
 import com.careconnect.repository.ehr.EhrPatientCrosswalkRepository;
 import com.careconnect.repository.ehr.EhrRawPayloadRepository;
 import com.careconnect.repository.ehr.EhrSourceRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -63,7 +61,7 @@ public class EhrAppointmentSyncService {
         log.info("[EHR sync] {} appointment(s) fetched for patient {} from {}",
                 appointments.size(), patient.getId(), source.getCode());
 
-        final LocalDateTime fetchedAt = LocalDateTime.now();
+        final OffsetDateTime fetchedAt = OffsetDateTime.now();
         final List<EhrAppointmentRecord> saved = new ArrayList<>();
         for (final JsonNode resource : appointments) {
             final EhrRawPayload rawPayload = storeRawPayload(patient, source, resource, fetchedAt);
@@ -92,7 +90,7 @@ public class EhrAppointmentSyncService {
             final Patient patient,
             final EhrSource source,
             final JsonNode resource,
-            final LocalDateTime fetchedAt) {
+            final OffsetDateTime fetchedAt) {
         final String externalResourceId = resource.path("id").asText();
         final byte[] serialized = resource.toString().getBytes(StandardCharsets.UTF_8);
 
@@ -102,14 +100,14 @@ public class EhrAppointmentSyncService {
                         RESOURCE_TYPE_APPOINTMENT, externalResourceId)
                 .orElseGet(EhrRawPayload::new);
 
-        rawPayload.setPatient(patient);
-        rawPayload.setSource(source);
+        rawPayload.setPatientId(patient.getId());
+        rawPayload.setSourceId(source.getId());
         rawPayload.setResourceType(RESOURCE_TYPE_APPOINTMENT);
         rawPayload.setExternalResourceId(externalResourceId);
-        rawPayload.setPayload(
-                objectMapper.convertValue(resource, new TypeReference<Map<String, Object>>() { }));
+        rawPayload.setPayload(resource.toString());
         rawPayload.setPayloadSizeBytes(serialized.length);
-        rawPayload.setFetchedAt(fetchedAt);
+        rawPayload.setPhotoStripped(false);
+        rawPayload.setRetrievedAt(fetchedAt);
 
         return rawPayloadRepository.save(rawPayload);
     }

@@ -34,7 +34,7 @@ class CernerStorageAdapterTest {
         for (EhrSource item : List.of(source, other)) {
             when(sources.findByCode(item.getCode())).thenReturn(Optional.of(item));
             when(links.findByPatientIdAndSourceId(17L, item.getId())).thenReturn(Optional.of(
-                    EhrPatientCrosswalk.builder().patient(patient).source(item)
+                    EhrPatientCrosswalk.builder().patientId(patient.getId()).sourceId(item.getId())
                             .externalPatientId("synthetic-p1").build()));
         }
         when(appointments.findByPatientIdAndSourceIdAndExternalAppointmentId(anyLong(), anyLong(), anyString()))
@@ -51,7 +51,7 @@ class CernerStorageAdapterTest {
         when(payloads.save(any())).thenAnswer(i -> {
             EhrRawPayload row = i.getArgument(0);
             if (row.getId() == null) { row.setId((long) rawRows.size() + 1); }
-            rawRows.put(row.getSource().getId() + ":" + row.getExternalResourceId(), row);
+            rawRows.put(row.getSourceId() + ":" + row.getExternalResourceId(), row);
             return row;
         });
         adapter = new CernerStorageAdapter(sources, links, payloads, appointments, json,
@@ -97,9 +97,11 @@ class CernerStorageAdapterTest {
         assertEquals(LocalDateTime.parse("2026-11-01T06:30:00"), row.getEndTime());
         assertEquals(LocalDateTime.parse("2026-09-20T14:00:00"), row.getSourceCreatedAt());
         assertEquals(LocalDateTime.parse("2026-09-23T23:00:00"), row.getSourceUpdatedAt());
-        assertEquals("2026-11-01T01:30:00-04:00", row.getRawPayload().getPayload().get("start"));
-        assertEquals(json.convertValue(data, Map.class), row.getRawPayload().getPayload());
-        assertEquals(LocalDateTime.parse("2026-09-24T16:00:00"), row.getRawPayload().getFetchedAt());
+        assertEquals("2026-11-01T01:30:00-04:00",
+                json.readTree(row.getRawPayload().getPayload()).get("start").asText());
+        assertEquals(data, json.readTree(row.getRawPayload().getPayload()));
+        assertEquals(OffsetDateTime.parse("2026-09-24T16:00:00Z"),
+                row.getRawPayload().getRetrievedAt());
     }
 
     @Test void positiveOffsetCrossesUtcDateBoundary() throws Exception {
@@ -137,7 +139,7 @@ class CernerStorageAdapterTest {
     }
 
     @Test void disabledSourceBlocksAllStorage() throws Exception {
-        source.setActive(false);
+        source.setEnabled(false);
         ObjectNode data = fixture("appointment.json");
         assertThrows(IllegalArgumentException.class, () -> adapter.importAppointment(patient, "CERNER_A", data));
         verifyNoInteractions(payloads, appointments);
@@ -205,7 +207,8 @@ class CernerStorageAdapterTest {
         adapter.importAppointment(patient, "CERNER_A", data);
         ((ObjectNode) data.get("meta")).put("versionId", "opaque-v8").put("lastUpdated", "2026-09-24T00:00:00Z");
         var row = adapter.importAppointment(patient, "CERNER_A", data);
-        assertEquals("opaque-v8", ((Map<?, ?>) row.getRawPayload().getPayload().get("meta")).get("versionId"));
+        assertEquals("opaque-v8",
+                json.readTree(row.getRawPayload().getPayload()).path("meta").path("versionId").asText());
         assertEquals(1, rawRows.size());
     }
 

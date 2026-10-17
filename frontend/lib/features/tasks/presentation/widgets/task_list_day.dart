@@ -39,10 +39,9 @@ class TaskListDay extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     Future<void> Function(int, bool)? updateCompletion,
-  }) : updateCompletion =
-           updateCompletion ??
-           ((int id, bool complete) =>
-               ApiService.updateTaskCompletionV2(id, complete));
+  }) : updateCompletion = updateCompletion ??
+            ((int id, bool complete) =>
+                ApiService.updateTaskCompletionV2(id, complete));
 
   @override
   Widget build(BuildContext context) {
@@ -110,9 +109,8 @@ class TaskListDay extends StatelessWidget {
                       ),
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: task.isComplete
-                              ? Colors.white
-                              : Colors.green,
+                          foregroundColor:
+                              task.isComplete ? Colors.white : Colors.green,
                           backgroundColor: task.isComplete
                               ? Colors.green
                               : Colors.transparent,
@@ -138,9 +136,8 @@ class TaskListDay extends StatelessWidget {
                               ? t.calendarCompleted
                               : t.calendarMarkComplete,
                           style: TextStyle(
-                            color: task.isComplete
-                                ? Colors.white
-                                : Colors.green,
+                            color:
+                                task.isComplete ? Colors.white : Colors.green,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),

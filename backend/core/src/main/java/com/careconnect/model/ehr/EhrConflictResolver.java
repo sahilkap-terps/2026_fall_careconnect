@@ -1,19 +1,18 @@
 package com.careconnect.model.ehr;
 
 /**
- * Who resolved an identity conflict.
- *
- * <p>{@link #SYSTEM} is reserved for low-risk fields the reconciler may auto-apply by
- * recency. Identity-affecting fields such as date of birth must never carry this value.
+ * Who decided a conflict, mirroring {@code IdentityConflictAuditWriter.ResolvedBy} in the
+ * shared reconciliation library.
+ * <p>
+ * There is deliberately no {@code STAFF}. Every non-DOB field resolves automatically, and the
+ * 2026-09-26 DOB reversal confirmed patient self-service only — no staff or admin resolution
+ * path is being built. A value that nothing can produce is worse than an absent one.
  */
 public enum EhrConflictResolver {
 
-    /** The patient chose, via the post-link confirmation flow. */
-    PATIENT,
+    /** Automatic recency-wins resolution. Applies to every field except date_of_birth. */
+    SYSTEM,
 
-    /** A staff member chose, typically via a support path. */
-    STAFF,
-
-    /** The reconciliation service auto-applied a low-risk field by recency. */
-    SYSTEM
+    /** The patient confirmed or rejected a held date_of_birth change. That field only. */
+    PATIENT
 }

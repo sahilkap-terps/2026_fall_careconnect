@@ -1,18 +1,14 @@
 package com.careconnect.model.ehr;
 
 import com.careconnect.model.Auditable;
-import com.careconnect.model.Patient;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,73 +17,116 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+
 /**
- * One raw FHIR resource as fetched from a source, kept independent of any canonical row.
- *
- * <p>Every canonical table (this branch starts with {@link EhrAppointmentRecord}) points here
- * through a nullable {@code raw_payload_id} rather than embedding its own payload column. That
- * separation lets an adapter persist what it fetched before mapping succeeds — a raw payload
- * with no canonical row attached yet is diagnosable and re-mappable, whereas a payload column
- * inlined on the canonical row only exists once every required mapped field is also present.
- *
- * <p>Contains PHI and must never be exposed through an unscoped endpoint.
+ * Verbatim FHIR response body as returned by an external EHR source, kept so a mapping can be
+ * re-derived or audited without re-querying the source.
+ * <p>
+ * <strong>This table is PHI-bearing.</strong> Unlike {@code ehr_audit_event.details}, the
+ * payload holds retrieved clinical content, so it is subject to the retention and deletion
+ * rules that apply to patient data.
+ * <p>
+ * <strong>Retention.</strong> {@code EhrRetentionWorker} purges a payload once it was
+ * retrieved more than 7 years ago and the patient has reached age 25, following Maryland
+ * Health-General § 4-403 (decided 2026-10-02, issue #214; see that class for the reasoning). The
+ * gap was raised by @SungWook1207 on PR #209, 2026-09-30, and again on PR #216. An earlier version of
+ * this note said "a Table 47 retention row is still outstanding"; the TDD's tables run 1 to 13 and
+ * no Table 47 exists in any document in this repository, so that reference has been removed. The
+ * decision is recorded on issue #214, and the evidence belongs with the WBS 1.8 HIPAA
+ * production gate, which already blocks production merges until retention evidence is attached.
+ * <p>
+ * Photographs are stripped before insert, never stored and trimmed afterwards: callers remove
+ * {@code Patient.photo} (and any other inline binary) from the body and set
+ * {@code photoStripped}, so full image bytes are never written to this column at all. That
+ * keeps PHI minimal by construction and avoids needing a size-based cleanup job.
+ * <p>
+ * Stores bare {@code patientId}/{@code sourceId} rather than {@code @ManyToOne}, matching
+ * {@code EhrAuditEvent}; the foreign keys are applied by {@code SchemaPatchRunner}.
  */
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Entity
-@Table(name = "ehr_raw_payload")
+@Table(
+        name = "ehr_raw_payload",
+        indexes = {
+                @Index(
+                        name = "idx_ehr_raw_payload_patient_resource",
+                        columnList = "patient_id, source_id, resource_type"),
+                @Index(
+                        name = "idx_ehr_raw_payload_retrieved_at",
+                        columnList = "retrieved_at")
+        })
 public class EhrRawPayload extends Auditable {
 
-    /** Maximum length of the FHIR resource type name. */
-    private static final int RESOURCE_TYPE_LENGTH = 64;
-
-    /** Maximum length of the source's own identifier for the fetched resource. */
-    private static final int EXTERNAL_RESOURCE_ID_LENGTH = 128;
-
-    /** Database primary key. */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Patient this payload was fetched for. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "patient_id", nullable = false)
-    private Patient patient;
+    @Column(name = "patient_id", nullable = false)
+    private Long patientId;
 
-    /** Source the payload was fetched from. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "source_id", nullable = false)
-    private EhrSource source;
+    /** References {@code ehr_source.id}. */
+    @Column(name = "source_id", nullable = false)
+    private Long sourceId;
 
-    /**
-     * The FHIR resource type of the payload, for example {@code Appointment}, {@code Patient},
-     * {@code Coverage}, or {@code ExplanationOfBenefit}. One shared table serves every resource
-     * type rather than one raw table per canonical table.
-     */
-    @Column(name = "resource_type", nullable = false, length = RESOURCE_TYPE_LENGTH)
+    /** FHIR resource the body describes, e.g. Patient, Coverage, Appointment. */
+    @Column(name = "resource_type", nullable = false, length = 64)
     private String resourceType;
 
-    /** The source's own id for this resource, for example a FHIR {@code Appointment.id}. */
-    @Column(name = "external_resource_id", nullable = false, length = EXTERNAL_RESOURCE_ID_LENGTH)
+    /**
+     * The resource's own id within the source, when the body describes a single resource.
+     * Null for a Bundle or a search result covering several.
+     */
+    @Column(name = "external_resource_id", length = 255)
     private String externalResourceId;
 
-    /** Raw FHIR resource as returned by the source. */
+    /**
+     * Response body exactly as received, minus any stripped binary. Held as text rather than a
+     * parsed map so re-derivation sees what the source actually sent, byte for byte.
+     */
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", columnDefinition = "jsonb", nullable = false)
-    private Map<String, Object> payload;
+    @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
+    private String payload;
 
     /**
-     * Size of the serialized payload in bytes, recorded so oversized rows (for example an
-     * embedded {@code Patient.photo}) can be found later. No cap is enforced here yet — the cap
-     * value and whether stripping happens before or after insert remain open questions.
+     * UTF-8 byte length of {@link #payload}, derived on insert. Recorded so payload growth can
+     * be measured against a cap before one is set, rather than guessed.
      */
     @Column(name = "payload_size_bytes", nullable = false)
-    private int payloadSizeBytes;
+    private Integer payloadSizeBytes;
 
-    /** When the adapter fetched this payload. */
-    @Column(name = "fetched_at", nullable = false)
-    private LocalDateTime fetchedAt;
+    /** True when inline binary was removed from the body before it was stored. */
+    @Column(name = "photo_stripped", nullable = false)
+    @Builder.Default
+    private Boolean photoStripped = Boolean.FALSE;
+
+    /**
+     * When the source actually answered. Distinct from {@link Auditable}'s {@code created_at},
+     * which records when this row was written: a caller may store a response it fetched
+     * earlier, so these are not interchangeable.
+     */
+    @Column(name = "retrieved_at", nullable = false)
+    private OffsetDateTime retrievedAt;
+
+    /**
+     * Named to avoid colliding with {@link Auditable}'s own {@code onCreate} callback, which
+     * JPA invokes first.
+     */
+    @PrePersist
+    void applyDefaults() {
+        if (retrievedAt == null) {
+            retrievedAt = OffsetDateTime.now();
+        }
+        if (photoStripped == null) {
+            photoStripped = Boolean.FALSE;
+        }
+        payloadSizeBytes = payload == null
+                ? 0
+                : payload.getBytes(StandardCharsets.UTF_8).length;
+    }
 }
