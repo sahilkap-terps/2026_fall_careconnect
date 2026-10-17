@@ -13,6 +13,7 @@ import com.careconnect.security.UserDetailsServiceImpl;
 import com.careconnect.service.PatientService;
 import com.careconnect.service.VialOfLifePdfService;
 import com.careconnect.util.SecurityUtil;
+import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -204,6 +206,59 @@ class EmergencyAccessRealAuthorizationTest {
     @DisplayName("TC-EMG-206: the debug endpoint is 404 even for a caregiver linked to the patient, and nothing is generated")
     void linkedCaregiverIsRefusedDebug() throws Exception {
         mvc.perform(as("linked-caregiver@test.invalid", "/v1/api/emergency/debug/VIAL1"))
+                .andExpect(status().isNotFound());
+        verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+    }
+
+    // DEF-EMG-02: the app signs in with a token, not Basic auth. No Test Plan IDs yet: they are issued by the
+    // Testing Lead.
+
+    /** A sign-in token for {@code email}, which the mocked provider accepts as JwtAuthenticationFilter checks it. */
+    private MockHttpServletRequestBuilder withToken(final String email, final String path) {
+        final Object[] account = ACCOUNTS.get(email);
+        final String role = ((Role) account[1]).name();
+        final String token = "synthetic-token-" + account[0];
+        final Claims claims = mock(Claims.class);
+        lenient().when(claims.getSubject()).thenReturn(email);
+        lenient().when(claims.get("role", String.class)).thenReturn(role);
+        lenient().when(jwtTokenProvider.validateToken(token)).thenReturn(true);
+        lenient().when(jwtTokenProvider.getClaims(token)).thenReturn(claims);
+        lenient().when(userDetailsService.loadUserByEmailAndRole(email, role)).thenAnswer(inv ->
+                org.springframework.security.core.userdetails.User.withUsername(email)
+                        .password("n/a").roles(role).build());
+        return get(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+    }
+
+    @Test
+    @DisplayName("DEF-EMG-02: patient 1's own sign-in token gets their PDF from both paths")
+    void patientsOwnTokenGetsThePdf() throws Exception {
+        mvc.perform(withToken("patient-one@test.invalid", PDF))
+                .andExpect(status().isOk()).andExpect(content().contentType("application/pdf"));
+        mvc.perform(withToken("patient-one@test.invalid", DOWNLOAD))
+                .andExpect(status().isOk()).andExpect(content().contentType("application/pdf"));
+        verify(vialOfLifePdfService, times(2)).generateVialOfLifePdf("VIAL1");
+    }
+
+    @Test
+    @DisplayName("DEF-EMG-02: a caregiver linked to patient 1 gets the PDF with their sign-in token")
+    void linkedCaregiversTokenGetsThePdf() throws Exception {
+        mvc.perform(withToken("linked-caregiver@test.invalid", PDF))
+                .andExpect(status().isOk()).andExpect(content().contentType("application/pdf"));
+        verify(vialOfLifePdfService).generateVialOfLifePdf("VIAL1");
+    }
+
+    @ParameterizedTest(name = "DEF-EMG-02: {0}'s sign-in token is refused patient 1's PDF with 404 on both paths and nothing is generated")
+    @CsvSource({"other-patient@test.invalid", "unlinked-caregiver@test.invalid", "unlinked-family@test.invalid"})
+    void unrelatedTokenIsRefused(final String email) throws Exception {
+        mvc.perform(withToken(email, PDF)).andExpect(status().isNotFound());
+        mvc.perform(withToken(email, DOWNLOAD)).andExpect(status().isNotFound());
+        verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
+    }
+
+    @Test
+    @DisplayName("DEF-EMG-02: the debug endpoint stays 404 for a linked caregiver's sign-in token")
+    void linkedCaregiversTokenIsRefusedDebug() throws Exception {
+        mvc.perform(withToken("linked-caregiver@test.invalid", "/v1/api/emergency/debug/VIAL1"))
                 .andExpect(status().isNotFound());
         verify(vialOfLifePdfService, never()).generateVialOfLifePdf(anyString());
     }

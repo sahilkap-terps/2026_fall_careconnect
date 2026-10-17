@@ -68,6 +68,16 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    @DisplayName("DEF-EMG-02: the emergency PDF paths are filtered, so a signed-in user's token is read there")
+    void shouldNotFilter_ShouldReturnFalseForEmergencyPaths() throws Exception {
+        for (final String path : Arrays.asList("/v1/api/emergency/VIAL1.pdf",
+                "/v1/api/emergency/download/VIAL1.pdf", "/v1/api/emergency/debug/VIAL1")) {
+            when(request.getRequestURI()).thenReturn(path);
+            org.junit.jupiter.api.Assertions.assertFalse(jwtAuthenticationFilter.shouldNotFilter(request), path);
+        }
+    }
+
+    @Test
     @DisplayName("resolveToken should return token from Authorization header")
     void resolveToken_ShouldReturnTokenFromHeader() throws Exception {
         when(request.getHeader("Authorization")).thenReturn("Bearer test-token");
