@@ -8,10 +8,22 @@
 import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:care_connect_app/shared/widgets/dashboard_appheader_widget.dart';
 
 Widget _wrap(DashboardAppHeader header) =>
     MaterialApp(locale: const Locale('en'), localizationsDelegates: AppLocalizations.localizationsDelegates, supportedLocales: AppLocalizations.supportedLocales, home: Scaffold(appBar: header));
+
+/// Puts the header in a GoRouter app with a stand-in /medical-passport page.
+Widget _routed(DashboardAppHeader header) => MaterialApp.router(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: GoRouter(routes: [
+        GoRoute(path: '/', builder: (_, __) => Scaffold(appBar: header)),
+        GoRoute(path: '/medical-passport', builder: (_, __) => const Text('passport page')),
+      ]),
+    );
 
 void main() {
   group('DashboardAppHeader', () {
@@ -69,6 +81,21 @@ void main() {
         role: 'CAREGIVER',
       )));
       expect(find.byIcon(Icons.local_hospital), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets("CC-12: the emergency icon opens the patient's passport", (tester) async {
+      await tester.pumpWidget(_routed(const DashboardAppHeader(userName: 'Bob', role: 'PATIENT')));
+      await tester.tap(find.widgetWithIcon(IconButton, Icons.local_hospital));
+      await tester.pumpAndSettle();
+      expect(find.text('passport page'), findsOneWidget);
+    });
+
+    testWidgets('CC-12: the emergency icon stays put for a non-patient and says why', (tester) async {
+      await tester.pumpWidget(_routed(const DashboardAppHeader(userName: 'Alice', role: 'CAREGIVER')));
+      await tester.tap(find.widgetWithIcon(IconButton, Icons.local_hospital));
+      await tester.pumpAndSettle();
+      expect(find.text('passport page'), findsNothing);
+      expect(find.byType(SnackBar), findsOneWidget);
     });
 
     testWidgets('shows person icon when profileImageUrl is empty', (tester) async {
