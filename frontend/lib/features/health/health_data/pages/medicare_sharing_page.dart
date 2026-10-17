@@ -31,12 +31,25 @@ class _MedicareSharingPageState extends State<MedicareSharingPage> {
   List<SharingCaregiver> _caregivers = const [];
   final Set<int> _saving = {};
   _Banner? _banner;
+  // A row is disabled while it saves, which takes keyboard focus away; these
+  // let focus return to the row afterwards (DEF-MCR-32).
+  final Map<int, FocusNode> _focus = {};
 
   @override
   void initState() {
     super.initState();
     _refresh();
   }
+
+  @override
+  void dispose() {
+    for (final node in _focus.values) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  FocusNode _focusFor(int id) => _focus.putIfAbsent(id, FocusNode.new);
 
   Future<void> _refresh() async {
     setState(() {
@@ -61,6 +74,7 @@ class _MedicareSharingPageState extends State<MedicareSharingPage> {
 
   Future<void> _toggle(SharingCaregiver caregiver, bool share) async {
     final id = caregiver.userId;
+    final hadFocus = _focus[id]?.hasFocus ?? false;
     setState(() {
       _saving.add(id);
       _banner = null;
@@ -87,6 +101,12 @@ class _MedicareSharingPageState extends State<MedicareSharingPage> {
         );
       }
     });
+    if (hadFocus) {
+      // The row is enabled again after this frame; give its focus back then.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focus[id]?.requestFocus();
+      });
+    }
   }
 
   void _replace(int id, bool shared) {
@@ -202,6 +222,7 @@ class _MedicareSharingPageState extends State<MedicareSharingPage> {
             color: c.shared ? _success : _muted),
       ),
       value: c.shared,
+      focusNode: _focusFor(c.userId),
       activeThumbColor: Colors.white,
       activeTrackColor: _teal,
       onChanged: saving ? null : (v) => _toggle(c, v),

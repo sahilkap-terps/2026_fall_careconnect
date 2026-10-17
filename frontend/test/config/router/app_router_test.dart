@@ -2136,4 +2136,35 @@ void main() {
     expect(router.state.uri.path, '/invite/inv-42');
     expect(find.text('invite inv-42'), findsOneWidget);
   });
+
+  // Testing Lead, PR #350 (Test Plan §3.30): the patient's Medicare sharing
+  // screen, WBS 6.2.59.
+  testWidgets('TC-ROUTE-181: /medicare-sharing builds MedicareSharingPage',
+      (tester) async {
+    final route = _findRoute(appRouter.configuration.routes, '/medicare-sharing');
+    expect(route?.builder, isNotNull);
+    final ctx = await contextWithUser(tester);
+    final page = route!.builder!(ctx, routeState('/medicare-sharing'));
+    expect(page.runtimeType.toString(), 'MedicareSharingPage');
+  });
+
+  testWidgets(
+      'TC-ROUTE-182: /medicare-sharing sends a signed-out user to /login and '
+      'lets a signed-in user through', (tester) async {
+    _setupPlatformChannels();
+    addTearDown(_tearDownPlatformChannels);
+    addTearDown(UserRoleStorageService.instance.clearUserData);
+    final route = _findRoute(appRouter.configuration.routes, '/medicare-sharing');
+    expect(route?.redirect, isNotNull);
+    final ctx = await contextWithUser(tester);
+
+    await UserRoleStorageService.instance.clearUserData();
+    expect(await route!.redirect!(ctx, routeState('/medicare-sharing')),
+        '/login');
+
+    await UserRoleStorageService.instance
+        .setUserData(role: 'PATIENT', userId: 21, patientId: 21);
+    expect(
+        await route.redirect!(ctx, routeState('/medicare-sharing')), isNull);
+  });
 }
