@@ -81,8 +81,8 @@ class _MedicareSharingPageState extends State<MedicareSharingPage> {
         _replace(id, !share); // Put the switch back where it was.
         _banner = _Banner(
           share
-              ? 'Couldn\'t start sharing with ${caregiver.name}. Nothing changed. Please try again.'
-              : 'Couldn\'t stop sharing with ${caregiver.name}. They can still see it. Please try again.',
+              ? 'Couldn\'t confirm sharing with ${caregiver.name}. The switch shows the last confirmed state. Please try again.'
+              : 'Couldn\'t confirm that sharing stopped for ${caregiver.name}. The switch shows the last confirmed state. Please try again.',
           error: true,
         );
       }

@@ -205,4 +205,21 @@ void main() {
             (_) async => throw http.ClientException('down')),
         isFalse);
   });
+  test('malformed consent state fails load instead of guessing not shared',
+      () async {
+    for (final state in [
+      <String, Object?>{},
+      {'granted': null},
+      {'granted': 'true'},
+      {'granted': 0}
+    ]) {
+      expect(
+          await _loadError((req) async => req.url.path.contains('consent')
+              ? _json(state)
+              : _json([
+                  {'caregiverUserId': 21, 'status': 'ACTIVE'}
+                ])),
+          MedicareSharingError.server);
+    }
+  });
 }

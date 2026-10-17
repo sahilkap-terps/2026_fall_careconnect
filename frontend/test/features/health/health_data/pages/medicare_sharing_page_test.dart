@@ -114,7 +114,7 @@ void main() {
 
   testWidgets(
       'TC-MCR-SHR-013: when a save fails the switch goes back and an error '
-      'says nothing changed', (t) async {
+      'shows the last confirmed state', (t) async {
     await _pump(t, _FakeSharing(caregivers: [_zoe], saveOk: false));
 
     await t.tap(_switchFor('Zoe Park'));
@@ -122,13 +122,13 @@ void main() {
 
     expect(_value(t, 'Zoe Park'), isFalse);
     expect(
-        find.text('Couldn\'t start sharing with Zoe Park. Nothing changed. '
-            'Please try again.'),
+        find.text('Couldn\'t confirm sharing with Zoe Park. The switch shows '
+            'the last confirmed state. Please try again.'),
         findsOneWidget);
   });
 
   testWidgets(
-      'TC-MCR-SHR-014: a failed stop says the caregiver can still see it',
+      'TC-MCR-SHR-014: a failed stop reports that the outcome is unconfirmed',
       (t) async {
     await _pump(t, _FakeSharing(caregivers: [_ann], saveOk: false));
 
@@ -136,7 +136,10 @@ void main() {
     await t.pumpAndSettle();
 
     expect(_value(t, 'Ann Lee'), isTrue);
-    expect(find.textContaining('They can still see it.'), findsOneWidget);
+    expect(
+        find.textContaining(
+            'Couldn\'t confirm that sharing stopped for Ann Lee.'),
+        findsOneWidget);
   });
 
   testWidgets(

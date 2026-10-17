@@ -111,8 +111,10 @@ class MedicareSharingService {
     _throwFor(resp.statusCode);
     try {
       final body = jsonDecode(resp.body);
-      if (body is! Map) throw const FormatException();
-      return body['granted'] == true;
+      if (body is! Map || body['granted'] is! bool) {
+        throw const FormatException();
+      }
+      return body['granted'] as bool;
     } catch (_) {
       throw const MedicareSharingException(MedicareSharingError.server);
     }
