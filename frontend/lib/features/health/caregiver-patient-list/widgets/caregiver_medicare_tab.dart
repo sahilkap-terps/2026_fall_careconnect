@@ -26,6 +26,12 @@ class _CaregiverMedicareTabState extends State<CaregiverMedicareTab>
   MedicareFetchResult _result =
       const MedicareFetchResult(records: [], complete: false);
 
+  // The spinner replaces the list while Retry reads again, which takes keyboard
+  // focus away; these give it back to Retry, or to the result (DEF-MCR-34).
+  final FocusNode _retryFocus = FocusNode(debugLabel: 'Medicare Retry');
+  final FocusNode _contentFocus =
+      FocusNode(debugLabel: 'Medicare tab content', skipTraversal: true);
+
   // Keep the result while the caregiver moves between tabs.
   @override
   bool get wantKeepAlive => true;
@@ -36,7 +42,15 @@ class _CaregiverMedicareTabState extends State<CaregiverMedicareTab>
     _load();
   }
 
+  @override
+  void dispose() {
+    _retryFocus.dispose();
+    _contentFocus.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    final hadFocus = _retryFocus.hasFocus;
     setState(() => _loading = true);
     MedicareFetchResult result =
         const MedicareFetchResult(records: [], complete: false);
@@ -49,6 +63,15 @@ class _CaregiverMedicareTabState extends State<CaregiverMedicareTab>
       _result = result;
       _loading = false;
     });
+    if (hadFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // A node keeps its context after its button is gone; check it is
+        // still mounted, i.e. this read failed again and Retry is back.
+        (_retryFocus.context?.mounted == true ? _retryFocus : _contentFocus)
+            .requestFocus();
+      });
+    }
   }
 
   @override
@@ -70,6 +93,7 @@ class _CaregiverMedicareTabState extends State<CaregiverMedicareTab>
       return ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
+          _anchor(),
           _notice(
             Icons.lock_outline,
             'Medicare data isn\'t available for this patient yet.',
@@ -93,6 +117,7 @@ class _CaregiverMedicareTabState extends State<CaregiverMedicareTab>
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 12),
       children: [
+        _anchor(),
         if (_result.synthetic)
           _notice(
             Icons.warning_amber_rounded,
@@ -109,6 +134,7 @@ class _CaregiverMedicareTabState extends State<CaregiverMedicareTab>
             Icons.cloud_off_outlined,
             'We couldn\'t reach Medicare right now.',
             action: OutlinedButton.icon(
+              focusNode: _retryFocus,
               style: OutlinedButton.styleFrom(foregroundColor: _accent()),
               onPressed: _load,
               icon: const Icon(Icons.refresh),
@@ -134,6 +160,10 @@ class _CaregiverMedicareTabState extends State<CaregiverMedicareTab>
   Color _accent() => Theme.of(context).brightness == Brightness.dark
       ? Theme.of(context).colorScheme.primary
       : const Color(0xFF006B80);
+
+  // Where focus goes after a reload that removed Retry; Tab moves on from it.
+  Widget _anchor() =>
+      Focus(focusNode: _contentFocus, child: const SizedBox.shrink());
 
   Widget _notice(IconData icon, String text, {Widget? action}) {
     final cs = Theme.of(context).colorScheme;

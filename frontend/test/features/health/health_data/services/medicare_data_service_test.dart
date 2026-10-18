@@ -165,4 +165,39 @@ void main() {
     expect(await problem(409, 403), MedicareReadProblem.linkExpired);
     expect(await problem(503, 503), MedicareReadProblem.unreachable);
   });
+
+  // ───── Testing Lead (PR #364 review): TC-MCR-CG-030, 031 ─────
+
+  test(
+      'TC-MCR-CG-030: a 403 beside an unreachable read is still forbidden, '
+      'whichever read it was', () async {
+    for (final codes in [
+      [403, 503],
+      [503, 403],
+    ]) {
+      use(RouteAdapter({}, status: {
+        '/v1/api/medicare/visits': codes[0],
+        '/v1/api/medicare/coverage': codes[1],
+      }));
+      final result = await MedicareDataService().fetchRecords(patientId: 7);
+      expect(result.problem, MedicareReadProblem.forbidden, reason: '$codes');
+      expect(result.records, isEmpty);
+    }
+  });
+
+  test(
+      'TC-MCR-CG-031: a caregiver read that half fails keeps the half that '
+      'answered, marked incomplete and unreachable', () async {
+    use(RouteAdapter({
+      '/v1/api/medicare/coverage':
+          envelope(fixtureResources('coverage-bundle.json')),
+    }, status: {
+      '/v1/api/medicare/visits': 503,
+    }));
+    final result = await MedicareDataService().fetchRecords(patientId: 7);
+    expect(result.complete, isFalse);
+    expect(result.problem, MedicareReadProblem.unreachable);
+    expect(result.records, hasLength(3));
+    expect(result.records.map((r) => r.type).toSet(), {RecordType.other});
+  });
 }

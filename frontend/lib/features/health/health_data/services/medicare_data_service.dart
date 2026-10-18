@@ -124,8 +124,9 @@ class MedicareDataService {
     final paid = _money(eob['payment']?['amount']);
     if (paid != null) details.add(RecordDetail('Medicare paid', paid));
     final svc = eob['billablePeriod']?['start'];
-    if (svc is String)
+    if (svc is String) {
       details.add(RecordDetail('Service date', _friendlyDate(svc)));
+    }
     return HealthRecord.single(
       id: id,
       source: RecordSource.medicare,
@@ -152,14 +153,16 @@ class MedicareDataService {
           : 'Medicare';
       if (payor is String) details.add(RecordDetail('Payer', payor));
       final start = r['period']?['start'];
-      if (start is String)
+      if (start is String) {
         details.add(RecordDetail('Effective', _friendlyDate(start)));
+      }
       final klass = (r['class'] as List?)
           ?.map((c) => c is Map ? _conceptText(c['type']) : null)
           .whereType<String>()
           .join(', ');
-      if (klass != null && klass.isNotEmpty)
+      if (klass != null && klass.isNotEmpty) {
         details.add(RecordDetail('Plan', klass));
+      }
       out.add(HealthRecord.single(
         id: id,
         source: RecordSource.medicare,

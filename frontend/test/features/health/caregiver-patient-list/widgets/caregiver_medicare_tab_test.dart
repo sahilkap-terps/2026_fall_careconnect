@@ -6,6 +6,8 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -305,6 +307,226 @@ void main() {
       await settle(t);
       low = lowContrastText(t, find.byType(ListView)).toSet();
       expect(low, isEmpty, reason: low.join('\n'));
+    });
+  }
+
+  // ───── Testing Lead (PR #364 review): TC-MCR-CG-023…029 ─────
+
+  testWidgets(
+      'TC-MCR-CG-023: when only coverage answers, its records show with the '
+      'Retry notice and no "no records" message', (t) async {
+    await pump(
+        t,
+        RouteAdapter({
+          _coverage: envelope(fixtureResources('coverage-bundle.json')),
+        }, status: {
+          _visits: 503
+        }));
+    await settle(t);
+    expect(find.text(_unreachable), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
+    expect(find.text('Coverage'), findsOneWidget);
+    expect(find.text('Visits and claims'), findsNothing);
+    expect(find.byType(ListTile), findsNWidgets(3));
+    expect(find.text(_noRecords), findsNothing);
+  });
+
+  testWidgets(
+      'TC-MCR-CG-024: an expired link on one read keeps the other read\'s '
+      'records and offers no Retry', (t) async {
+    await pump(
+        t,
+        RouteAdapter({
+          _coverage: envelope(fixtureResources('coverage-bundle.json')),
+        }, status: {
+          _visits: 409
+        }));
+    await settle(t);
+    expect(find.text(_expired), findsOneWidget);
+    expect(find.text('Coverage'), findsOneWidget);
+    expect(find.byType(ListTile), findsNWidgets(3));
+    expect(find.text('Retry'), findsNothing);
+    expect(find.text(_unreachable), findsNothing);
+  });
+
+  testWidgets(
+      'TC-MCR-CG-025: a visit with no date sorts last, and a record with no '
+      'date or status shows no blank subtitle', (t) async {
+    await pump(
+        t,
+        RouteAdapter({
+          _visits: envelope(const [
+            {
+              'resourceType': 'ExplanationOfBenefit',
+              'id': 'undated',
+              'status': 'active',
+              'type': {'text': 'Undated claim'},
+            },
+            {
+              'resourceType': 'ExplanationOfBenefit',
+              'id': 'dated',
+              'status': 'active',
+              'type': {'text': 'Dated claim'},
+              'billablePeriod': {'start': '2026-03-02'},
+            },
+            {
+              'resourceType': 'ExplanationOfBenefit',
+              'id': 'undated-2',
+              'status': 'active',
+              'type': {'text': 'Second undated claim'},
+            },
+          ]),
+          _coverage: envelope(const [
+            {
+              'resourceType': 'Coverage',
+              'id': 'cancelled',
+              'status': 'cancelled',
+              'type': {'text': 'Old Medigap plan'},
+            },
+          ]),
+        }));
+    await settle(t);
+    final dated = t.getTopLeft(find.text('Dated claim')).dy;
+    expect(dated, lessThan(t.getTopLeft(find.text('Undated claim')).dy));
+    expect(dated, lessThan(t.getTopLeft(find.text('Second undated claim')).dy));
+    expect(find.text('March 2, 2026 · Processed'), findsOneWidget);
+    expect(find.text('Processed'), findsNWidgets(2));
+    final coverage = t.widget<ListTile>(find.ancestor(
+        of: find.text('Old Medigap plan'), matching: find.byType(ListTile)));
+    expect(coverage.subtitle, isNull);
+  });
+
+  testWidgets(
+      'TC-MCR-CG-026: leaving the tab while Medicare is still answering '
+      'causes no error', (t) async {
+    final gate = Completer<void>();
+    await pump(t, fixtures(gate: gate));
+    await t.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    gate.complete();
+    for (var i = 0; i < 10; i++) {
+      await t.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(t.takeException(), isNull);
+    // Let the client's own timers run out before the test ends.
+    await t.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets(
+      'TC-MCR-CG-027: after Retry from the keyboard, focus stays on the tab\'s '
+      'Retry, not lost (WCAG 2.1 SC 2.4.3)', (t) async {
+    await pump(t, RouteAdapter({}, status: {_visits: 503, _coverage: 503}));
+    await settle(t);
+    final retry = find.widgetWithText(OutlinedButton, 'Retry');
+    bool focusIsIn(Finder scope) {
+      final focused = FocusManager.instance.primaryFocus?.context;
+      return focused != null &&
+          find
+              .ancestor(
+                  of: find.byElementPredicate((e) => e == focused,
+                      skipOffstage: false),
+                  matching: scope)
+              .evaluate()
+              .isNotEmpty;
+    }
+
+    Future<void> pressRetry() async {
+      Focus.of(t.element(
+              find.descendant(of: retry, matching: find.text('Retry'))))
+          .requestFocus();
+      await t.pump();
+      expect(focusIsIn(retry), isTrue);
+      await t.sendKeyEvent(LogicalKeyboardKey.enter);
+      await t.pump();
+      await settle(t);
+    }
+
+    // Still failing: focus is back on the new Retry.
+    await pressRetry();
+    expect(find.text(_unreachable), findsOneWidget);
+    expect(focusIsIn(retry), isTrue,
+        reason: 'focus: ${FocusManager.instance.primaryFocus}');
+
+    // Now answering: Retry is gone, focus stays inside the tab, and Tab
+    // moves on to the first record.
+    ApiClient.instance.debugSetHttpClientAdapter(fixtures());
+    await pressRetry();
+    expect(find.text('Coverage'), findsOneWidget);
+    expect(focusIsIn(find.byType(CaregiverMedicareTab)), isTrue,
+        reason: 'focus: ${FocusManager.instance.primaryFocus}');
+    await t.sendKeyEvent(LogicalKeyboardKey.tab);
+    await t.pump();
+    expect(focusIsIn(find.byType(ListTile).first), isTrue,
+        reason: 'focus: ${FocusManager.instance.primaryFocus}');
+  });
+
+  testWidgets(
+      'TC-MCR-CG-028: at 200% text on a 320 dp screen no state overflows or '
+      'cuts off a line (WCAG 2.1 SC 1.4.4, 1.4.10)', (t) async {
+    t.view.physicalSize = const Size(320, 640);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    final states = <String, RouteAdapter>{
+      'records': fixtures(),
+      'unreachable': RouteAdapter({}, status: {_visits: 503, _coverage: 503}),
+      'unavailable': RouteAdapter({}, status: {_visits: 404, _coverage: 404}),
+      'expired': RouteAdapter({}, status: {_visits: 409, _coverage: 409}),
+      'empty': RouteAdapter(
+          {_visits: envelope(const []), _coverage: envelope(const [])}),
+    };
+    final problems = <String>[];
+    for (final s in states.entries) {
+      await t.pumpWidget(const SizedBox());
+      ApiClient.instance.debugSetHttpClientAdapter(s.value);
+      await t.pumpWidget(MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const MediaQuery(
+          data: MediaQueryData(
+              size: Size(320, 640), textScaler: TextScaler.linear(2)),
+          child: Scaffold(body: CaregiverMedicareTab(patientId: 3)),
+        ),
+      ));
+      await settle(t);
+      // The list is lazy: measure each screenful while scrolling down.
+      for (var page = 0; page < 12; page++) {
+        final e = t.takeException();
+        if (e != null) problems.add('${s.key}: $e');
+        for (final el in find.byType(RichText).evaluate()) {
+          final para = el.renderObject! as RenderParagraph;
+          final needed = para.getMaxIntrinsicHeight(para.size.width);
+          if (needed > para.size.height + 0.5) {
+            problems.add('${s.key}: "${para.text.toPlainText()}" needs '
+                '${needed.toStringAsFixed(0)} px, has '
+                '${para.size.height.toStringAsFixed(0)} px');
+          }
+        }
+        await t.drag(find.byType(ListView), const Offset(0, -500));
+        await t.pumpAndSettle();
+      }
+    }
+    expect(problems.toSet(), isEmpty, reason: problems.toSet().join('\n'));
+  });
+
+  for (final theme in {
+    'light': AppTheme.lightTheme,
+    'dark': AppTheme.darkTheme,
+  }.entries) {
+    testWidgets(
+        'TC-MCR-CG-029: the unavailable and expired notices have at least '
+        '4.5:1 contrast in the ${theme.key} theme (WCAG 2.1 SC 1.4.3)',
+        (t) async {
+      for (final code in [404, 409]) {
+        await t.pumpWidget(const SizedBox());
+        await pump(
+            t, RouteAdapter({}, status: {_visits: code, _coverage: code}),
+            theme: theme.value);
+        await settle(t);
+        final low = lowContrastText(t, find.byType(ListView)).toSet();
+        expect(low, isEmpty, reason: '$code: ${low.join('\n')}');
+      }
     });
   }
 }

@@ -3026,6 +3026,12 @@ class _TabsStrip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final width = MediaQuery.sizeOf(context).width;
     final narrow = width < 430;
+    // The light theme's primary (00A7C8) is 2.85:1 on white: too light for
+    // the selected label (4.5:1) and its underline (3:1). Use the darker teal
+    // the Medicare tab and Health Data use (DEF-MCR-35).
+    final selected = Theme.of(context).brightness == Brightness.dark
+        ? cs.primary
+        : const Color(0xFF006B80);
     return Material(
       color: cs.surface,
       child: Padding(
@@ -3035,10 +3041,10 @@ class _TabsStrip extends StatelessWidget {
           labelPadding: narrow
               ? const EdgeInsets.symmetric(horizontal: 10)
               : const EdgeInsets.symmetric(horizontal: 16),
-          labelColor: cs.primary,
+          labelColor: selected,
           unselectedLabelColor: cs.onSurface.withValues(alpha: .7),
           indicator: UnderlineTabIndicator(
-            borderSide: BorderSide(color: cs.primary, width: 3),
+            borderSide: BorderSide(color: selected, width: 3),
           ),
           tabs: [
             const Tab(text: 'Info', icon: Icon(Icons.info_outline, size: 18)),
