@@ -1,8 +1,9 @@
 // /medical-passport on the production route table, as
 // health_data_routes_test.dart does for the Health Data routes.
 //
-// Test Plan §3.28: TC-EMG-374 and 375 are the author's; TC-EMG-398 and 399 are
-// the Testing Lead's (route, page, the real service and HTTP in process).
+// Test Plan §3.28: TC-EMG-374 and 375 are the author's; TC-EMG-398, 399 and
+// 476…478 are the Testing Lead's (route, page, the real service and HTTP in
+// process; 476…478 go on to the real /emergency-qr, PR #362 follow-up).
 
 import 'dart:convert';
 
@@ -13,9 +14,11 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:care_connect_app/config/router/app_router.dart';
+import 'package:care_connect_app/features/emergency_passport/pages/emergency_qr_page.dart';
 import 'package:care_connect_app/features/medical_passport/models/medical_passport.dart';
 import 'package:care_connect_app/features/medical_passport/pages/medical_passport_page.dart';
 import 'package:care_connect_app/l10n/app_localizations.dart';
@@ -53,6 +56,9 @@ Future<GoRouter> _open(WidgetTester t, {required bool signedIn}) async {
 }
 
 String _path(GoRouter r) => r.routerDelegate.currentConfiguration.uri.path;
+
+/// The route on top: a pushed page (context.push) leaves [_path] unchanged.
+String _top(GoRouter r) => r.routerDelegate.currentConfiguration.matches.last.matchedLocation;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -232,6 +238,169 @@ void main() {
       expect([for (final r in passportCalls()) '${r.method} ${r.url.path}'],
           ['GET /v1/api/passport']);
       expect(passportCalls().single.headers['Authorization'], 'Bearer $jwt');
+    });
+
+    // ---------- PR #362 follow-up: screen 1 and the real screen 2 ----------
+
+    const created = '2026-10-18T15:00:00.123456Z';
+    const link = 'http://localhost:3000/#/passport/Q3k9xZ2v';
+    const keptKey = 'cc12_emergency_qr_1';
+
+    /// GET, POST /token and DELETE /token, keeping the code between calls, as
+    /// the backend does. Every request is recorded in [sent].
+    MockClient backend(Map<String, Object?> state) => MockClient((req) async {
+          sent.add(req);
+          final path = req.url.path;
+          if (req.method == 'POST' && path == '/v1/api/passport/token') {
+            state['token'] = {'active': true, 'createdAt': created, 'lastScannedAt': null};
+            state['ready'] = true;
+            return http.Response(
+                jsonEncode({
+                  'token': 'Q3k9xZ2v',
+                  'url': 'http://localhost:3000/passport/Q3k9xZ2v',
+                  'createdAt': created,
+                }),
+                201);
+          }
+          if (req.method == 'DELETE' && path == '/v1/api/passport/token') {
+            state['token'] = null;
+            state['ready'] = false;
+            return http.Response('', 204);
+          }
+          if (req.method == 'GET' && path == '/v1/api/passport') {
+            return http.Response(jsonEncode(state), 200);
+          }
+          return http.Response('{}', 404);
+        });
+
+    Future<void> settle(WidgetTester t) async {
+      for (var i = 0; i < 20; i++) {
+        await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await t.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    Future<void> tapText(WidgetTester t, String text) async {
+      await t.ensureVisible(find.text(text));
+      await t.tap(find.text(text));
+      await settle(t);
+    }
+
+    List<String> calls() => [for (final r in passportCalls()) '${r.method} ${r.url.path}'];
+
+    void allSignedIn() {
+      for (final r in passportCalls()) {
+        expect(r.headers['Authorization'], 'Bearer $jwt', reason: '${r.method} ${r.url.path}');
+      }
+    }
+
+    testWidgets(
+        'TC-EMG-476: from the passport, "Create emergency QR" opens the real '
+        'emergency QR screen; the code made there is kept on the device under '
+        'the patient, and back on the passport it reloads and shows the code as '
+        'active', (t) async {
+      t.view.physicalSize = const Size(1400, 2400);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final state = passport();
+      await http.runWithClient(() async {
+        final r = await _open(t, signedIn: true);
+        expect(find.text('Not ready'), findsOneWidget);
+
+        await tapText(t, 'Create emergency QR');
+        expect(_top(r), '/emergency-qr');
+        expect(find.byType(EmergencyQrPage), findsOneWidget);
+        await tapText(t, 'Create my emergency QR');
+        expect(find.byType(QrImageView), findsOneWidget);
+
+        await t.tap(find.byTooltip('Back'));
+        await settle(t);
+        expect(_path(r), '/medical-passport');
+        expect(find.text('Show emergency QR'), findsOneWidget);
+        expect(find.text('Code active. Not scanned yet.'), findsOneWidget);
+        expect(find.text('Ready to share'), findsOneWidget);
+      }, () => backend(state));
+
+      expect(calls(), [
+        'GET /v1/api/passport',
+        'GET /v1/api/passport',
+        'POST /v1/api/passport/token',
+        'GET /v1/api/passport',
+      ]);
+      allSignedIn();
+      final kept = jsonDecode(secure[keptKey]!) as Map;
+      expect(kept['url'], link);
+      expect(secure.keys.where((k) => k.startsWith('cc12_emergency_qr_')), [keptKey]);
+    });
+
+    testWidgets(
+        'TC-EMG-477: with a code kept on this device, "Show emergency QR" shows '
+        'that QR again on the emergency QR screen without making a new code',
+        (t) async {
+      t.view.physicalSize = const Size(1400, 2400);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      secure[keptKey] = jsonEncode({'url': link, 'createdAt': created});
+      final state = {
+        ...passport(),
+        'token': {'active': true, 'createdAt': created, 'lastScannedAt': null},
+        'ready': true,
+      };
+      await http.runWithClient(() async {
+        final r = await _open(t, signedIn: true);
+        await tapText(t, 'Show emergency QR');
+        expect(_top(r), '/emergency-qr');
+        expect(find.byType(QrImageView), findsOneWidget);
+        expect(find.text('Your QR isn\'t saved on this device'), findsNothing);
+
+        await t.tap(find.byTooltip('Back'));
+        await settle(t);
+        expect(_path(r), '/medical-passport');
+      }, () => backend(state));
+
+      expect(calls(), [
+        'GET /v1/api/passport',
+        'GET /v1/api/passport',
+        'GET /v1/api/passport',
+      ]);
+      allSignedIn();
+      expect(jsonDecode(secure[keptKey]!)['url'], link);
+    });
+
+    testWidgets(
+        'TC-EMG-478: "Turn off QR code" on the passport turns the code off on '
+        'the server and forgets the copy kept on this device; the emergency QR '
+        'screen then offers a new code and shows no QR (DEF-EMG-27)', (t) async {
+      t.view.physicalSize = const Size(1400, 2400);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      secure[keptKey] = jsonEncode({'url': link, 'createdAt': created});
+      final state = {
+        ...passport(),
+        'token': {'active': true, 'createdAt': created, 'lastScannedAt': null},
+        'ready': true,
+      };
+      await http.runWithClient(() async {
+        final r = await _open(t, signedIn: true);
+        await tapText(t, 'Turn off QR code');
+        await tapText(t, 'Turn off');
+        expect(find.text('QR code turned off.'), findsOneWidget);
+        expect(find.text('Create emergency QR'), findsOneWidget);
+
+        await tapText(t, 'Create emergency QR');
+        expect(_top(r), '/emergency-qr');
+        expect(find.text('Create my emergency QR'), findsOneWidget);
+        expect(find.byType(QrImageView), findsNothing);
+      }, () => backend(state));
+
+      expect(calls(), [
+        'GET /v1/api/passport',
+        'DELETE /v1/api/passport/token',
+        'GET /v1/api/passport',
+        'GET /v1/api/passport',
+      ]);
+      allSignedIn();
+      expect(secure.containsKey(keptKey), isFalse);
     });
   });
 }
