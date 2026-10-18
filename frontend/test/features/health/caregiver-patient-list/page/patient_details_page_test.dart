@@ -5,7 +5,9 @@ import 'dart:convert';
 
 import 'package:care_connect_app/features/health/caregiver-patient-list/page/patient_details_page.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
+import 'package:care_connect_app/services/api_client.dart';
 import 'package:care_connect_app/services/api_service.dart';
+import 'package:dio/dio.dart' show HttpClientAdapter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +17,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../mock_user_provider.dart';
+import '../../health_data/health_data_test_support.dart';
 
 late Future<http.Response> Function(http.Request) _httpHandler;
 
@@ -411,6 +414,73 @@ void main() {
       await pumpReady(tester, buildTestWidget(patientId: ''));
       expect(find.byType(PatientDetailsPage), findsOneWidget);
       expect(find.textContaining('Invalid patient ID'), findsWidgets);
+    });
+  });
+
+  // ───────────────────── Medicare tab (WBS 6.2.58) ─────────────────────
+  group('PatientDetailsPage – Medicare tab', () {
+    late HttpClientAdapter original;
+    late RouteAdapter medicare;
+
+    setUp(() {
+      original = ApiClient.instance.debugHttpClientAdapter;
+      medicare = RouteAdapter({
+        '/v1/api/medicare/visits': envelope(fixtureResources('eob-bundle.json')),
+        '/v1/api/medicare/coverage':
+            envelope(fixtureResources('coverage-bundle.json')),
+      });
+      ApiClient.instance.debugSetHttpClientAdapter(medicare);
+    });
+    tearDown(() => ApiClient.instance.debugSetHttpClientAdapter(original));
+
+    List<Uri> medicareCalls() =>
+        medicare.uris.where((u) => u.path.contains('/medicare/')).toList();
+
+    /// Dio runs outside the fake clock, so give it real time to answer.
+    Future<void> openTab(WidgetTester tester, String label) async {
+      await tester.tap(find.text(label));
+      for (var i = 0; i < 20; i++) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    testWidgets(
+        'TC-MCR-CG-016: a caregiver gets a sixth Medicare tab that reads this '
+        'patient and keeps its result across tabs', (tester) async {
+      await pumpReady(
+          tester, buildTestWidget(patientId: '42', isCaregiver: true));
+      expect(find.text('Medicare'), findsOneWidget);
+      expect(find.byType(Tab), findsNWidgets(6));
+      // Nothing is read until the caregiver opens the tab.
+      expect(medicareCalls(), isEmpty);
+
+      await openTab(tester, 'Medicare');
+      expect(find.text('Coverage'), findsOneWidget);
+      expect(medicareCalls().map((u) => u.queryParameters['patientId']),
+          ['42', '42']);
+
+      await openTab(tester, 'Info');
+      await openTab(tester, 'Medicare');
+      expect(find.text('Coverage'), findsOneWidget);
+      expect(medicareCalls(), hasLength(2));
+    });
+
+    testWidgets(
+        'TC-MCR-CG-016: a patient viewing their own page keeps the five tabs '
+        'and no Medicare read', (tester) async {
+      await pumpReady(
+        tester,
+        buildTestWidget(
+          provider: MockUserProvider(
+            mockUser: MockUser(role: 'PATIENT', patientId: 42),
+          ),
+        ),
+      );
+      expect(find.byType(Tab), findsNWidgets(5));
+      expect(find.text('Medicare'), findsNothing);
+      expect(medicareCalls(), isEmpty);
     });
   });
 }
