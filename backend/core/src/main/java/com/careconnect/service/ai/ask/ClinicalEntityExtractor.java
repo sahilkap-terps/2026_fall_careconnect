@@ -18,6 +18,7 @@ final class ClinicalEntityExtractor {
     private static final Pattern TOKEN = Pattern.compile(
             "[<>]=?|\\b\\d+(?:\\.\\d+)?%|\\b\\d+(?:\\.\\d+)?\\b|[\\p{L}\\p{N}]+",
             Pattern.UNICODE_CHARACTER_CLASS);
+    private static final Pattern ORDINAL_DAY = Pattern.compile("(\\d{1,2})(?:st|nd|rd|th)");
     private static final Set<String> SHORT_CLINICAL = Set.of(
             "bp", "hr", "inr", "a1c", "o2", "spo2", "bmi", "wbc", "rbc", "hgb", "hct",
             "egfr", "ldl", "hdl", "tsh");
@@ -125,6 +126,11 @@ final class ClinicalEntityExtractor {
         }
         if ("a1c".equals(token) || "hba1c".equals(token)) {
             return "a1c";
+        }
+        // "October 19th" asks about a date written "October 19" in records.
+        final Matcher ordinal = ORDINAL_DAY.matcher(token);
+        if (ordinal.matches()) {
+            return ordinal.group(1);
         }
         return token;
     }

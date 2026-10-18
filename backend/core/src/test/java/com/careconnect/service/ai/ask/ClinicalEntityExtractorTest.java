@@ -55,4 +55,10 @@ class ClinicalEntityExtractorTest {
         assertThat(ClinicalEntityExtractor.extract("What does the patient need to pick up at the pharmacy?"))
                 .containsExactlyInAnyOrder("pick", "pharmacy");
     }
+
+    @Test
+    void ordinalDayBecomesItsNumber() {
+        assertThat(ClinicalEntityExtractor.extract("Any pending tasks on October 19th?"))
+                .containsExactlyInAnyOrder("october", "19");
+    }
 }

@@ -233,4 +233,13 @@ class GroundingRelevancePolicyTest {
                 "Am I taking any medications?", evidence, evidence, weakChunk(evidence)))
                 .isTrue();
     }
+
+    @Test
+    void ordinalDateQuestionMatchesWrittenDate() {
+        final String evidence = "Check Blood Sugar is a HEALTH_CHECK task scheduled for Monday, October 19, 2026.";
+
+        assertThat(GroundingRelevancePolicy.isRelevant(
+                "Does the patient have any pending tasks on October 19th?", evidence, evidence, weakChunk(evidence)))
+                .isTrue();
+    }
 }
