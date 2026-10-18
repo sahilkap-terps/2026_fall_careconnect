@@ -1,10 +1,13 @@
 package com.careconnect.repository.ehr;
 
 import com.careconnect.model.ehr.EhrAuditEvent;
+import com.careconnect.model.ehr.EhrConditionRecord;
 import com.careconnect.model.ehr.EhrConflictResolver;
 import com.careconnect.model.ehr.EhrConflictStatus;
 import com.careconnect.model.ehr.EhrCoverageRecord;
 import com.careconnect.model.ehr.EhrIdentityConflict;
+import com.careconnect.model.ehr.EhrMedicationRecord;
+import com.careconnect.model.ehr.EhrObservationRecord;
 import com.careconnect.model.ehr.EhrResource;
 import com.careconnect.model.ehr.EhrRetrievalOutcome;
 import com.careconnect.model.ehr.EhrSourceIdentity;
@@ -29,8 +32,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The retention queries {@code EhrRetentionWorker} runs against {@code ehr_identity_conflict},
  * {@code ehr_source_identity}, {@code ehr_audit_event}, {@code ehr_resource},
- * {@code ehr_coverage_record} and {@code ehr_visit_record}, on a real PostgreSQL. The unit test
- * mocks the repositories, so it cannot tell whether the JPQL selects and deletes the right rows.
+ * {@code ehr_coverage_record}, {@code ehr_visit_record}, {@code ehr_medication_record},
+ * {@code ehr_condition_record} and {@code ehr_observation_record}, on a real PostgreSQL. The unit
+ * test mocks the repositories, so it cannot tell whether the JPQL selects and deletes the right rows.
  * ({@code ehr_raw_payload}'s pair is TC-EHR-RAW-007 in {@code EhrRawPayloadPostgresJsonbTest}.)
  * <p>
  * Every case uses a cutoff of 2001-01-01, older than anything a real sync could have stored, so
@@ -38,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * PostgreSQL tests here: skipped unless {@code EHR_IT_JDBC_URI} is set, and the target database
  * must hold at least one {@code patient} row.
  * <p>
- * Test IDs TC-EHR-RET-005..007, 009 and 011 are permanent. Never renumber, never reuse.
+ * Test IDs TC-EHR-RET-005..007, 009, 011 and 013 are permanent. Never renumber, never reuse.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -71,6 +75,12 @@ class EhrRetentionQueriesPostgresTest {
     private EhrCoverageRecordRepository coverages;
     @Autowired
     private EhrVisitRecordRepository visits;
+    @Autowired
+    private EhrMedicationRecordRepository medications;
+    @Autowired
+    private EhrConditionRecordRepository conditions;
+    @Autowired
+    private EhrObservationRecordRepository observations;
     @Autowired
     private EntityManager entityManager;
 
@@ -326,5 +336,73 @@ class EhrRetentionQueriesPostgresTest {
         entityManager.clear();
 
         assertThat(resources.existsById(id)).isFalse();
+    }
+
+    @Test
+    @DisplayName("TC-EHR-RET-013: medication/condition/observation records are found and deleted on updated_at, not source_updated_at")
+    void typedProjectionQueries() {
+        // Any valid ehr_source FK; the retention queries key on updated_at, not the source.
+        final Long source = sourceId("MEDICARE");
+        // source_updated_at is decades old from the start; that alone must not make them candidates.
+        final Long medication = medications.save(EhrMedicationRecord.builder()
+                .patientId(patientId)
+                .sourceId(source)
+                .externalMedicationId("ret-013-medication")
+                .sourceUpdatedAt(BEFORE)
+                .build()).getId();
+        final Long condition = conditions.save(EhrConditionRecord.builder()
+                .patientId(patientId)
+                .sourceId(source)
+                .externalConditionId("ret-013-condition")
+                .sourceUpdatedAt(BEFORE)
+                .build()).getId();
+        final Long observation = observations.save(EhrObservationRecord.builder()
+                .patientId(patientId)
+                .sourceId(source)
+                .externalObservationId("ret-013-observation")
+                .sourceUpdatedAt(BEFORE)
+                .build()).getId();
+        entityManager.flush();
+
+        final LocalDateTime cutoff = CUTOFF.toLocalDateTime();
+        assertThat(medications.findPatientsWithMedicationUpdatedBefore(cutoff)).isEmpty();
+        assertThat(conditions.findPatientsWithConditionUpdatedBefore(cutoff)).isEmpty();
+        assertThat(observations.findPatientsWithObservationUpdatedBefore(cutoff)).isEmpty();
+
+        // Now age the rows themselves: this application last stored them before the cutoff.
+        final List<String> tables = List.of(
+                "ehr_medication_record", "ehr_condition_record", "ehr_observation_record");
+        final List<Long> ids = List.of(medication, condition, observation);
+        for (int i = 0; i < tables.size(); i++) {
+            entityManager
+                    .createNativeQuery("update " + tables.get(i)
+                            + " set updated_at = TIMESTAMP '1999-06-01 00:00:00' where id = :id")
+                    .setParameter("id", ids.get(i))
+                    .executeUpdate();
+        }
+        entityManager.clear();
+
+        assertThat(medications.findPatientsWithMedicationUpdatedBefore(cutoff))
+                .singleElement()
+                .satisfies(found -> {
+                    assertThat(found.getPatientId()).isEqualTo(patientId);
+                    assertThat(found.getDob()).isEqualTo(storedDob);
+                });
+        assertThat(conditions.findPatientsWithConditionUpdatedBefore(cutoff))
+                .singleElement()
+                .satisfies(found -> assertThat(found.getPatientId()).isEqualTo(patientId));
+        assertThat(observations.findPatientsWithObservationUpdatedBefore(cutoff))
+                .singleElement()
+                .satisfies(found -> assertThat(found.getPatientId()).isEqualTo(patientId));
+
+        assertThat(medications.deleteUpdatedBeforeForPatients(cutoff, List.of(-1L))).isZero();
+        assertThat(medications.deleteUpdatedBeforeForPatients(cutoff, List.of(patientId))).isEqualTo(1);
+        assertThat(conditions.deleteUpdatedBeforeForPatients(cutoff, List.of(patientId))).isEqualTo(1);
+        assertThat(observations.deleteUpdatedBeforeForPatients(cutoff, List.of(patientId))).isEqualTo(1);
+        entityManager.clear();
+
+        assertThat(medications.existsById(medication)).isFalse();
+        assertThat(conditions.existsById(condition)).isFalse();
+        assertThat(observations.existsById(observation)).isFalse();
     }
 }
