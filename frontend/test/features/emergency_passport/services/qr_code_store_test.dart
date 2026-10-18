@@ -284,9 +284,7 @@ void main() {
           reason: 'the session ended: the session token is gone');
       expect(memory.keys.where((k) => k.startsWith('cc12_emergency_qr_')),
           isEmpty);
-    },
-        skip: 'DEF-EMG-29: a session that ends without a sign-out keeps the '
-            'QR code');
+    });
   }
 
   test('TC-EMG-462: clear forgets only this patient\'s code', () async {

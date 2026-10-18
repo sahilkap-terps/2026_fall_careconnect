@@ -568,6 +568,7 @@ class AuthService {
         // If refresh fails, clear auth data to force re-login
         await AuthTokenManager.clearAuthData();
         await UserRoleStorageService.instance.clearUserData();
+        await QrCodeStore.clearAll(); // DEF-EMG-29
         return null;
       }
     } catch (e) {
@@ -575,6 +576,7 @@ class AuthService {
       // Clear auth data on error to force re-login
       await AuthTokenManager.clearAuthData();
       await UserRoleStorageService.instance.clearUserData();
+      await QrCodeStore.clearAll(); // DEF-EMG-29
       return null;
     }
   }
