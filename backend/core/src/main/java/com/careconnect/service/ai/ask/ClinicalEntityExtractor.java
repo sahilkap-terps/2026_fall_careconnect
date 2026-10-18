@@ -36,7 +36,7 @@ final class ClinicalEntityExtractor {
             "had", "has", "have", "is", "may", "might", "must", "shall", "should",
             "was", "were", "will", "would");
     private static final Set<String> NON_ENTITY_STOP = Set.of(
-            "about", "and", "compare", "for", "from", "how", "my", "of", "or",
+            "about", "and", "compare", "for", "from", "how", "my", "need", "needs", "needed", "of", "or",
             "please", "show", "tell", "that", "the", "these", "this", "what",
             "when", "where", "which", "with", "your");
     /**

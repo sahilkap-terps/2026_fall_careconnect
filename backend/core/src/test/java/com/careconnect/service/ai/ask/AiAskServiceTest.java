@@ -331,13 +331,34 @@ class AiAskServiceTest {
     }
 
     @Test
-    void ask_claimInsideEvidenceButNotACompleteSentence_failsClosed() throws Exception {
-        // A fragment that drops "did not" must not pass just because the evidence holds it
+    @DisplayName("ask shows the whole sentence when the model trims its leading label")
+    void ask_trimmedLabel_showsWholeSourceSentence() throws Exception {
+        // Arrange: the model quotes only the description after "details:"
+        final String record = "Metformin refill is a general task scheduled for 2026-10-21. "
+                + "Metformin refill details: Pick up the metformin refill at the pharmacy.";
+        stubExtractiveResult(record,
+                "Pick up the metformin refill at the pharmacy.",
+                "Pick up the metformin refill at the pharmacy.");
+
+        // Act
+        final AiAskResponse response = service.ask(caller(), request("metformin"));
+
+        // Assert
+        assertThat(response.deliveryStatus()).isEqualTo(DeliveryStatus.DELIVERED);
+        assertThat(response.answer().text()).isEqualTo(
+                "From your records: Metformin refill details: Pick up the metformin refill at the pharmacy.");
+    }
+
+    @Test
+    void ask_fragmentInsideEvidence_isShownAsItsFullSentenceWithNegation() throws Exception {
+        // A fragment that drops "did not" is never shown alone: the user reads the whole sentence
         final String record = "The patient did not take metformin today. Metformin is taken twice daily.";
         stubExtractiveResult(record, "take metformin today.", record);
 
-        assertThatThrownBy(() -> service.ask(caller(), request("metformin")))
-                .isInstanceOf(AskAiGroundingException.class);
+        final AiAskResponse response = service.ask(caller(), request("metformin"));
+
+        assertThat(response.answer().text())
+                .isEqualTo("From your records: The patient did not take metformin today.");
     }
 
     @Test

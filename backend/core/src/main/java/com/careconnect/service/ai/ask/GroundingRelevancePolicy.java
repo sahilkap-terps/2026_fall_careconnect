@@ -20,6 +20,7 @@ final class GroundingRelevancePolicy {
     private static final Pattern WORD_BOUNDARY = Pattern.compile("[^\\p{L}\\p{N}]+");
     private static final Set<String> GRAMMAR_AND_STOP_WORDS = Set.of(
             "about", "all", "am", "any", "are", "be", "been", "being", "can", "compare", "could",
+            "need", "needs", "needed",
             "did", "do", "does", "from", "had", "has", "have", "how", "is", "may",
             "might", "must", "my", "please", "record", "records", "shall", "should",
             "show", "tell", "that", "the", "these", "this", "was", "were", "what",

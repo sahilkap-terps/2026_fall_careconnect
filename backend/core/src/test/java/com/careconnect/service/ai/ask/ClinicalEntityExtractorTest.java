@@ -49,4 +49,10 @@ class ClinicalEntityExtractorTest {
         assertThat(ClinicalEntityExtractor.extract("When should I check my blood sugar?"))
                 .containsExactlyInAnyOrder("check", "blood", "sugar");
     }
+
+    @Test
+    void needIsNotARequiredEntity() {
+        assertThat(ClinicalEntityExtractor.extract("What does the patient need to pick up at the pharmacy?"))
+                .containsExactlyInAnyOrder("pick", "pharmacy");
+    }
 }

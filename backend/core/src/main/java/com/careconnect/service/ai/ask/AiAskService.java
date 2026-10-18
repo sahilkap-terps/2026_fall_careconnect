@@ -401,7 +401,7 @@ public class AiAskService {
                 log.debug("Ask AI dropping unsupported claim requestId={}", requestId);
                 continue;
             }
-            verifiedClaimTexts.add(claim.text().trim());
+            verifiedClaimTexts.add(verifiedSpan);
             final String ref = claim.citationRefs().get(0);
             verifiedEvidenceByRef.computeIfAbsent(ref, ignored -> new ArrayList<>())
                     .add(surroundingCitationContext(
@@ -770,9 +770,14 @@ public class AiAskService {
      *
      * <p>The span is normally the evidence quote itself, which must equal the claim.
      * Models also quote a whole multi-sentence record as evidence while stating only
-     * one of its sentences as the claim; that claim is accepted when it appears inside
-     * the evidence and is itself a complete span of the excerpt, which is the same
-     * guarantee: what the user reads is exact source sentences.
+     * one of its sentences as the claim; that claim is used when it appears inside the
+     * evidence.
+     *
+     * <p>Models often trim a sentence's leading label ("Pick up the refill." out of
+     * "Pharmacy pickup details: Pick up the refill."). The returned span is therefore
+     * the complete source sentence(s) containing the quote, and that is what the user
+     * reads: always exact, whole source sentences, so a fragment can never drop the
+     * context around it, such as a negation.
      */
     private static String verifiedEvidenceSpan(
             final GroundedAskLlmService.GroundedClaim claim,
@@ -796,11 +801,44 @@ public class AiAskService {
         } else {
             return null;
         }
-        final boolean verified = span.codePointCount(0, span.length()) >= 20
-                && isCompleteSpan(excerpt, span)
+        if (span.codePointCount(0, span.length()) < 20) {
+            return null;
+        }
+        final String sentences = enclosingSentences(excerpt, span);
+        final boolean verified = sentences != null
                 && GroundingRelevancePolicy.isRelevant(
-                        query, span, excerpt.text(), refMap.get(ref));
-        return verified ? span : null;
+                        query, sentences, excerpt.text(), refMap.get(ref));
+        return verified ? sentences : null;
+    }
+
+    /**
+     * The complete sentence(s) of the excerpt that contain {@code quote}, verbatim, or
+     * null when the quote is not uniquely in the excerpt or the sentences run into a
+     * truncated edge of the excerpt.
+     */
+    private static String enclosingSentences(
+            final RetrievalContextAssembler.PromptExcerpt excerpt, final String quote) {
+        final String text = excerpt.text();
+        final int[] span = findLenientSpan(text, quote);
+        if (span == null) {
+            return null;
+        }
+        int start = span[0];
+        while (start > 0 && !isSentenceStart(text, start)) {
+            start--;
+        }
+        while (start < span[0] && Character.isWhitespace(text.charAt(start))) {
+            start++;
+        }
+        int end = span[1];
+        while (end < text.length() && !isSentenceEnd(text, end)) {
+            end++;
+        }
+        if ((start == 0 && excerpt.startTruncated())
+                || (end == text.length() && excerpt.endTruncated())) {
+            return null;
+        }
+        return text.substring(start, end).trim();
     }
 
     private static boolean normalizedContains(final String haystack, final String needle) {
