@@ -1,5 +1,6 @@
 package com.careconnect.service;
 
+import com.careconnect.dto.ConnectionRequestSummary;
 import com.careconnect.model.ConnectionRequest;
 import com.careconnect.model.User;
 import com.careconnect.model.CaregiverPatientLink;
@@ -7,6 +8,8 @@ import com.careconnect.security.Role;
 import com.careconnect.repository.ConnectionRequestRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.repository.CaregiverPatientLinkRepository;
+import com.careconnect.repository.CaregiverRepository;
+import com.careconnect.repository.PatientRepository;
 import com.careconnect.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,8 @@ public class ConnectionRequestService {
     private final ConnectionRequestRepository connectionRequestRepo;
     private final UserRepository userRepo;
     private final CaregiverPatientLinkRepository linkRepo;
+    private final CaregiverRepository caregiverRepo;
+    private final PatientRepository patientRepo;
     private final EmailService emailService;
 
     @Autowired(required = false)
@@ -80,11 +85,11 @@ public class ConnectionRequestService {
                 notificationService.sendNotificationToUser(
                         patient.getId(),
                         "🔗 New Connection Request",
-                        String.format("%s would like to connect with you as your caregiver", caregiver.getName()),
+                        String.format("%s would like to connect with you as your caregiver", displayName(caregiver)),
                         "CONNECTION_REQUEST",
                         Map.of(
                                 "type", "CONNECTION_REQUEST",
-                                "caregiverName", caregiver.getName(),
+                                "caregiverName", displayName(caregiver),
                                 "caregiverId", caregiver.getId().toString(),
                                 "relationshipType", relationshipType,
                                 "requestId", String.valueOf(request.getId()),
@@ -132,11 +137,11 @@ public class ConnectionRequestService {
                             request.getCaregiver().getId(),
                             "✅ Connection Request Accepted",
                             String.format("%s has accepted your connection request! You are now connected.",
-                                    request.getPatient().getName()),
+                                    displayName(request.getPatient())),
                             "CONNECTION_ACCEPTED",
                             Map.of(
                                     "type", "CONNECTION_ACCEPTED",
-                                    "patientName", request.getPatient().getName(),
+                                    "patientName", displayName(request.getPatient()),
                                     "patientId", request.getPatient().getId().toString(),
                                     "relationshipType", request.getRelationshipType() != null ? request.getRelationshipType() : "Caregiver",
                                     "acceptedAt", request.getRespondedAt().toString()
@@ -180,7 +185,7 @@ public class ConnectionRequestService {
         User caregiver = request.getCaregiver();
         User patient = request.getPatient();
 
-        String subject = "CareConnect: Connection Request from " + caregiver.getName();
+        String subject = "CareConnect: Connection Request from " + displayName(caregiver);
         String emailBody = String.format(
                 "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n" +
                         "    <h2 style=\"color: #2c3e50; text-align: center;\">CareConnect Connection Request</h2>\n" +
@@ -209,8 +214,8 @@ public class ConnectionRequestService {
                         "        This is an automated message from CareConnect. Please do not reply to this email.\n" +
                         "    </p>\n" +
                         "</div>\n",
-                patient.getName(),
-                caregiver.getName(),
+                displayName(patient),
+                displayName(caregiver),
                 request.getMessage() != null && !request.getMessage().isEmpty() ?
                         "<p style=\"font-size: 16px; line-height: 1.6; color: #333; font-style: italic;\">" +
                                 "\"" + request.getMessage() + "\"</p>" : ""
@@ -229,7 +234,7 @@ public class ConnectionRequestService {
 
         String subject = "CareConnect: Connection Request " +
                 (accepted ? "Accepted" : "Declined") +
-                " by " + patient.getName();
+                " by " + displayName(patient);
 
         String emailBody = String.format(
                 "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n" +
@@ -252,8 +257,8 @@ public class ConnectionRequestService {
                         "    </p>\n" +
                         "</div>\n",
                 accepted ? "Accepted" : "Declined",
-                caregiver.getName(),
-                patient.getName(),
+                displayName(caregiver),
+                displayName(patient),
                 accepted ? "accepted" : "declined",
                 accepted ?
                         "<p style=\"font-size: 16px; line-height: 1.6; color: #333;\">You can now see and manage their care through the CareConnect platform.</p>" :
@@ -275,5 +280,36 @@ public class ConnectionRequestService {
      */
     public List<ConnectionRequest> getPendingRequestsByCaregiver(User caregiver) {
         return connectionRequestRepo.findByCaregiverAndStatus(caregiver, "PENDING");
+    }
+
+    /**
+     * The name to show for a user. Seeded and older accounts have no {@code users.name};
+     * their name is on the caregiver or patient profile, and the email is the last resort.
+     */
+    public String displayName(User user) {
+        if (user.getName() != null && !user.getName().isBlank()) {
+            return user.getName().trim();
+        }
+        Optional<String> profileName = Optional.empty();
+        if (user.isCaregiver()) {
+            profileName = caregiverRepo.findByUser(user)
+                    .map(c -> fullName(c.getFirstName(), c.getLastName()));
+        } else if (user.isPatient()) {
+            profileName = patientRepo.findByUser(user)
+                    .map(p -> fullName(p.getFirstName(), p.getLastName()));
+        }
+        return profileName.filter(name -> !name.isBlank()).orElse(user.getEmail());
+    }
+
+    /**
+     * API view of a request, with display names resolved for both users.
+     */
+    public ConnectionRequestSummary toSummary(ConnectionRequest request) {
+        return ConnectionRequestSummary.from(
+                request, displayName(request.getCaregiver()), displayName(request.getPatient()));
+    }
+
+    private static String fullName(String first, String last) {
+        return ((first == null ? "" : first.trim()) + " " + (last == null ? "" : last.trim())).trim();
     }
 }

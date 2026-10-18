@@ -20,12 +20,13 @@ public record ConnectionRequestSummary(
         String status,
         Instant requestedAt) {
 
-    public static ConnectionRequestSummary from(ConnectionRequest request) {
+    public static ConnectionRequestSummary from(
+            ConnectionRequest request, String caregiverName, String patientName) {
         return new ConnectionRequestSummary(
                 request.getId(),
-                request.getCaregiver().getName(),
+                caregiverName,
                 request.getCaregiver().getEmail(),
-                request.getPatient().getName(),
+                patientName,
                 request.getPatient().getEmail(),
                 request.getRelationshipType(),
                 request.getMessage(),

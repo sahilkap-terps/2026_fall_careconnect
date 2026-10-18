@@ -1,9 +1,13 @@
 package com.careconnect.service;
 
+import com.careconnect.model.Caregiver;
 import com.careconnect.model.CaregiverPatientLink;
+import com.careconnect.model.Patient;
 import com.careconnect.model.ConnectionRequest;
 import com.careconnect.model.User;
 import com.careconnect.repository.CaregiverPatientLinkRepository;
+import com.careconnect.repository.CaregiverRepository;
+import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.ConnectionRequestRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.security.Role;
@@ -35,6 +39,12 @@ class ConnectionRequestServiceTest {
 
     @Mock
     private CaregiverPatientLinkRepository linkRepo;
+
+    @Mock
+    private CaregiverRepository caregiverRepo;
+
+    @Mock
+    private PatientRepository patientRepo;
 
     @Mock
     private EmailService emailService;
@@ -499,4 +509,82 @@ class ConnectionRequestServiceTest {
         assertTrue(result.isEmpty());
     }
 
+    // ========================================================================
+    // display names
+    // ========================================================================
+
+    @Test
+    @DisplayName("displayName - uses users.name when set")
+    void displayName_usesUserName() {
+        assertEquals("Jane Caregiver", connectionRequestService.displayName(caregiver));
+        verifyNoInteractions(caregiverRepo, patientRepo);
+    }
+
+    @Test
+    @DisplayName("displayName - seeded caregiver without users.name uses the caregiver profile")
+    void displayName_caregiverWithoutName_usesProfile() {
+        // Arrange: seeded accounts carry their name only on the profile
+        caregiver.setName(null);
+        final Caregiver profile = new Caregiver();
+        profile.setFirstName("Cara");
+        profile.setLastName("Giver");
+        when(caregiverRepo.findByUser(caregiver)).thenReturn(Optional.of(profile));
+
+        // Act / Assert
+        assertEquals("Cara Giver", connectionRequestService.displayName(caregiver));
+    }
+
+    @Test
+    @DisplayName("displayName - patient without users.name uses the patient profile")
+    void displayName_patientWithoutName_usesProfile() {
+        patient.setName("  ");
+        when(patientRepo.findByUser(patient))
+                .thenReturn(Optional.of(Patient.builder().firstName("Mary").lastName("Johnson").build()));
+
+        assertEquals("Mary Johnson", connectionRequestService.displayName(patient));
+    }
+
+    @Test
+    @DisplayName("displayName - no name anywhere falls back to the email")
+    void displayName_noNameAnywhere_usesEmail() {
+        caregiver.setName(null);
+        when(caregiverRepo.findByUser(caregiver)).thenReturn(Optional.empty());
+
+        assertEquals("jane@example.com", connectionRequestService.displayName(caregiver));
+    }
+
+    @Test
+    @DisplayName("toSummary - resolves both names and carries no token")
+    void toSummary_resolvesNames() {
+        caregiver.setName(null);
+        final Caregiver profile = new Caregiver();
+        profile.setFirstName("Cara");
+        profile.setLastName("Giver");
+        when(caregiverRepo.findByUser(caregiver)).thenReturn(Optional.of(profile));
+
+        final var summary = connectionRequestService.toSummary(pendingRequest);
+
+        assertEquals("Cara Giver", summary.caregiverName());
+        assertEquals("John Patient", summary.patientName());
+        assertEquals(100L, summary.id());
+    }
+
+    @Test
+    @DisplayName("createRequest - notification names a caregiver who has no users.name")
+    void createRequest_notificationUsesProfileName() throws Exception {
+        caregiver.setName(null);
+        final Caregiver profile = new Caregiver();
+        profile.setFirstName("Cara");
+        profile.setLastName("Giver");
+        when(caregiverRepo.findByUser(caregiver)).thenReturn(Optional.of(profile));
+        when(userRepo.findById(1L)).thenReturn(Optional.of(caregiver));
+        when(userRepo.findByEmailAndRole("john@example.com", Role.PATIENT)).thenReturn(Optional.of(patient));
+        when(connectionRequestRepo.save(any(ConnectionRequest.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        connectionRequestService.createRequest(1L, "john@example.com", "Family", "msg");
+
+        verify(notificationService).sendNotificationToUser(
+                eq(2L), anyString(), eq("Cara Giver would like to connect with you as your caregiver"),
+                eq("CONNECTION_REQUEST"), anyMap());
+    }
 }

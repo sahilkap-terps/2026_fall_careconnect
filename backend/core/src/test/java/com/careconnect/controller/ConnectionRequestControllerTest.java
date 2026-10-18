@@ -1,5 +1,6 @@
 package com.careconnect.controller;
 
+import com.careconnect.dto.ConnectionRequestSummary;
 import com.careconnect.model.ConnectionRequest;
 import com.careconnect.model.User;
 import com.careconnect.security.AuthorizationService;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -78,6 +80,10 @@ class ConnectionRequestControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        lenient().when(connectionRequestService.toSummary(any())).thenAnswer(inv -> {
+            final ConnectionRequest r = inv.getArgument(0);
+            return ConnectionRequestSummary.from(r, r.getCaregiver().getName(), r.getPatient().getName());
+        });
         caregiver = user(10L, Role.CAREGIVER, "Carey Tester");
         patient = user(9L, Role.PATIENT, "Index Tester");
     }

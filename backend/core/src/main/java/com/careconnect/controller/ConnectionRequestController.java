@@ -70,7 +70,7 @@ public class ConnectionRequestController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(connectionRequestService.getPendingRequestsForPatient(currentUser).stream()
-                .map(ConnectionRequestSummary::from)
+                .map(connectionRequestService::toSummary)
                 .toList());
     }
 
@@ -82,7 +82,7 @@ public class ConnectionRequestController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(connectionRequestService.getPendingRequestsByCaregiver(currentUser).stream()
-                .map(ConnectionRequestSummary::from)
+                .map(connectionRequestService::toSummary)
                 .toList());
     }
 
