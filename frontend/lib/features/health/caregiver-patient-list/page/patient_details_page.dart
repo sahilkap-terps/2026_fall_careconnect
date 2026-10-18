@@ -1653,10 +1653,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     return 'Poor';
   }
 
+  // The backend stores severity as 1-5 (SymptomDTO: Mild=1, Moderate=3,
+  // Severe=5); same thresholds as the patient's own symptom tab.
   String _symptomSeverityLabel(dynamic severityRaw) {
     final severity = _safeInt(severityRaw);
-    if (severity >= 7) return 'Severe';
-    if (severity >= 4) return 'Moderate';
+    if (severity >= 5) return 'Severe';
+    if (severity >= 3) return 'Moderate';
     return 'Mild';
   }
 

@@ -934,14 +934,14 @@ void main() {
               {
                 'id': 1,
                 'symptomKey': 'Back pain',
-                'severity': 5,
+                'severity': 3,
                 'takenAt': now.subtract(const Duration(days: 2)).toIso8601String(),
               },
               {
                 'id': 2,
                 'symptomKey': 'Headache',
                 'symptomValue': 'throbbing',
-                'severity': 8,
+                'severity': 5,
                 'createdAt': now.subtract(const Duration(minutes: 30)).toIso8601String(),
                 'clinicalNotes': 'after lunch',
               },
@@ -961,6 +961,38 @@ void main() {
       expect(symptoms.map((s) => s.name), ['Headache throbbing', 'Symptom', 'Back pain']);
       expect(symptoms.map((s) => s.severity), ['Severe', 'Mild', 'Moderate']);
       expect(symptoms.first.note, 'after lunch');
+    });
+
+    testWidgets(
+        'TC-PDP-057: severity on the backend 1-5 scale reads as the patient '
+        'logged it (1-2 Mild, 3-4 Moderate, 5 Severe), and a Severe latest '
+        'symptom sets the pain card', (t) async {
+      final now = DateTime.now();
+      routes({
+        r'GET /symptoms/patient/42$': (_) => json({'data': [
+              for (var s = 1; s <= 5; s++)
+                {
+                  'id': s,
+                  'symptomKey': 'Symptom $s',
+                  'severity': s,
+                  'takenAt': now.subtract(Duration(hours: 6 - s)).toIso8601String(),
+                },
+            ]}),
+      });
+      await pumpPage(t);
+      await openTab(t, 'Health');
+      final symptoms = t
+          .widget<sympt.RecentSymptomsSection>(
+              find.byType(sympt.RecentSymptomsSection))
+          .entries;
+      expect(symptoms.map((s) => s.name),
+          ['Symptom 5', 'Symptom 4', 'Symptom 3', 'Symptom 2', 'Symptom 1']);
+      expect(symptoms.map((s) => s.severity),
+          ['Severe', 'Moderate', 'Moderate', 'Mild', 'Mild']);
+      final pain = t.widget<PainLevelCard>(find.byType(PainLevelCard));
+      expect(pain.currentPain, 8);
+      expect(pain.dizziness, 4);
+      expect(pain.fatigue, 10);
     });
 
     // ── medications and known risks ──
