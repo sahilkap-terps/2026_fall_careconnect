@@ -1,12 +1,15 @@
 package com.careconnect.repository.ehr;
 
 import com.careconnect.model.ehr.EhrSource;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-/** Lookup for the registry of integrated EHR systems. */
+import java.util.Optional;
+
 public interface EhrSourceRepository extends JpaRepository<EhrSource, Long> {
 
-    /** Finds a source by its stable machine code, for example {@code ATHENAHEALTH}. */
+    /**
+     * Resolves a seeded source code such as ATHENAHEALTH to its row. Adapters call this once
+     * and reuse the id; an unknown code returns empty rather than creating a source.
+     */
     Optional<EhrSource> findByCode(String code);
 }

@@ -4,7 +4,6 @@ import com.careconnect.model.Patient;
 import com.careconnect.model.ehr.*;
 import com.careconnect.repository.ehr.*;
 import com.careconnect.service.cerner.CernerResourceMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -79,14 +78,15 @@ public class CernerStorageAdapter {
                 .findByPatientIdAndSourceIdAndResourceTypeAndExternalResourceId(
                         patient.getId(), source.getId(), "Appointment", externalId)
                 .orElseGet(EhrRawPayload::new);
-        raw.setPatient(patient);
-        raw.setSource(source);
+        raw.setPatientId(patient.getId());
+        raw.setSourceId(source.getId());
         raw.setResourceType("Appointment");
         raw.setExternalResourceId(externalId);
         // Keep original date offsets and meta.versionId; never store the normalized clone.
-        raw.setPayload(json.convertValue(resource, new TypeReference<Map<String, Object>>() { }));
+        raw.setPayload(resource.toString());
         raw.setPayloadSizeBytes(resource.toString().getBytes(StandardCharsets.UTF_8).length);
-        raw.setFetchedAt(LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
+        raw.setPhotoStripped(false);
+        raw.setRetrievedAt(OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
         mapped.setRawPayload(payloads.save(raw));
         return appointments.save(mapped);
     }
@@ -127,16 +127,18 @@ public class CernerStorageAdapter {
         if (incoming.textValue().length() > 255 || current != null && current.length() > 255) {
             throw invalid("patient.textLength");
         }
-        result.add(EhrIdentityConflict.builder().patient(patient).source(source)
-                .fieldName(field).canonicalValue(current).incomingValue(incoming.textValue())
+        Instant detectedAt = clock.instant();
+        result.add(EhrIdentityConflict.builder()
+                .patientId(patient.getId()).sourceId(source.getId())
+                .fieldName(field).canonicalValueBefore(current).incomingValue(incoming.textValue())
                 .status(EhrConflictStatus.PENDING)
-                .detectedAt(LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)).build());
+                .sourceUpdatedAt(detectedAt).detectedAt(detectedAt).build());
     }
 
     private EhrSource source(String code) {
         if (!trustedBases.containsKey(code)) { throw invalid("source.configuration"); }
         EhrSource source = sources.findByCode(code).orElseThrow(() -> invalid("source.missing"));
-        if (!source.isActive() || !"R4".equals(source.getFhirVersion())) {
+        if (!Boolean.TRUE.equals(source.getEnabled()) || !"R4".equals(source.getFhirVersion())) {
             throw invalid("source.disabledOrUnsupported");
         }
         return source;
@@ -147,9 +149,8 @@ public class CernerStorageAdapter {
         EhrPatientCrosswalk crosswalk = links
                 .findByPatientIdAndSourceId(patient.getId(), source.getId())
                 .orElseThrow(() -> invalid("link.missing"));
-        if (crosswalk.getPatient() == null || crosswalk.getSource() == null
-                || !Objects.equals(patient.getId(), crosswalk.getPatient().getId())
-                || !Objects.equals(source.getId(), crosswalk.getSource().getId())) {
+        if (!Objects.equals(patient.getId(), crosswalk.getPatientId())
+                || !Objects.equals(source.getId(), crosswalk.getSourceId())) {
             throw invalid("link.mismatch");
         }
         return new CernerResourceMapper.PatientLink(patient.getId(),

@@ -12,11 +12,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "user_ai_config")
 public class UserAIConfig {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @jakarta.annotation.Nullable
     @Column(name = "patient_id", nullable = true)
     private Long patientId;

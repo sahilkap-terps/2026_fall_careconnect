@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import '../services/tts_engine.dart';
 import 'package:uuid/uuid.dart';
 
 // Message model for chat
@@ -128,9 +129,16 @@ class AIChat extends StatefulWidget {
   final int? patientId;
   final int? userId;
   final AiChatMode mode;
+
   /// Max status polls while waiting for clinician release (default ~5 minutes).
   final int hitlMaxPollAttempts;
   final Duration hitlPollInterval;
+
+  /// Overrides the text-to-speech engine used to read answers aloud.
+  /// Exists so widget tests can inject a fake instead of a real platform
+  /// channel; production callers should never set this.
+  @visibleForTesting
+  final TtsEngine? ttsEngine;
 
   const AIChat({
     super.key,
@@ -142,6 +150,7 @@ class AIChat extends StatefulWidget {
     this.userId,
     this.hitlMaxPollAttempts = 60,
     this.hitlPollInterval = const Duration(seconds: 5),
+    this.ttsEngine,
   });
 
   @override
@@ -152,6 +161,7 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
   String _conversationId = "";
   String? _askSessionId;
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _messageScrollController = ScrollController();
   final List<ChatMessage> _messages = [];
   final List<UploadedFile> _uploadedFiles = [];
   bool _isLoading = false;
@@ -183,6 +193,9 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
   bool _speechReady = false;
   bool _isListening = false;
   bool _sharingWithCaregivers = false;
+  late final TtsEngine _ttsEngine;
+  bool _ttsReady = false;
+  bool _isSpeaking = false;
 
   bool get _isGrounded => widget.mode == AiChatMode.groundedRecords;
 
@@ -198,8 +211,10 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
     _checkAndLoadHistory();
 
     _startInactivityTimer(); // Start 15-minute inactivity timer
+    _ttsEngine = widget.ttsEngine ?? FlutterTtsEngine();
     if (_isGrounded) {
       unawaited(_initSpeech());
+      unawaited(_initTts());
     }
   }
 
@@ -220,6 +235,84 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
       );
     } catch (_) {
       _speechReady = false;
+    }
+  }
+
+  Future<void> _initTts() async {
+    try {
+      await _ttsEngine.setLanguage('en-US');
+      await _ttsEngine.setSpeechRate(0.5);
+      await _ttsEngine.setVolume(1.0);
+      await _ttsEngine.setPitch(1.0);
+      try {
+        // Lets us await full playback in _speakAnswer instead of relying on
+        // completion callbacks; optional on platforms that don't support it.
+        await _ttsEngine.awaitSpeakCompletion(true);
+      } catch (_) {
+        // Optional on some platforms.
+      }
+      _ttsReady = true;
+    } catch (_) {
+      _ttsReady = false;
+    }
+  }
+
+  /// Reads an Ask AI answer aloud when the triggering question was spoken,
+  /// so a voice question gets a voice answer instead of silently expecting
+  /// the user to read the screen.
+  Future<void> _speakAnswer(String text) async {
+    if (!_isGrounded || !_ttsReady) return;
+    final utterance = _stripForSpeech(text);
+    if (utterance.isEmpty) return;
+    await _stopSpeaking();
+    if (!mounted) return;
+    setState(() => _isSpeaking = true);
+    try {
+      await _ttsEngine.speak(utterance);
+    } finally {
+      // Not gated on `_isSpeaking` still being true: on some platforms
+      // (observed: web) engine.stop() halts audio without ever resolving
+      // this awaited speak() future, so an explicit user-initiated stop
+      // must not depend on this finally block ever running to unstick the
+      // mic button — see _stopSpeaking, which resets state immediately.
+      if (mounted && _isSpeaking) setState(() => _isSpeaking = false);
+    }
+  }
+
+  /// Stops any in-progress speech and resets UI state immediately, rather
+  /// than waiting on _ttsEngine.speak()'s future to settle — that future is
+  /// not guaranteed to resolve just because stop() was called (observed:
+  /// web), which previously left the mic button stuck showing the
+  /// interrupt icon with no way back to a usable mic.
+  Future<void> _stopSpeaking() async {
+    await _ttsEngine.stop();
+    if (mounted) setState(() => _isSpeaking = false);
+  }
+
+  /// Removes markdown/citation punctuation an answer might carry so TTS
+  /// doesn't read out stray symbols (e.g. "asterisk asterisk").
+  String _stripForSpeech(String text) {
+    return text
+        .replaceAll(RegExp(r'[*_#`]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  /// Renders the backend's internal escalation reason (a snake_case code
+  /// like "tier1_auto_deliver") as patient/caregiver-facing copy instead of
+  /// showing that raw code directly.
+  String _escalationCopy(AiAskEscalation escalation) {
+    switch (escalation.reason.toLowerCase()) {
+      case 'tier1_auto_deliver':
+        return 'Reviewed automatically.';
+      case 'no_records':
+        return 'No matching records were reviewed for this question.';
+      case 'hitl_hold':
+        return 'This answer was held for clinician review.';
+      default:
+        return escalation.reviewRequired
+            ? 'This answer was flagged for clinician review.'
+            : 'Reviewed automatically.';
     }
   }
 
@@ -311,7 +404,11 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
     if (_isListening) {
       unawaited(_speech.stop());
     }
+    if (_isSpeaking) {
+      unawaited(_ttsEngine.stop());
+    }
     _controller.dispose();
+    _messageScrollController.dispose();
     _animationController.dispose();
     _inactivityTimer?.cancel();
     super.dispose();
@@ -367,6 +464,7 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
   /// Clear chat completely (user-initiated deletion)
   Future<void> _clearChatCompletely() async {
     final retentionDays = await _getRetentionPeriod();
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -912,6 +1010,9 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
   Future<void> _toggleVoiceInput() async {
     if (!_isGrounded || _isLoading) return;
     _resetInactivityTimer();
+    if (_isSpeaking) {
+      await _stopSpeaking();
+    }
     if (_isListening) {
       await _speech.stop();
       if (mounted) setState(() => _isListening = false);
@@ -930,8 +1031,6 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
     setState(() => _isListening = true);
     try {
       await _speech.listen(
-        listenFor: const Duration(seconds: 12),
-        pauseFor: const Duration(seconds: 2),
         onResult: (result) {
           if (!mounted) return;
           if (result.recognizedWords.isNotEmpty) {
@@ -957,6 +1056,8 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
           cancelOnError: true,
           partialResults: true,
           listenMode: stt.ListenMode.dictation,
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 5),
         ),
       );
     } catch (_) {
@@ -1395,6 +1496,7 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
           response['conversationId'] is String) {
         _conversationId = response['conversationId'];
       }
+      final wasVoiceInput = _lastInputModality == 'VOICE';
       if (!_safeSetState(epoch, () {
         _messages.add(
           ChatMessage(
@@ -1421,6 +1523,9 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
         _lastInputModality = 'TEXT';
       })) {
         return;
+      }
+      if (wasVoiceInput) {
+        unawaited(_speakAnswer(aiText));
       }
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } catch (e) {
@@ -1463,10 +1568,9 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
     required AiAskResult askResult,
   }) async {
     _clearRetryState();
-    final reviewingText =
-        askResult.message?.trim().isNotEmpty == true
-            ? askResult.message!.trim()
-            : _hitlReviewingFallback;
+    final reviewingText = askResult.message?.trim().isNotEmpty == true
+        ? askResult.message!.trim()
+        : _hitlReviewingFallback;
 
     if (!_safeSetState(epoch, () {
       _messages.add(
@@ -1540,9 +1644,8 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
     HitlPollResult? terminal;
     HitlPollHttpException? permanentFailure;
     var parseFailed = false;
-    final maxAttempts = widget.hitlMaxPollAttempts < 1
-        ? 1
-        : widget.hitlMaxPollAttempts;
+    final maxAttempts =
+        widget.hitlMaxPollAttempts < 1 ? 1 : widget.hitlMaxPollAttempts;
 
     for (var attempt = 0; attempt < maxAttempts; attempt++) {
       if (!_isCurrentEpoch(epoch)) return;
@@ -1706,7 +1809,40 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
   }
 
   void _scrollToBottom() {
-    // Implement scroll logic if using a ScrollController
+    if (!mounted || !_messageScrollController.hasClients) return;
+    final position = _messageScrollController.position;
+    _messageScrollController.jumpTo(position.maxScrollExtent);
+  }
+
+  /// Leading list items before the messages: privacy notice + AI disclaimer.
+  static const int _kListNoticeCount = 2;
+
+  Widget _buildPrivacyNotice() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        border: Border.all(color: Colors.blue.shade200),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Chat logs are automatically deleted after 30 days for privacy protection.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.blue.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1812,46 +1948,24 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
                   ),
               ],
             ),
-            // Privacy notification banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                border: Border.all(color: Colors.blue.shade200),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline,
-                      size: 16, color: Colors.blue.shade700),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Chat logs are automatically deleted after 30 days for privacy protection.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue.shade700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // AI disclaimer (WBS 3.15.4)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
-              child: DisclaimerBanner.ai(),
-            ),
             Divider(color: colorScheme.outlineVariant),
-            // Message list
+            // Message list. The privacy notice and AI disclaimer lead the list
+            // so they scroll with it instead of eating the fixed-height modal.
             Expanded(
               child: ListView.builder(
+                controller: _messageScrollController,
                 reverse: false,
-                itemCount: _messages.length,
+                itemCount: _messages.length + _kListNoticeCount,
                 itemBuilder: (context, index) {
-                  final msg = _messages[index];
+                  if (index == 0) return _buildPrivacyNotice();
+                  if (index == 1) {
+                    // AI disclaimer (WBS 3.15.4)
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: DisclaimerBanner.ai(),
+                    );
+                  }
+                  final msg = _messages[index - _kListNoticeCount];
                   return Align(
                     alignment: msg.isUser
                         ? Alignment.centerRight
@@ -1900,20 +2014,15 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
                             ),
                             const SizedBox(height: 4),
                             ...msg.medicationTimeline!.events.map((event) {
-                              final hasDose = (event.doseFrom
-                                          ?.trim()
-                                          .isNotEmpty ==
-                                      true) ||
-                                  (event.doseTo?.trim().isNotEmpty == true);
+                              final hasDose =
+                                  (event.doseFrom?.trim().isNotEmpty == true) ||
+                                      (event.doseTo?.trim().isNotEmpty == true);
                               final parts = <String>[
-                                if (event.effectiveDate
-                                        ?.trim()
-                                        .isNotEmpty ==
+                                if (event.effectiveDate?.trim().isNotEmpty ==
                                     true)
                                   event.effectiveDate!.trim(),
                                 event.medicationName,
-                                if (event.eventType?.trim().isNotEmpty ==
-                                    true)
+                                if (event.eventType?.trim().isNotEmpty == true)
                                   event.eventType!.trim(),
                                 if (hasDose)
                                   '${event.doseFrom ?? '—'} \u2192 '
@@ -1922,8 +2031,7 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Expanded(
                                       child: Text(
@@ -1931,9 +2039,7 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
                                         style: theme.textTheme.bodySmall,
                                       ),
                                     ),
-                                    if (event.citationRef
-                                            ?.trim()
-                                            .isNotEmpty ==
+                                    if (event.citationRef?.trim().isNotEmpty ==
                                         true) ...[
                                       const SizedBox(width: 6),
                                       Container(
@@ -2030,8 +2136,7 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
                           if (msg.escalation != null) ...[
                             const SizedBox(height: 4),
                             Text(
-                              'Safety tier ${msg.escalation!.tier}: '
-                              '${msg.escalation!.reason}',
+                              _escalationCopy(msg.escalation!),
                               key: const Key('ask-ai-escalation'),
                               style: theme.textTheme.bodySmall,
                             ),
@@ -2220,13 +2325,21 @@ class _AIChatState extends State<AIChat> with SingleTickerProviderStateMixin {
                   IconButton(
                     key: const Key('ask-ai-mic'),
                     icon: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: _isListening
+                      _isSpeaking
+                          ? Icons.volume_up
+                          : (_isListening ? Icons.mic : Icons.mic_none),
+                      color: _isListening || _isSpeaking
                           ? colorScheme.error
                           : colorScheme.primary,
                     ),
-                    onPressed: _isLoading ? null : () => unawaited(_toggleVoiceInput()),
-                    tooltip: _isListening ? 'Stop listening' : 'Voice input',
+                    onPressed: _isLoading
+                        ? null
+                        : () => unawaited(_isSpeaking
+                            ? _stopSpeaking()
+                            : _toggleVoiceInput()),
+                    tooltip: _isSpeaking
+                        ? 'Stop speaking'
+                        : (_isListening ? 'Stop listening' : 'Voice input'),
                   ),
                 Expanded(
                   child: TextField(
