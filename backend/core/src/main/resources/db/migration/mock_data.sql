@@ -390,8 +390,13 @@ SELECT
         || CASE WHEN pm.dosage IS NOT NULL THEN ' ' || pm.dosage ELSE '' END
         || CASE WHEN pm.is_active THEN ' is an active medication.' ELSE ' is an inactive medication.' END
         || CASE WHEN pm.dosage IS NOT NULL THEN ' The ' || pm.medication_name || ' dose is ' || pm.dosage || '.' ELSE '' END
-        || CASE WHEN pm.frequency IS NOT NULL THEN ' Take ' || pm.medication_name || ' ' || pm.frequency || '.' ELSE '' END
-        || CASE WHEN pm.route IS NOT NULL THEN ' Take ' || pm.medication_name || ' by the ' || pm.route || ' route.' ELSE '' END
+        || CASE WHEN pm.dosage IS NOT NULL OR pm.route IS NOT NULL OR pm.frequency IS NOT NULL
+                THEN ' Take ' || pm.medication_name
+                     || CASE WHEN pm.dosage IS NOT NULL THEN ' ' || pm.dosage ELSE '' END
+                     || CASE WHEN pm.route IS NOT NULL THEN ' by the ' || pm.route || ' route' ELSE '' END
+                     || CASE WHEN pm.frequency IS NOT NULL THEN ' ' || pm.frequency ELSE '' END
+                     || '.'
+                ELSE '' END
         || CASE WHEN pm.prescribed_by IS NOT NULL THEN ' ' || pm.medication_name || ' was prescribed by ' || pm.prescribed_by || '.' ELSE '' END
         || CASE WHEN pm.start_date IS NOT NULL THEN ' ' || pm.medication_name || ' was started on ' || pm.start_date || '.' ELSE '' END
         || CASE WHEN pm.end_date IS NOT NULL THEN ' ' || pm.medication_name || ' ends on ' || pm.end_date || '.' ELSE '' END

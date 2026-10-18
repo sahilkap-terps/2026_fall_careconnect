@@ -211,8 +211,16 @@ public class RetrievalIndexingService {
         if (med.getDosage() != null) sb.append(' ').append(med.getDosage());
         sb.append(Boolean.TRUE.equals(med.getIsActive()) ? " is an active medication." : " is an inactive medication.");
         if (med.getDosage() != null) appendSentence(sb, "The " + name + " dose is " + med.getDosage());
-        if (med.getFrequency() != null) appendSentence(sb, "Take " + name + " " + med.getFrequency());
-        if (med.getRoute() != null) appendSentence(sb, "Take " + name + " by the " + med.getRoute() + " route");
+        // One instruction sentence ("Take X 10mg by the oral route once daily") because
+        // that is the sentence models compose when asked what a patient takes; written
+        // as separate facts, their composite is not in the source and gets rejected.
+        if (med.getDosage() != null || med.getRoute() != null || med.getFrequency() != null) {
+            StringBuilder take = new StringBuilder("Take ").append(name);
+            if (med.getDosage() != null) take.append(' ').append(med.getDosage());
+            if (med.getRoute() != null) take.append(" by the ").append(med.getRoute()).append(" route");
+            if (med.getFrequency() != null) take.append(' ').append(med.getFrequency());
+            appendSentence(sb, take.toString());
+        }
         if (med.getPrescribedBy() != null) appendSentence(sb, name + " was prescribed by " + med.getPrescribedBy());
         if (med.getStartDate() != null) appendSentence(sb, name + " was started on " + med.getStartDate());
         if (med.getEndDate() != null) appendSentence(sb, name + " ends on " + med.getEndDate());

@@ -71,7 +71,7 @@ class RetrievalIndexingServiceTest {
         assertThat(saved.getValue().getSourceRecordId()).isEqualTo("medication-10");
         assertThat(saved.getValue().getChunkText()).isEqualTo(
                 "Lisinopril 10mg is an active medication. The Lisinopril dose is 10mg."
-                        + " Take Lisinopril once daily. Take Lisinopril by the oral route.");
+                        + " Take Lisinopril 10mg by the oral route once daily.");
     }
 
     @Test
@@ -157,7 +157,7 @@ class RetrievalIndexingServiceTest {
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText()).isEqualTo(
                 "Lisinopril 10mg is an active medication. The Lisinopril dose is 10mg."
-                        + " Take Lisinopril once daily. Take Lisinopril by the oral route."
+                        + " Take Lisinopril 10mg by the oral route once daily."
                         + " Lisinopril was prescribed by Dr. Rivera."
                         + " Lisinopril was started on 2026-10-01. Lisinopril ends on 2026-12-31."
                         + " Lisinopril notes: Take with food.");
@@ -227,5 +227,35 @@ class RetrievalIndexingServiceTest {
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText())
                 .isEqualTo("Call pharmacy is a task. Call pharmacy is not completed.");
+    }
+
+    @Test
+    void reindexMedication_instructionSentenceOmitsMissingParts() {
+        // Arrange: no dosage or route, only a frequency
+        final Medication medication = Medication.builder().id(30L).patient(patient)
+                .medicationName("Vitamin D").frequency("once weekly").isActive(true).build();
+        when(medicationRepository.findById(30L)).thenReturn(Optional.of(medication));
+
+        // Act
+        service.reindexMedication(30L, PATIENT_ID);
+
+        // Assert
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText())
+                .isEqualTo("Vitamin D is an active medication. Take Vitamin D once weekly.");
+    }
+
+    @Test
+    void reindexMedication_omitsInstructionWhenNothingToSay() {
+        final Medication medication = Medication.builder().id(31L).patient(patient)
+                .medicationName("Saline spray").isActive(true).build();
+        when(medicationRepository.findById(31L)).thenReturn(Optional.of(medication));
+
+        service.reindexMedication(31L, PATIENT_ID);
+
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText()).isEqualTo("Saline spray is an active medication.");
     }
 }
