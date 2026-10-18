@@ -1,5 +1,6 @@
 package com.careconnect.service.ai;
 
+import com.careconnect.model.Medication;
 import com.careconnect.model.Patient;
 import com.careconnect.model.Task;
 import com.careconnect.model.retrieval.RetrievalIndexChunk;
@@ -66,9 +67,9 @@ class RetrievalIndexingServiceTest {
         assertThat(saved.getValue().getPatientId()).isEqualTo(PATIENT_ID);
         assertThat(saved.getValue().getRecordType()).isEqualTo("MEDICATION");
         assertThat(saved.getValue().getSourceRecordId()).isEqualTo("medication-10");
-        assertThat(saved.getValue().getChunkText())
-                .startsWith("Medication: Lisinopril, Dosage: 10mg, Frequency: once daily")
-                .endsWith("Status: Active");
+        assertThat(saved.getValue().getChunkText()).isEqualTo(
+                "Lisinopril 10mg is an active medication. Lisinopril is taken once daily."
+                        + " Lisinopril is taken by the oral route.");
     }
 
     @Test
@@ -116,7 +117,10 @@ class RetrievalIndexingServiceTest {
         final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getSourceRecordId()).isEqualTo("task-20");
-        assertThat(saved.getValue().getChunkText()).startsWith("Task: Check Vitals, Type: Health");
+        assertThat(saved.getValue().getChunkText()).isEqualTo(
+                "Check Vitals is a Health task scheduled for 2025-01-01 at 08:00."
+                        + " Check Vitals repeats daily. Check Vitals details: Daily vitals check."
+                        + " Check Vitals is not completed.");
     }
 
     @Test
@@ -131,5 +135,44 @@ class RetrievalIndexingServiceTest {
         verify(chunkRepository).deleteByPatientIdAndSourceRecordIdAndRecordType(
                 PATIENT_ID, "task-20", "TASK");
         verify(chunkRepository, never()).save(any());
+    }
+
+    @Test
+    void reindexMedication_writesEveryFactAsItsOwnSentence() {
+        // Arrange: notes already ending in a period must not get a second one
+        final Medication medication = MedicationFixtures.activeMedication(10L, patient);
+        medication.setPrescribedBy("Dr. Rivera");
+        medication.setStartDate("2026-10-01");
+        medication.setEndDate("2026-12-31");
+        medication.setNotes("Take with food.");
+        when(medicationRepository.findById(10L)).thenReturn(Optional.of(medication));
+
+        // Act
+        service.reindexMedication(10L, PATIENT_ID);
+
+        // Assert
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText()).isEqualTo(
+                "Lisinopril 10mg is an active medication. Lisinopril is taken once daily."
+                        + " Lisinopril is taken by the oral route. Lisinopril was prescribed by Dr. Rivera."
+                        + " Lisinopril was started on 2026-10-01. Lisinopril ends on 2026-12-31."
+                        + " Lisinopril notes: Take with food.");
+    }
+
+    @Test
+    void reindexTask_describesUntypedUnscheduledCompletedTask() {
+        // Arrange
+        final Task task = Task.builder().id(21L).name("Call pharmacy").isCompleted(true).patient(patient).build();
+        when(taskRepository.findById(21L)).thenReturn(Optional.of(task));
+
+        // Act
+        service.reindexTask(21L, PATIENT_ID);
+
+        // Assert
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText())
+                .isEqualTo("Call pharmacy is a task. Call pharmacy is completed.");
     }
 }

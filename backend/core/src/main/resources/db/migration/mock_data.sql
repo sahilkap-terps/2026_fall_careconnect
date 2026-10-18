@@ -385,15 +385,18 @@ SELECT
     pm.patient_id,
     'MEDICATION',
     'medication-' || pm.id,
-    'Medication: ' || pm.medication_name
-        || CASE WHEN pm.dosage IS NOT NULL THEN ', Dosage: ' || pm.dosage ELSE '' END
-        || CASE WHEN pm.frequency IS NOT NULL THEN ', Frequency: ' || pm.frequency ELSE '' END
-        || CASE WHEN pm.route IS NOT NULL THEN ', Route: ' || pm.route ELSE '' END
-        || CASE WHEN pm.prescribed_by IS NOT NULL THEN ', Prescribed by: ' || pm.prescribed_by ELSE '' END
-        || CASE WHEN pm.start_date IS NOT NULL THEN ', Start date: ' || pm.start_date ELSE '' END
-        || CASE WHEN pm.end_date IS NOT NULL THEN ', End date: ' || pm.end_date ELSE '' END
-        || CASE WHEN pm.notes IS NOT NULL THEN '. Notes: ' || pm.notes ELSE '' END
-        || '. Status: ' || CASE WHEN pm.is_active THEN 'Active' ELSE 'Inactive' END,
+    -- Same one-fact-per-sentence wording as RetrievalIndexingService.buildMedicationText.
+    pm.medication_name
+        || CASE WHEN pm.dosage IS NOT NULL THEN ' ' || pm.dosage ELSE '' END
+        || CASE WHEN pm.is_active THEN ' is an active medication.' ELSE ' is an inactive medication.' END
+        || CASE WHEN pm.frequency IS NOT NULL THEN ' ' || pm.medication_name || ' is taken ' || pm.frequency || '.' ELSE '' END
+        || CASE WHEN pm.route IS NOT NULL THEN ' ' || pm.medication_name || ' is taken by the ' || pm.route || ' route.' ELSE '' END
+        || CASE WHEN pm.prescribed_by IS NOT NULL THEN ' ' || pm.medication_name || ' was prescribed by ' || pm.prescribed_by || '.' ELSE '' END
+        || CASE WHEN pm.start_date IS NOT NULL THEN ' ' || pm.medication_name || ' was started on ' || pm.start_date || '.' ELSE '' END
+        || CASE WHEN pm.end_date IS NOT NULL THEN ' ' || pm.medication_name || ' ends on ' || pm.end_date || '.' ELSE '' END
+        || CASE WHEN pm.notes IS NOT NULL THEN ' ' || pm.medication_name || ' notes: ' || trim(pm.notes)
+                || CASE WHEN right(trim(pm.notes), 1) IN ('.', '!', '?') THEN '' ELSE '.' END
+           ELSE '' END,
     'ACTIVE',
     now()
 FROM patient_medication pm
@@ -509,13 +512,17 @@ SELECT
     t.patient_id,
     'TASK',
     'task-' || t.id,
-    'Task: ' || t.name
-        || CASE WHEN t.task_type IS NOT NULL THEN ', Type: ' || t.task_type ELSE '' END
-        || CASE WHEN t.description IS NOT NULL THEN ', Description: ' || t.description ELSE '' END
-        || CASE WHEN t.date IS NOT NULL THEN ', Date: ' || t.date ELSE '' END
-        || CASE WHEN t.time_of_day IS NOT NULL THEN ', Time: ' || t.time_of_day ELSE '' END
-        || CASE WHEN t.frequency IS NOT NULL THEN ', Frequency: ' || t.frequency ELSE '' END
-        || ', Completed: ' || CASE WHEN t.is_completed THEN 'Yes' ELSE 'No' END,
+    -- Same one-fact-per-sentence wording as RetrievalIndexingService.buildTaskText.
+    t.name
+        || CASE WHEN t.task_type IS NOT NULL THEN ' is a ' || t.task_type || ' task' ELSE ' is a task' END
+        || CASE WHEN t.date IS NOT NULL THEN ' scheduled for ' || t.date ELSE '' END
+        || CASE WHEN t.time_of_day IS NOT NULL THEN ' at ' || t.time_of_day ELSE '' END
+        || '.'
+        || CASE WHEN t.frequency IS NOT NULL THEN ' ' || t.name || ' repeats ' || t.frequency || '.' ELSE '' END
+        || CASE WHEN t.description IS NOT NULL THEN ' ' || t.name || ' details: ' || trim(t.description)
+                || CASE WHEN right(trim(t.description), 1) IN ('.', '!', '?') THEN '' ELSE '.' END
+           ELSE '' END
+        || ' ' || t.name || CASE WHEN t.is_completed THEN ' is completed.' ELSE ' is not completed.' END,
     'ACTIVE',
     now()
 FROM tasks t;

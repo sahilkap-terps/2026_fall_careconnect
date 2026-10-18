@@ -192,30 +192,44 @@ public class RetrievalIndexingService {
                 .build());
     }
 
+    // Medication and task text is written one fact per sentence, each naming its
+    // subject. Ask AI accepts a claim only when it quotes complete sentences that
+    // mention what was asked about, and models quote fragments of a single long
+    // "Key: value, Key: value" line, which fails that check. mock_data.sql builds
+    // the seed chunks with the same wording; keep the two in step.
     private String buildMedicationText(Medication med) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Medication: ").append(med.getMedicationName());
-        if (med.getDosage() != null) sb.append(", Dosage: ").append(med.getDosage());
-        if (med.getFrequency() != null) sb.append(", Frequency: ").append(med.getFrequency());
-        if (med.getRoute() != null) sb.append(", Route: ").append(med.getRoute());
-        if (med.getPrescribedBy() != null) sb.append(", Prescribed by: ").append(med.getPrescribedBy());
-        if (med.getStartDate() != null) sb.append(", Start date: ").append(med.getStartDate());
-        if (med.getEndDate() != null) sb.append(", End date: ").append(med.getEndDate());
-        if (med.getNotes() != null) sb.append(". Notes: ").append(med.getNotes());
-        sb.append(". Status: ").append(Boolean.TRUE.equals(med.getIsActive()) ? "Active" : "Inactive");
+        String name = med.getMedicationName();
+        StringBuilder sb = new StringBuilder(name);
+        if (med.getDosage() != null) sb.append(' ').append(med.getDosage());
+        sb.append(Boolean.TRUE.equals(med.getIsActive()) ? " is an active medication." : " is an inactive medication.");
+        if (med.getFrequency() != null) appendSentence(sb, name + " is taken " + med.getFrequency());
+        if (med.getRoute() != null) appendSentence(sb, name + " is taken by the " + med.getRoute() + " route");
+        if (med.getPrescribedBy() != null) appendSentence(sb, name + " was prescribed by " + med.getPrescribedBy());
+        if (med.getStartDate() != null) appendSentence(sb, name + " was started on " + med.getStartDate());
+        if (med.getEndDate() != null) appendSentence(sb, name + " ends on " + med.getEndDate());
+        if (med.getNotes() != null) appendSentence(sb, name + " notes: " + med.getNotes());
         return sb.toString();
     }
 
     private String buildTaskText(Task task) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Task: ").append(task.getName());
-        if (task.getTaskType() != null) sb.append(", Type: ").append(task.getTaskType());
-        if (task.getDescription() != null) sb.append(", Description: ").append(task.getDescription());
-        if (task.getDate() != null) sb.append(", Date: ").append(task.getDate());
-        if (task.getTimeOfDay() != null) sb.append(", Time: ").append(task.getTimeOfDay());
-        if (task.getFrequency() != null) sb.append(", Frequency: ").append(task.getFrequency());
-        sb.append(", Completed: ").append(task.isCompleted() ? "Yes" : "No");
+        String name = task.getName();
+        StringBuilder sb = new StringBuilder(name);
+        sb.append(task.getTaskType() != null ? " is a " + task.getTaskType() + " task" : " is a task");
+        if (task.getDate() != null) sb.append(" scheduled for ").append(task.getDate());
+        if (task.getTimeOfDay() != null) sb.append(" at ").append(task.getTimeOfDay());
+        sb.append('.');
+        if (task.getFrequency() != null) appendSentence(sb, name + " repeats " + task.getFrequency());
+        if (task.getDescription() != null) appendSentence(sb, name + " details: " + task.getDescription());
+        appendSentence(sb, name + (task.isCompleted() ? " is completed" : " is not completed"));
         return sb.toString();
+    }
+
+    private static void appendSentence(StringBuilder sb, String sentence) {
+        String trimmed = sentence.trim();
+        sb.append(' ').append(trimmed);
+        if (!trimmed.endsWith(".") && !trimmed.endsWith("!") && !trimmed.endsWith("?")) {
+            sb.append('.');
+        }
     }
 
     private String buildVitalText(Vital vital) {
