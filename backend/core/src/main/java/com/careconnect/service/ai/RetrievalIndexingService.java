@@ -15,6 +15,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -33,10 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
  * exactly one of the two paths, not both, or {@code sourceRecordId} values
  * and chunk shapes can diverge for the same logical record.
  *
- * <p>Canonical usage: this service is for manual/admin re-index and
- * local dev/test seeding (it has no event trigger of its own — callers decide
- * when to run it). The outbox-driven pipeline is what production relies on to
- * index new content as it's created; this service does not replace it.
+ * <p>Medications and tasks are also re-indexed one record at a time after every
+ * committed create, update, or delete ({@link RetrievalRecordChangeListener} and
+ * {@link RetrievalRecordIndexer}), so records entered in the app are answerable
+ * by Ask AI without calling the endpoint. {@link #indexPatient} remains for
+ * manual/admin re-index and local dev/test seeding.
  */
 @Slf4j
 @Service
@@ -146,6 +148,48 @@ public class RetrievalIndexingService {
         }
         log.info("Indexed {} vital chunks for patientId={}", count, patientId);
         return count;
+    }
+
+    /**
+     * Replaces the chunk for one medication with its committed state. Inactive or
+     * deleted medications end with no chunk, matching {@link #indexMedications}.
+     *
+     * <p>Runs in its own transaction because callers invoke it after the
+     * medication's transaction has committed.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void reindexMedication(Long medicationId, Long patientId) {
+        String sourceId = "medication-" + medicationId;
+        String recordType = RetrievalRecordType.MEDICATION.name();
+        chunkRepository.deleteByPatientIdAndSourceRecordIdAndRecordType(patientId, sourceId, recordType);
+        medicationRepository.findById(medicationId)
+                .filter(med -> Boolean.TRUE.equals(med.getIsActive()))
+                .ifPresent(med -> saveChunk(patientId, sourceId, recordType, buildMedicationText(med)));
+    }
+
+    /**
+     * Replaces the chunk for one task with its committed state. A deleted task
+     * ends with no chunk.
+     *
+     * <p>Runs in its own transaction because callers invoke it after the task's
+     * transaction has committed.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void reindexTask(Long taskId, Long patientId) {
+        String sourceId = "task-" + taskId;
+        String recordType = RetrievalRecordType.TASK.name();
+        chunkRepository.deleteByPatientIdAndSourceRecordIdAndRecordType(patientId, sourceId, recordType);
+        taskRepository.findById(taskId)
+                .ifPresent(task -> saveChunk(patientId, sourceId, recordType, buildTaskText(task)));
+    }
+
+    private void saveChunk(Long patientId, String sourceId, String recordType, String text) {
+        chunkRepository.save(RetrievalIndexChunk.builder()
+                .patientId(patientId)
+                .recordType(recordType)
+                .sourceRecordId(sourceId)
+                .chunkText(text)
+                .build());
     }
 
     private String buildMedicationText(Medication med) {
