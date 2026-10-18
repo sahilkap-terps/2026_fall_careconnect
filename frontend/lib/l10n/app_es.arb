@@ -203,6 +203,7 @@
 
   "appheaderwidget_invalidDOB": "Fecha de nacimiento no válida. No se puede generar el código QR de emergencia.",
   "appheaderwidget_missingPtData": "No hay datos del paciente disponibles para el código QR de emergencia",
+  "appheaderwidget_medicalPassport": "Pasaporte médico",
   "appheaderwidget_welcomeBack": "Bienvenido de nuevo",
   "appheaderwidget_greetingPt": "¿Cómo te encuentras hoy?",
   "appheaderwidget_greetingNonPt": "Resumen de salud de tus pacientes",

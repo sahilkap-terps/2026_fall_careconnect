@@ -187,7 +187,6 @@ void main() {
           tester.getSemantics(find.widgetWithIcon(IconButton, Icons.local_hospital)),
           isSemantics(tooltip: 'Medical passport', isButton: true, hasTapAction: true));
       handle.dispose();
-      // DEF-EMG-24: fixed by PR344_DEF-EMG-24-suggested.patch, not applied yet.
-    }, skip: true);
+    });
   });
 }

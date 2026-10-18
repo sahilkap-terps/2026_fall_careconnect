@@ -113,6 +113,9 @@ class DashboardAppHeader extends StatelessWidget
                             height: 40,
                             child: IconButton(
                               padding: EdgeInsets.zero,
+                              // DEF-EMG-24: the only way to the passport needs a name for screen
+                              // readers (and a hint on hover and long press).
+                              tooltip: t.appheaderwidget_medicalPassport,
                               // Opens the patient's passport (CC-12), where they choose what a
                               // first responder sees and open their QR code.
                               onPressed: () {
