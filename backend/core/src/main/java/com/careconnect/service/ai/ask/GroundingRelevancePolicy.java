@@ -30,14 +30,17 @@ final class GroundingRelevancePolicy {
             "dosage", "dosed", "dosing", "drug", "drugs", "happened", "history", "information",
             "latest", "level", "levels", "list", "medication", "medications",
             "medicine", "medicines", "meds", "most", "newest", "now", "patient",
-            "pain", "recent", "recently", "status", "tablet", "tablets", "taking",
-            "today", "update", "updates");
+            "pain", "recent", "recently", "status", "tablet", "tablets", "take", "takes",
+            "taking", "today", "update", "updates", "task", "tasks", "schedule", "scheduled",
+            "reminder", "reminders", "due", "upcoming");
     private static final Map<String, Set<String>> CONCEPTS = Map.of(
             "medication", Set.of("medication", "medications", "medicine", "medicines",
                     "drug", "drugs", "dose", "dosage", "mg", "tablet", "metformin", "insulin"),
             "allergy", Set.of("allergy", "allergies", "allergic", "reaction"),
             "pain", Set.of("pain", "ache", "sore"),
-            "appointment", Set.of("appointment", "appointments", "visit", "followup", "follow-up"));
+            "appointment", Set.of("appointment", "appointments", "visit", "followup", "follow-up"),
+            "task", Set.of("task", "tasks", "schedule", "scheduled", "reminder", "reminders",
+                    "due", "upcoming"));
 
     private GroundingRelevancePolicy() {
     }

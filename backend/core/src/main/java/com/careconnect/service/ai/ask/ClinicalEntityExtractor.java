@@ -51,7 +51,11 @@ final class ClinicalEntityExtractor {
             "latest", "level", "levels", "list", "medication", "medications",
             "medicine", "medicines", "meds", "most", "newest", "now", "patient",
             "pain", "recent", "recently", "record", "records", "status", "tablet",
-            "tablets", "taking", "today", "update", "updates");
+            "tablets", "take", "takes", "taking", "today", "update", "updates",
+            // Task wording: a question about "my tasks" or "my schedule" names the
+            // record kind, not a specific clinical entity the quote must contain.
+            "task", "tasks", "schedule", "scheduled", "reminder", "reminders", "due",
+            "upcoming");
 
     private ClinicalEntityExtractor() {
     }

@@ -31,4 +31,22 @@ class ClinicalEntityExtractorTest {
         assertThat(ClinicalEntityExtractor.extract("What is the latest INR?"))
                 .containsExactly("inr");
     }
+
+    @Test
+    void takeVerbIsNotARequiredEntity() {
+        assertThat(ClinicalEntityExtractor.extract("What dose of Lisinopril do I take?"))
+                .containsExactly("lisinopril");
+    }
+
+    @Test
+    void taskWordsAreIntentNotEntities() {
+        assertThat(ClinicalEntityExtractor.extract("What tasks are due on my schedule?"))
+                .isEmpty();
+    }
+
+    @Test
+    void specificTaskSubjectIsStillRequired() {
+        assertThat(ClinicalEntityExtractor.extract("When should I check my blood sugar?"))
+                .containsExactlyInAnyOrder("check", "blood", "sugar");
+    }
 }

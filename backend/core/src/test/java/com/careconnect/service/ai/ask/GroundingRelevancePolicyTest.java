@@ -10,6 +10,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GroundingRelevancePolicyTest {
 
+    /** A chunk with no strong rank, so only concept or entity matching can pass. */
+    private static RankedChunk weakChunk(final String text) {
+        return new RankedChunk(
+                UUID.randomUUID(),
+                42L,
+                RetrievalRecordType.TASK,
+                "99",
+                text,
+                null,
+                "auto",
+                0.001d,
+                null,
+                null,
+                "C1");
+    }
+
     private static RankedChunk strongChunk(final String text) {
         return new RankedChunk(
                 UUID.randomUUID(),
@@ -170,5 +186,32 @@ class GroundingRelevancePolicyTest {
         assertThat(GroundingRelevancePolicy.isRelevant(
                 "What happened with metformin?", evidence, evidence, strongChunk(evidence)))
                 .isFalse();
+    }
+
+    @Test
+    void genericTaskQuestionAcceptsTaskEvidence() {
+        final String evidence = "Blood sugar check is a daily task at 07:30.";
+
+        assertThat(GroundingRelevancePolicy.isRelevant(
+                "What tasks do I have?", evidence, evidence, weakChunk(evidence)))
+                .isTrue();
+    }
+
+    @Test
+    void genericTaskQuestionRejectsEvidenceWithoutTaskConcept() {
+        final String evidence = "Metformin is taken twice daily with meals.";
+
+        assertThat(GroundingRelevancePolicy.isRelevant(
+                "What tasks do I have?", evidence, evidence, weakChunk(evidence)))
+                .isFalse();
+    }
+
+    @Test
+    void takeVerbIsNotRequiredEvidenceForSpecificMedicationQuestion() {
+        final String evidence = "Lisinopril dosage is 10mg.";
+
+        assertThat(GroundingRelevancePolicy.isRelevant(
+                "What dose of Lisinopril do I take?", evidence, evidence, weakChunk(evidence)))
+                .isTrue();
     }
 }
