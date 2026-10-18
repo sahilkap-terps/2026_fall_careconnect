@@ -2,9 +2,12 @@
 // behaves like /v1/api/passport: it keeps sharing, the profile and the QR
 // code between calls, and works out `ready` the way the backend does.
 //
-// Test Plan §3.28: TC-EMG-353…373 are the author's; TC-EMG-379…397 are the
-// Testing Lead's (functional gaps, then accessibility, WCAG 2.1 AA), and
-// TC-EMG-400…402 (added after the mutation run).
+// Test Plan §3.28: TC-EMG-353…358 and 362…373 are the author's, and so are
+// TC-EMG-470…472 (PR #362: the QR buttons open /emergency-qr). TC-EMG-379…396
+// are the Testing Lead's (functional gaps, then accessibility, WCAG 2.1 AA),
+// with TC-EMG-400, 402 (added after the mutation run) and 473…475 (PR #362
+// follow-up). Withdrawn when screen 1 stopped making codes: 359…361, 381, 397
+// and 401.
 
 import 'dart:async';
 import 'dart:convert';
@@ -20,6 +23,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:care_connect_app/config/theme/app_theme.dart';
+import 'package:care_connect_app/features/emergency_passport/services/qr_code_store.dart';
 import 'package:care_connect_app/features/medical_passport/models/medical_passport.dart';
 import 'package:care_connect_app/features/medical_passport/pages/medical_passport_page.dart';
 
@@ -107,16 +111,6 @@ class _Backend {
           : {'name': name, 'relationship': body['emergencyContactRelationship'], 'phone': phone};
       return _ok();
     }
-    if (req.method == 'POST' && path == '$_base/token') {
-      passport['token'] = {'active': true, 'createdAt': '2026-10-14T12:00:00Z', 'lastScannedAt': null};
-      return http.Response(
-          jsonEncode({
-            'token': 'new-token',
-            'url': 'http://localhost:3000/passport/new-token',
-            'createdAt': '2026-10-14T12:00:00Z',
-          }),
-          201);
-    }
     if (req.method == 'DELETE' && path == '$_base/token') {
       passport['token'] = null;
       return http.Response('', 204);
@@ -144,7 +138,10 @@ Future<void> _withBackend(_Backend backend, Future<void> Function() body) =>
     http.runWithClient(body, () => MockClient(backend.handle));
 
 Future<void> _open(WidgetTester t,
-    {Size size = const Size(1400, 1400), ThemeData? theme, double textScale = 1}) async {
+    {Size size = const Size(1400, 1400),
+    ThemeData? theme,
+    double textScale = 1,
+    QrCodeStore? store}) async {
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.reset);
@@ -152,7 +149,7 @@ Future<void> _open(WidgetTester t,
     initialLocation: '/medical-passport',
     routes: [
       GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('Dashboard'))),
-      GoRoute(path: '/medical-passport', builder: (_, __) => const MedicalPassportPage()),
+      GoRoute(path: '/medical-passport', builder: (_, __) => MedicalPassportPage(store: store)),
       GoRoute(path: '/emergency-qr', builder: (_, __) => const _QrStub()),
     ],
   );
@@ -279,7 +276,7 @@ void main() {
   });
 
   testWidgets(
-      'TC-EMG-359: "Create emergency QR" opens the emergency QR screen without '
+      'TC-EMG-470: "Create emergency QR" opens the emergency QR screen without '
       'making a code here, and back on this screen the passport reloads', (t) async {
     final backend = _Backend(empty: true);
     await _withBackend(backend, () async {
@@ -298,7 +295,7 @@ void main() {
   });
 
   testWidgets(
-      'TC-EMG-360: with a code active, "Show emergency QR" and "Open emergency '
+      'TC-EMG-471: with a code active, "Show emergency QR" and "Open emergency '
       'QR" each open the emergency QR screen, and no code is made or turned off',
       (t) async {
     final backend = _Backend();
@@ -539,7 +536,7 @@ void main() {
   });
 
   testWidgets(
-      'TC-EMG-381: a double tap on "Create emergency QR" opens the emergency QR '
+      'TC-EMG-472: a double tap on "Create emergency QR" opens the emergency QR '
       'screen once', (t) async {
     await _withBackend(_Backend(empty: true), () async {
       await _open(t);
@@ -622,8 +619,7 @@ void main() {
       expect(jsonDecode(backend.requests.last.body), {'isPublic': false});
       expect(find.text('Not ready'), findsOneWidget);
     });
-    // DEF-EMG-18: fixed by PR344_DEF-EMG-18-suggested.patch, not applied yet.
-  }, skip: true);
+  });
 
   testWidgets(
       'TC-EMG-386: the two-column layout starts at exactly 900 px of content '
@@ -919,9 +915,99 @@ void main() {
     handle.dispose();
   });
 
+  // ---------- Testing Lead: PR #362 follow-up ----------
+
+  testWidgets(
+      'TC-EMG-473: turning the code off here also forgets the copy kept on '
+      'this device, as screen 2 does; a failed turn-off keeps it '
+      '(DEF-EMG-27)', (t) async {
+    final kept = {
+      'cc12_emergency_qr_1':
+          '{"url":"http://localhost:3000/#/passport/old","createdAt":"2026-10-01T12:00:00.000Z"}',
+    };
+    _keptOnDevice(kept);
+    final store = QrCodeStore(patientId: () async => 1);
+    final backend = _Backend()..failures['DELETE $_base/token'] = http.Response('', 500);
+    await _withBackend(backend, () async {
+      await _open(t, store: store);
+
+      await t.tap(find.text('Turn off QR code'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Turn off'));
+      await t.pumpAndSettle();
+      expect(find.text('Couldn\'t turn off the QR code. Try again.'), findsOneWidget);
+      expect(kept.keys, ['cc12_emergency_qr_1']);
+
+      await t.tap(find.text('Turn off QR code'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Turn off'));
+      await t.pumpAndSettle();
+      expect(find.text('QR code turned off.'), findsOneWidget);
+      expect(kept, isEmpty);
+    });
+  });
+
+  testWidgets(
+      'TC-EMG-474: the turn-off question says what a scan will show, "This code '
+      'isn\'t active" (screen 4), in screen 2\'s words (DEF-EMG-28)', (t) async {
+    await _withBackend(_Backend(), () async {
+      await _open(t);
+      await t.tap(find.text('Turn off QR code'));
+      await t.pumpAndSettle();
+      expect(
+          find.text('Anyone who scans it will see "This code isn\'t active". A '
+              'saved picture or lock screen stops working too. You can make a '
+              'new code at any time.'),
+          findsOneWidget);
+      expect(find.textContaining('see nothing'), findsNothing);
+    });
+  });
+
+  testWidgets(
+      'TC-EMG-475: back from the emergency QR screen, a reload that fails says '
+      'so, keeps the passport, and the QR buttons work again (DEF-EMG-15)',
+      (t) async {
+    final backend = _Backend();
+    await _withBackend(backend, () async {
+      await _open(t);
+      await t.tap(find.text('Show emergency QR'));
+      await t.pumpAndSettle();
+      backend.failures['GET $_base'] = http.Response('', 503);
+      await t.tap(find.text('Back'));
+      await t.pumpAndSettle();
+
+      expect(find.text('Couldn\'t refresh your passport. Try again.'), findsOneWidget);
+      expect(find.text('Jordan Miller'), findsOneWidget);
+      expect(backend.calls, ['GET $_base', 'GET $_base']);
+
+      await t.tap(find.text('Show emergency QR'));
+      await t.pumpAndSettle();
+      expect(find.text('Emergency QR stub'), findsOneWidget);
+    });
+  });
 }
 
 // ---------- Testing Lead helpers ----------
+
+/// Secure storage backed by [kept], for the copy of the QR code screen 2 keeps.
+void _keptOnDevice(Map<String, String> kept) {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+    const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+    (call) async {
+      final key = (call.arguments as Map?)?['key'] as String?;
+      switch (call.method) {
+        case 'read':
+          return kept[key];
+        case 'delete':
+          kept.remove(key);
+          return null;
+        case 'readAll':
+          return Map<String, String>.of(kept);
+      }
+      return null;
+    },
+  );
+}
 
 const _urlLauncherChannels = [
   'plugins.flutter.io/url_launcher',

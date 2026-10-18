@@ -61,15 +61,6 @@ class MedicalPassportService {
     return MedicalPassport.fromJson(_decode(response));
   }
 
-  /// Makes a new QR code and revokes any current one at once. The result is
-  /// the only time the code's link is available.
-  static Future<NewPassportCode> createCode() async {
-    final response = await http
-        .post(Uri.parse('$_baseUrl/token'), headers: await _headers())
-        .timeout(_timeout);
-    return NewPassportCode.fromJson(_decode(response));
-  }
-
   /// Stops the current QR code working, without making a new one.
   static Future<void> revokeCode() async {
     final response = await http

@@ -100,7 +100,7 @@ class PassportContact {
 }
 
 /// Whether the patient has a live QR code. The raw token is never here: it is
-/// shown once, when the code is made ([NewPassportCode]).
+/// given once, when screen 2 (/emergency-qr) makes the code.
 class PassportCodeStatus {
   const PassportCodeStatus({this.createdAt, this.lastScannedAt});
 
@@ -195,22 +195,6 @@ class MedicalPassport {
 
   /// Two letters for the avatar, e.g. "JM" for "Jordan Miller".
   String get initials => initialsOf(name);
-}
-
-/// Returned once, when a code is made. [url] is what the QR encodes; neither
-/// it nor [token] can be fetched again.
-class NewPassportCode {
-  const NewPassportCode({required this.token, required this.url, this.createdAt});
-
-  factory NewPassportCode.fromJson(Map<String, dynamic> json) => NewPassportCode(
-        token: json['token'] as String? ?? '',
-        url: json['url'] as String? ?? '',
-        createdAt: _instant(json['createdAt']),
-      );
-
-  final String token;
-  final String url;
-  final DateTime? createdAt;
 }
 
 /// The body of `PUT /v1/api/passport/profile`. The PUT replaces every field,

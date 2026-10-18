@@ -1,8 +1,9 @@
 // MedicalPassport and friends parse what GET /v1/api/passport returns
 // (backend PassportDtos.PassportView) and build the PUT /profile body.
 //
-// Test Plan §3.28: TC-EMG-335…343 are the author's; TC-EMG-376 is the
-// Testing Lead's.
+// Test Plan §3.28: TC-EMG-335…339 and 341…343 are the author's; TC-EMG-376 is
+// the Testing Lead's. TC-EMG-340 is withdrawn: NewPassportCode went when
+// screen 2 (/emergency-qr) took over making the code (PR #362 follow-up).
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -138,19 +139,6 @@ void main() {
       expect(BloodType.fromApi(null), isNull);
       expect(BloodType.values.map((t) => t.label),
           ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']);
-    });
-  });
-
-  group('NewPassportCode', () {
-    test('TC-EMG-340: reads the one-time token and link', () {
-      final code = NewPassportCode.fromJson({
-        'token': 'abc',
-        'url': 'https://app.example/passport/abc',
-        'createdAt': '2026-10-14T23:03:25Z',
-      });
-      expect(code.token, 'abc');
-      expect(code.url, 'https://app.example/passport/abc');
-      expect(code.createdAt, DateTime.utc(2026, 10, 14, 23, 3, 25).toLocal());
     });
   });
 

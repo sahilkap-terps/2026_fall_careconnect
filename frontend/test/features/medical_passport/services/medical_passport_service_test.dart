@@ -2,8 +2,9 @@
 // consent_api_service_test.dart: each call's method, path and body, and how
 // errors surface.
 //
-// Test Plan §3.28: TC-EMG-344…352 are the author's; TC-EMG-377 and 378 are
-// the Testing Lead's.
+// Test Plan §3.28: TC-EMG-344…346 and 348…352 are the author's; TC-EMG-377
+// and 378 are the Testing Lead's. TC-EMG-347 is withdrawn: createCode went
+// when screen 2 (/emergency-qr) took over making the code (PR #362 follow-up).
 
 import 'dart:async';
 import 'dart:convert';
@@ -82,19 +83,6 @@ void main() {
       'emergencyContactRelationship': null,
       'emergencyContactPhone': null,
     });
-  });
-
-  test('TC-EMG-347: createCode POSTs /token and returns the one-time link', () async {
-    late http.Request sent;
-    final code = await _with(MedicalPassportService.createCode, (req) async {
-      sent = req;
-      return http.Response(
-          jsonEncode({'token': 't0k', 'url': 'http://x/passport/t0k', 'createdAt': null}), 201);
-    });
-
-    expect(sent.method, 'POST');
-    expect(sent.url.path, '/v1/api/passport/token');
-    expect(code.url, 'http://x/passport/t0k');
   });
 
   test('TC-EMG-348: revokeCode DELETEs /token and accepts an empty 204', () async {
@@ -188,7 +176,6 @@ void main() {
       'fetch': MedicalPassportService.fetch,
       'updateProfile': () => MedicalPassportService.updateProfile(const PassportProfileUpdate()),
       'setShared': () => MedicalPassportService.setShared(PassportField.allergies, true),
-      'createCode': MedicalPassportService.createCode,
       'revokeCode': MedicalPassportService.revokeCode,
     };
     for (final c in calls.entries) {

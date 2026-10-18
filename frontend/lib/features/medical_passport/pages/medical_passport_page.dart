@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/theme/app_theme.dart';
+import '../../emergency_passport/services/qr_code_store.dart';
 import '../models/medical_passport.dart';
 import '../services/medical_passport_service.dart';
 
@@ -15,7 +16,10 @@ import '../services/medical_passport_service.dart';
 /// existing records; blood type, conditions and the emergency contact are
 /// edited here.
 class MedicalPassportPage extends StatefulWidget {
-  const MedicalPassportPage({super.key});
+  const MedicalPassportPage({super.key, this.store});
+
+  /// The copy of the QR code kept on this device (screen 2's). Tests pass one.
+  final QrCodeStore? store;
 
   @override
   State<MedicalPassportPage> createState() => _MedicalPassportPageState();
@@ -47,6 +51,7 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
   bool _loading = true;
   bool _codeBusy = false;
   final Set<PassportField> _saving = {};
+  late final QrCodeStore _store = widget.store ?? QrCodeStore();
 
   @override
   void initState() {
@@ -124,7 +129,10 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
   Future<void> _turnOffCode() async {
     final off = await _confirm(
       title: 'Turn off your QR code?',
-      body: 'Anyone who scans it will see nothing. You can make a new code '
+      // DEF-EMG-28: a scan of a turned-off code shows screen 4, "This code
+      // isn't active", not nothing. Same words as screen 2's dialog.
+      body: 'Anyone who scans it will see "This code isn\'t active". A saved '
+          'picture or lock screen stops working too. You can make a new code '
           'at any time.',
       action: 'Turn off',
     );
@@ -132,6 +140,9 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
     setState(() => _codeBusy = true);
     try {
       await MedicalPassportService.revokeCode();
+      // DEF-EMG-27: forget the copy kept on this device, as screen 2's Turn off
+      // does, so a turned-off link isn't left in storage.
+      await _store.clear();
       await _load();
       _toast('QR code turned off.');
     } catch (e) {
@@ -471,7 +482,9 @@ class _IdentityCard extends StatelessWidget {
                     subject: 'Blood type',
                     shared: passport.isShared(PassportField.bloodType),
                     saving: saving,
-                    enabled: passport.bloodType != null,
+                    // DEF-EMG-18: a stored "shared" can always be turned off.
+                    enabled: passport.bloodType != null ||
+                        passport.isShared(PassportField.bloodType),
                     onChanged: onShareBloodType,
                   ),
                   TextButton(onPressed: onEdit, child: const Text('Edit details')),
@@ -866,7 +879,8 @@ class _SectionCard extends StatelessWidget {
                         label: title.toLowerCase(),
                         shared: passport.isShared(field),
                         saving: saving,
-                        enabled: hasContent,
+                        // DEF-EMG-18: a stored "shared" can always be turned off.
+                        enabled: hasContent || passport.isShared(field),
                         onChanged: onShare,
                       ),
                     ),
@@ -898,7 +912,10 @@ class _SectionCard extends StatelessWidget {
 Key shareSwitchKey(PassportField field) => ValueKey('share-${field.apiName}');
 
 /// "Shared on QR" / "Hidden" with a switch. Disabled while saving, and when the
-/// section is empty (a shared empty section shows nothing on a scan anyway).
+/// section is empty and not shared. DEF-EMG-18: an empty section the patient
+/// shared earlier still reads "Shared on QR" (the backend keeps the choice, counts
+/// it for "Ready to share", and shows the section on a scan as soon as it has
+/// content again), so the patient can see that and turn it off.
 class _ShareSwitch extends StatelessWidget {
   const _ShareSwitch({
     super.key,
@@ -922,7 +939,7 @@ class _ShareSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final on = shared && enabled;
+    final on = shared;
     final canChange = enabled && !saving;
     return Semantics(
       label: 'Show $label on QR code',
