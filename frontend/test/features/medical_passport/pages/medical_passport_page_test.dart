@@ -9,7 +9,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' show ImageByteFormat;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -18,7 +17,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:care_connect_app/config/theme/app_theme.dart';
@@ -155,6 +153,7 @@ Future<void> _open(WidgetTester t,
     routes: [
       GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('Dashboard'))),
       GoRoute(path: '/medical-passport', builder: (_, __) => const MedicalPassportPage()),
+      GoRoute(path: '/emergency-qr', builder: (_, __) => const _QrStub()),
     ],
   );
   // A new key each time, so a second _open in one test starts a fresh page.
@@ -279,59 +278,43 @@ void main() {
     });
   });
 
-  testWidgets('TC-EMG-359: creating the first code shows its QR once, then the passport reloads', (t) async {
+  testWidgets(
+      'TC-EMG-359: "Create emergency QR" opens the emergency QR screen without '
+      'making a code here, and back on this screen the passport reloads', (t) async {
     final backend = _Backend(empty: true);
     await _withBackend(backend, () async {
       await _open(t);
 
       await t.tap(find.text('Create emergency QR'));
       await t.pumpAndSettle();
+      expect(find.text('Emergency QR stub'), findsOneWidget);
+      expect(backend.calls, ['GET $_base']);
 
-      expect(backend.calls, ['GET $_base', 'POST $_base/token', 'GET $_base']);
-      expect(find.text('Your emergency QR code'), findsOneWidget);
-      expect(find.byType(QrImageView), findsOneWidget);
-      expect(find.textContaining('can\'t be shown again'), findsOneWidget);
-
-      await t.tap(find.text('Done'));
+      await t.tap(find.text('Back'));
       await t.pumpAndSettle();
-      expect(find.text('Your emergency QR code'), findsNothing);
-      expect(find.text('Show emergency QR'), findsOneWidget);
+      expect(find.text('Medical passport'), findsOneWidget);
+      expect(backend.calls, ['GET $_base', 'GET $_base']);
     });
   });
 
-  testWidgets('TC-EMG-360: with a code already active, a new one is only made after the patient agrees',
+  testWidgets(
+      'TC-EMG-360: with a code active, "Show emergency QR" and "Open emergency '
+      'QR" each open the emergency QR screen, and no code is made or turned off',
       (t) async {
     final backend = _Backend();
     await _withBackend(backend, () async {
       await _open(t);
+      expect(find.text('Make a new QR code'), findsNothing);
 
-      await t.tap(find.text('Show emergency QR'));
-      await t.pumpAndSettle();
-      expect(find.text('Make a new QR code?'), findsOneWidget);
-      await t.tap(find.text('Cancel'));
-      await t.pumpAndSettle();
-      expect(backend.calls, isNot(contains('POST $_base/token')));
-
-      await t.tap(find.text('Make a new QR code'));
-      await t.pumpAndSettle();
-      await t.tap(find.text('Make new code'));
-      await t.pumpAndSettle();
-      expect(backend.calls, contains('POST $_base/token'));
-      expect(find.byType(QrImageView), findsOneWidget);
-    });
-  });
-
-  testWidgets('TC-EMG-361: a failed code shows an error and no QR', (t) async {
-    final backend = _Backend(empty: true)
-      ..failures['POST $_base/token'] = http.Response('', 500);
-    await _withBackend(backend, () async {
-      await _open(t);
-
-      await t.tap(find.text('Create emergency QR'));
-      await t.pumpAndSettle();
-
-      expect(find.text('Couldn\'t make a QR code. Try again.'), findsOneWidget);
-      expect(find.byType(QrImageView), findsNothing);
+      for (final label in ['Show emergency QR', 'Open emergency QR']) {
+        await t.ensureVisible(find.text(label));
+        await t.tap(find.text(label));
+        await t.pumpAndSettle();
+        expect(find.text('Emergency QR stub'), findsOneWidget, reason: label);
+        await t.tap(find.text('Back'));
+        await t.pumpAndSettle();
+      }
+      expect(backend.calls.where((c) => c.contains('/token')), isEmpty);
     });
   });
 
@@ -556,16 +539,17 @@ void main() {
   });
 
   testWidgets(
-      'TC-EMG-381: a double tap on "Create emergency QR" makes one code',
-      (t) async {
-    final backend = _Backend(empty: true);
-    await _withBackend(backend, () async {
+      'TC-EMG-381: a double tap on "Create emergency QR" opens the emergency QR '
+      'screen once', (t) async {
+    await _withBackend(_Backend(empty: true), () async {
       await _open(t);
       await t.tap(find.text('Create emergency QR'));
       await t.tap(find.text('Create emergency QR'), warnIfMissed: false);
       await t.pumpAndSettle();
-      expect(backend.calls.where((c) => c == 'POST $_base/token').length, 1);
-      expect(find.byType(QrImageView), findsOneWidget);
+      await t.tap(find.text('Back'));
+      await t.pumpAndSettle();
+      expect(find.text('Emergency QR stub'), findsNothing);
+      expect(find.text('Medical passport'), findsOneWidget);
     });
   });
 
@@ -788,18 +772,6 @@ void main() {
   });
 
   testWidgets(
-      'TC-EMG-401: the QR shown is the link the server issued, module for '
-      'module (not the bare code)', (t) async {
-    await _withBackend(_Backend(empty: true), () async {
-      await _open(t);
-      await t.tap(find.text('Create emergency QR'));
-      await t.pumpAndSettle();
-      expect(await _qrHolds(t, 'http://localhost:3000/passport/new-token'), isTrue);
-      expect(await _qrHolds(t, 'new-token'), isFalse);
-    });
-  });
-
-  testWidgets(
       'TC-EMG-402: severe and life-threatening allergies are marked as serious '
       '(red tile); a moderate one is not', (t) async {
     final backend = _Backend();
@@ -849,13 +821,6 @@ void main() {
         await t.tap(find.text('Turn off QR code'));
         await t.pumpAndSettle();
         failures.addAll(_lowContrastText(t, dialog: true).map((f) => 'confirm dialog: $f'));
-        await t.tap(find.text('Cancel'));
-        await t.pumpAndSettle();
-        await t.tap(find.text('Make a new QR code'));
-        await t.pumpAndSettle();
-        await t.tap(find.text('Make new code'));
-        await t.pumpAndSettle();
-        failures.addAll(_lowContrastText(t, dialog: true).map((f) => 'QR dialog: $f'));
       });
       expect(failures, isEmpty);
     });
@@ -954,24 +919,6 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets(
-      'TC-EMG-397: a screen reader meets the new QR as one image named "QR '
-      'code for your medical passport", once, and never the link it holds '
-      '(DEF-EMG-23)', (t) async {
-    final handle = t.ensureSemantics();
-    await _withBackend(_Backend(empty: true), () async {
-      await _open(t);
-      await t.tap(find.text('Create emergency QR'));
-      await t.pumpAndSettle();
-      final qr = find.bySemanticsLabel(RegExp('^QR code for your medical passport'));
-      expect(qr, findsOneWidget);
-      expect(t.getSemantics(qr),
-          isSemantics(isImage: true, label: 'QR code for your medical passport'));
-      expect(find.bySemanticsLabel(RegExp('qr code', caseSensitive: true)), findsNothing);
-      expect(find.bySemanticsLabel(RegExp('new-token')), findsNothing);
-    });
-    handle.dispose();
-  });
 }
 
 // ---------- Testing Lead helpers ----------
@@ -992,6 +939,7 @@ GoRouter _router() => GoRouter(
         GoRoute(path: '/dashboard', builder: (_, __) => const Scaffold(body: Text('Dashboard'))),
         GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('Login'))),
         GoRoute(path: '/medical-passport', builder: (_, __) => const MedicalPassportPage()),
+        GoRoute(path: '/emergency-qr', builder: (_, __) => const _QrStub()),
       ],
     );
 
@@ -1097,26 +1045,15 @@ List<String> _clipped(WidgetTester t) {
   return problems;
 }
 
-/// Whether the QR on screen encodes [data] (from PR #340's TC-EMG-313): paint
-/// it and compare every module with a QR made from [data].
-Future<bool> _qrHolds(WidgetTester t, String data) async {
-  final painter = t
-      .widget<CustomPaint>(
-          find.descendant(of: find.byType(QrImageView), matching: find.byType(CustomPaint)))
-      .painter! as QrPainter;
-  final qr = QrImage(QrCode.fromData(data: data, errorCorrectLevel: QrErrorCorrectLevel.L));
-  final n = qr.moduleCount;
-  final size = n * 10.0;
-  final bytes = (await t.runAsync(() => painter.toImageData(size, format: ImageByteFormat.rawRgba)))!;
-  final px = ((size / n) * 2).roundToDouble() / 2;
-  final inset = (size - px * n) / 2;
-  for (var r = 0; r < n; r++) {
-    for (var c = 0; c < n; c++) {
-      final x = (inset + (c + 0.5) * px).floor();
-      final y = (inset + (r + 0.5) * px).floor();
-      final alpha = bytes.getUint8((y * size.toInt() + x) * 4 + 3);
-      if ((alpha > 128) != qr.isDark(r, c)) return false;
-    }
-  }
-  return true;
+/// Stands in for /emergency-qr (PR #340's EmergencyQrPage), with a way back.
+class _QrStub extends StatelessWidget {
+  const _QrStub();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Column(children: [
+          const Text('Emergency QR stub'),
+          TextButton(onPressed: () => context.pop(), child: const Text('Back')),
+        ]),
+      );
 }

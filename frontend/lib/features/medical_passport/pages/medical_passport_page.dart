@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/theme/app_theme.dart';
@@ -108,30 +107,15 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
     }
   }
 
-  /// Makes a code and shows it. A code can only be shown when it is made, so
-  /// with one already active this replaces it, after the patient agrees.
-  Future<void> _showCode() async {
-    final passport = _passport;
-    if (passport == null || _codeBusy) return;
-    if (passport.hasCode) {
-      final replace = await _confirm(
-        title: 'Make a new QR code?',
-        body: 'Your QR code can only be shown when it\'s made. A new code '
-            'stops your current one working straight away, so replace any '
-            'printed or saved copy.',
-        action: 'Make new code',
-      );
-      if (!replace) return;
-    }
+  /// Opens the patient's emergency QR (/emergency-qr, design screen 2), which
+  /// makes, keeps, shows and turns off the code. Back here, reload: the code
+  /// may have been made or turned off there.
+  Future<void> _openQr() async {
+    if (_codeBusy) return;
     setState(() => _codeBusy = true);
     try {
-      final code = await MedicalPassportService.createCode();
-      await _load();
-      if (!mounted) return;
-      await showDialog<void>(
-          context: context, builder: (context) => _branded(context, _QrCodeDialog(code: code)));
-    } catch (e) {
-      _toast(_messageFor(e, 'Couldn\'t make a QR code. Try again.'));
+      await context.push('/emergency-qr');
+      if (mounted) await _load();
     } finally {
       if (mounted) setState(() => _codeBusy = false);
     }
@@ -316,7 +300,7 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
       _EmergencyCard(
         passport: p,
         busy: _codeBusy,
-        onShowCode: _showCode,
+        onOpenQr: _openQr,
         onTurnOff: _turnOffCode,
       ),
       const _PrivacyNote(),
@@ -325,7 +309,7 @@ class _MedicalPassportPageState extends State<MedicalPassportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Header(passport: p, busy: _codeBusy, onShowCode: _showCode),
+        _Header(passport: p, busy: _codeBusy, onOpenQr: _openQr),
         const SizedBox(height: 20),
         _IdentityCard(
           passport: p,
@@ -380,11 +364,11 @@ String formatPassportDate(DateTime when) => DateFormat.yMMMd().format(when.toLoc
 // ---- Header and identity ---------------------------------------------------
 
 class _Header extends StatelessWidget {
-  const _Header({required this.passport, required this.busy, required this.onShowCode});
+  const _Header({required this.passport, required this.busy, required this.onOpenQr});
 
   final MedicalPassport passport;
   final bool busy;
-  final VoidCallback onShowCode;
+  final VoidCallback onOpenQr;
 
   @override
   Widget build(BuildContext context) {
@@ -436,7 +420,7 @@ class _Header extends StatelessWidget {
             minimumSize: const Size(0, 48),
             padding: const EdgeInsets.symmetric(horizontal: 18),
           ),
-          onPressed: busy ? null : onShowCode,
+          onPressed: busy ? null : onOpenQr,
           icon: const Icon(Icons.qr_code_2),
           label: Text(passport.hasCode ? 'Show emergency QR' : 'Create emergency QR'),
         ),
@@ -1018,13 +1002,13 @@ class _EmergencyCard extends StatelessWidget {
   const _EmergencyCard({
     required this.passport,
     required this.busy,
-    required this.onShowCode,
+    required this.onOpenQr,
     required this.onTurnOff,
   });
 
   final MedicalPassport passport;
   final bool busy;
-  final VoidCallback onShowCode;
+  final VoidCallback onOpenQr;
   final VoidCallback onTurnOff;
 
   @override
@@ -1065,8 +1049,8 @@ class _EmergencyCard extends StatelessWidget {
               foregroundColor: _brand,
               minimumSize: const Size(0, 48),
             ),
-            onPressed: busy ? null : onShowCode,
-            child: Text(code == null ? 'Create QR passport' : 'Make a new QR code'),
+            onPressed: busy ? null : onOpenQr,
+            child: Text(code == null ? 'Create QR passport' : 'Open emergency QR'),
           ),
           if (code != null)
             TextButton(
@@ -1076,48 +1060,6 @@ class _EmergencyCard extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _QrCodeDialog extends StatelessWidget {
-  const _QrCodeDialog({required this.code});
-
-  final NewPassportCode code;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Your emergency QR code'),
-      content: SizedBox(
-        width: 280,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Semantics(
-              image: true,
-              label: 'QR code for your medical passport',
-              // DEF-EMG-23: QrImageView adds its own "qr code" to the name.
-              excludeSemantics: true,
-              child: QrImageView(data: code.url, size: 220, backgroundColor: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Save or print it now. For your security it can\'t be shown again; '
-              'if you lose it, make a new one.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: _muted, height: 1.4),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: _brand, foregroundColor: Colors.white),
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Done'),
-        ),
-      ],
     );
   }
 }
