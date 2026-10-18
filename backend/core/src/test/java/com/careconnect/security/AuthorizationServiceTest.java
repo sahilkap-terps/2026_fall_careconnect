@@ -1,6 +1,7 @@
 package com.careconnect.security;
 
 import com.careconnect.model.Patient;
+import com.careconnect.model.Task;
 import com.careconnect.model.User;
 import com.careconnect.repository.CaregiverPatientLinkRepository;
 import com.careconnect.repository.FamilyMemberLinkRepository;
@@ -435,6 +436,53 @@ public class AuthorizationServiceTest {
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
                     () -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
             assertTrue(ex.getMessage().contains("is not authorized to access patient"));
+        }
+    }
+
+    @Nested
+    @DisplayName("requireTaskAccess")
+    class RequireTaskAccessTests {
+
+        private Task taskOf(Patient patient) {
+            return Task.builder().id(70L).name("Check Vitals").patient(patient).build();
+        }
+
+        @Test
+        void patientMayAccessOwnTask() {
+            actAs(Role.PATIENT, PATIENT_USER_ID);
+            when(patientRepository.findById(PATIENT_ID))
+                    .thenReturn(Optional.of(patient(PATIENT_ID, PATIENT_USER_ID)));
+
+            assertDoesNotThrow(() -> authorizationService.requireTaskAccess(
+                    mockUser, taskOf(patient(PATIENT_ID, PATIENT_USER_ID))));
+        }
+
+        @Test
+        void patientCannotAccessAnotherPatientsTask() {
+            actAs(Role.PATIENT, PATIENT_USER_ID);
+            when(patientRepository.findById(2L)).thenReturn(Optional.of(patient(2L, 30L)));
+
+            assertThrows(UnauthorizedException.class, () -> authorizationService.requireTaskAccess(
+                    mockUser, taskOf(patient(2L, 30L))));
+        }
+
+        @Test
+        void unlinkedCaregiverCannotAccessTask() {
+            actAs(Role.CAREGIVER, 10L);
+            when(mockUser.hasPermission(Permission.VIEW_ASSIGNED_PATIENTS)).thenReturn(true);
+            when(patientRepository.findById(PATIENT_ID))
+                    .thenReturn(Optional.of(patient(PATIENT_ID, PATIENT_USER_ID)));
+
+            assertThrows(UnauthorizedException.class, () -> authorizationService.requireTaskAccess(
+                    mockUser, taskOf(patient(PATIENT_ID, PATIENT_USER_ID))));
+        }
+
+        @Test
+        void taskWithoutPatientIsAdminOnly() {
+            actAs(Role.CAREGIVER, 10L);
+
+            assertThrows(UnauthorizedException.class,
+                    () -> authorizationService.requireTaskAccess(mockUser, taskOf(null)));
         }
     }
 

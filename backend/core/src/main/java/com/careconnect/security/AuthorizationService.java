@@ -1,6 +1,7 @@
 package com.careconnect.security;
 
 import com.careconnect.model.Patient;
+import com.careconnect.model.Task;
 import com.careconnect.model.User;
 import com.careconnect.repository.CaregiverPatientLinkRepository;
 import com.careconnect.repository.FamilyMemberLinkRepository;
@@ -273,6 +274,24 @@ public class AuthorizationService {
                 .map(Patient::getId)
                 .orElse(null);
         checkPatientAccess(user, patientId, patientUserId, patientUserId);
+    }
+
+    /**
+     * Enforce access to one task with the same rules as its patient: the patient, a
+     * linked caregiver or family member, or an admin. A task with no patient is
+     * admin-only.
+     *
+     * @param user The authenticated user
+     * @param task The task being read or changed
+     * @throws UnauthorizedException if user cannot access this task's patient
+     */
+    public void requireTaskAccess(User user, Task task) throws UnauthorizedException {
+        final Long patientId = task.getPatient() == null ? null : task.getPatient().getId();
+        if (patientId == null) {
+            requireAdmin(user);
+            return;
+        }
+        requirePatientAccess(user, patientId);
     }
 
     private static void requireUserAndPatientId(User user, Long id) throws UnauthorizedException {
