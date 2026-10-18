@@ -266,6 +266,12 @@ void main() {
       expect(allPaths, contains('/dashboard/caregiver'));
     });
 
+    test('TC-ROUTE-180: medical passport route exists and requires sign-in', () {
+      expect(allPaths, contains('/medical-passport'));
+      final route = _findRoute(appRouter.configuration.routes, '/medical-passport');
+      expect(route!.redirect, isNotNull);
+    });
+
     test('TC-ROUTE-014: caregiver-dashboard route exists', () {
       expect(allPaths, contains('/caregiver-dashboard'));
     });
@@ -1663,6 +1669,7 @@ void main() {
       ('/passport/:token', '/passport/', {}, null, 'PassportScanPage',
           {'token': ''}),
       ('/emergency-qr', '/emergency-qr', {}, null, 'EmergencyQrPage', {}),
+      ('/medical-passport', '/medical-passport', {}, null, 'MedicalPassportPage', {}),
       ('/ui-preview', '/ui-preview', {}, null, 'UiPreviewScreen', {}),
       ('/stml/brief', '/stml/brief', {}, null, 'StmlBriefPage', {}),
       ('/summaries', '/summaries', {}, null, 'SummaryConfirmationList', {}),
@@ -1959,6 +1966,8 @@ void main() {
       ('/dob-confirm', '/dob-confirm', 'PATIENT', null),
       ('/emergency-qr', '/emergency-qr', null, '/login'),
       ('/emergency-qr', '/emergency-qr', 'PATIENT', null),
+      ('/medical-passport', '/medical-passport', null, '/login'),
+      ('/medical-passport', '/medical-passport', 'PATIENT', null),
       ('/stripe-checkout', '/stripe-checkout', null, '/select-package'),
       ('/admin/analytics', '/admin/analytics', null, '/login'),
       ('/admin/analytics', '/admin/analytics', 'PATIENT', '/dashboard'),
