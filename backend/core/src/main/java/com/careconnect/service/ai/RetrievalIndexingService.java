@@ -11,6 +11,7 @@ import com.careconnect.repository.retrieval.RetrievalIndexChunkRepository;
 import com.careconnect.service.ai.retrieval.RetrievalRecordType;
 
 import java.util.List;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,8 +38,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Medications and tasks are also re-indexed one record at a time after every
  * committed create, update, or delete ({@link RetrievalRecordChangeListener} and
  * {@link RetrievalRecordIndexer}), so records entered in the app are answerable
- * by Ask AI without calling the endpoint. {@link #indexPatient} remains for
- * manual/admin re-index and local dev/test seeding.
+ * by Ask AI without calling the endpoint. {@link RetrievalRecordIndexer} embeds those
+ * per-record chunks as soon as they commit so the vector arm finds them too;
+ * {@link #indexPatient}, which can write hundreds of chunks in one request, leaves
+ * embedding to the backfill worker.
+ * {@link #indexPatient} remains for manual/admin re-index and local dev/test seeding.
  */
 @Slf4j
 @Service
@@ -154,37 +158,41 @@ public class RetrievalIndexingService {
      * Replaces the chunk for one medication with its committed state. Inactive or
      * deleted medications end with no chunk, matching {@link #indexMedications}.
      *
+     * @return the saved chunk, or empty when the medication now has none
+     *
      * <p>Runs in its own transaction because callers invoke it after the
      * medication's transaction has committed.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void reindexMedication(Long medicationId, Long patientId) {
+    public Optional<RetrievalIndexChunk> reindexMedication(Long medicationId, Long patientId) {
         String sourceId = "medication-" + medicationId;
         String recordType = RetrievalRecordType.MEDICATION.name();
         chunkRepository.deleteByPatientIdAndSourceRecordIdAndRecordType(patientId, sourceId, recordType);
-        medicationRepository.findById(medicationId)
+        return medicationRepository.findById(medicationId)
                 .filter(med -> Boolean.TRUE.equals(med.getIsActive()))
-                .ifPresent(med -> saveChunk(patientId, sourceId, recordType, buildMedicationText(med)));
+                .map(med -> saveChunk(patientId, sourceId, recordType, buildMedicationText(med)));
     }
 
     /**
      * Replaces the chunk for one task with its committed state. A deleted task
      * ends with no chunk.
      *
+     * @return the saved chunk, or empty when the task no longer exists
+     *
      * <p>Runs in its own transaction because callers invoke it after the task's
      * transaction has committed.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void reindexTask(Long taskId, Long patientId) {
+    public Optional<RetrievalIndexChunk> reindexTask(Long taskId, Long patientId) {
         String sourceId = "task-" + taskId;
         String recordType = RetrievalRecordType.TASK.name();
         chunkRepository.deleteByPatientIdAndSourceRecordIdAndRecordType(patientId, sourceId, recordType);
-        taskRepository.findById(taskId)
-                .ifPresent(task -> saveChunk(patientId, sourceId, recordType, buildTaskText(task)));
+        return taskRepository.findById(taskId)
+                .map(task -> saveChunk(patientId, sourceId, recordType, buildTaskText(task)));
     }
 
-    private void saveChunk(Long patientId, String sourceId, String recordType, String text) {
-        chunkRepository.save(RetrievalIndexChunk.builder()
+    private RetrievalIndexChunk saveChunk(Long patientId, String sourceId, String recordType, String text) {
+        return chunkRepository.save(RetrievalIndexChunk.builder()
                 .patientId(patientId)
                 .recordType(recordType)
                 .sourceRecordId(sourceId)
@@ -202,8 +210,9 @@ public class RetrievalIndexingService {
         StringBuilder sb = new StringBuilder(name);
         if (med.getDosage() != null) sb.append(' ').append(med.getDosage());
         sb.append(Boolean.TRUE.equals(med.getIsActive()) ? " is an active medication." : " is an inactive medication.");
-        if (med.getFrequency() != null) appendSentence(sb, name + " is taken " + med.getFrequency());
-        if (med.getRoute() != null) appendSentence(sb, name + " is taken by the " + med.getRoute() + " route");
+        if (med.getDosage() != null) appendSentence(sb, "The " + name + " dose is " + med.getDosage());
+        if (med.getFrequency() != null) appendSentence(sb, "Take " + name + " " + med.getFrequency());
+        if (med.getRoute() != null) appendSentence(sb, "Take " + name + " by the " + med.getRoute() + " route");
         if (med.getPrescribedBy() != null) appendSentence(sb, name + " was prescribed by " + med.getPrescribedBy());
         if (med.getStartDate() != null) appendSentence(sb, name + " was started on " + med.getStartDate());
         if (med.getEndDate() != null) appendSentence(sb, name + " ends on " + med.getEndDate());
@@ -214,14 +223,24 @@ public class RetrievalIndexingService {
     private String buildTaskText(Task task) {
         String name = task.getName();
         StringBuilder sb = new StringBuilder(name);
-        sb.append(task.getTaskType() != null ? " is a " + task.getTaskType() + " task" : " is a task");
+        String type = task.getTaskType() == null ? "" : task.getTaskType().trim();
+        sb.append(type.isEmpty() ? " is a task" : " is " + article(type) + " " + type + " task");
         if (task.getDate() != null) sb.append(" scheduled for ").append(task.getDate());
         if (task.getTimeOfDay() != null) sb.append(" at ").append(task.getTimeOfDay());
         sb.append('.');
-        if (task.getFrequency() != null) appendSentence(sb, name + " repeats " + task.getFrequency());
+        if (isRecurring(task.getFrequency())) appendSentence(sb, name + " repeats " + task.getFrequency());
         if (task.getDescription() != null) appendSentence(sb, name + " details: " + task.getDescription());
         appendSentence(sb, name + (task.isCompleted() ? " is completed" : " is not completed"));
         return sb.toString();
+    }
+
+    private static String article(String word) {
+        return "AEIOUaeiou".indexOf(word.charAt(0)) >= 0 ? "an" : "a";
+    }
+
+    // "once" is how the app marks a one-off task; "repeats once" would misdescribe it.
+    private static boolean isRecurring(String frequency) {
+        return frequency != null && !frequency.isBlank() && !"once".equalsIgnoreCase(frequency.trim());
     }
 
     private static void appendSentence(StringBuilder sb, String sentence) {

@@ -22,6 +22,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +48,7 @@ class RetrievalIndexingServiceTest {
     void setUp() {
         service = new RetrievalIndexingService(
                 chunkRepository, medicationRepository, taskRepository, vitalsRepository);
+        lenient().when(chunkRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         patient = PatientFixtures.patientWithId(PATIENT_ID);
     }
 
@@ -68,8 +70,8 @@ class RetrievalIndexingServiceTest {
         assertThat(saved.getValue().getRecordType()).isEqualTo("MEDICATION");
         assertThat(saved.getValue().getSourceRecordId()).isEqualTo("medication-10");
         assertThat(saved.getValue().getChunkText()).isEqualTo(
-                "Lisinopril 10mg is an active medication. Lisinopril is taken once daily."
-                        + " Lisinopril is taken by the oral route.");
+                "Lisinopril 10mg is an active medication. The Lisinopril dose is 10mg."
+                        + " Take Lisinopril once daily. Take Lisinopril by the oral route.");
     }
 
     @Test
@@ -154,8 +156,9 @@ class RetrievalIndexingServiceTest {
         final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText()).isEqualTo(
-                "Lisinopril 10mg is an active medication. Lisinopril is taken once daily."
-                        + " Lisinopril is taken by the oral route. Lisinopril was prescribed by Dr. Rivera."
+                "Lisinopril 10mg is an active medication. The Lisinopril dose is 10mg."
+                        + " Take Lisinopril once daily. Take Lisinopril by the oral route."
+                        + " Lisinopril was prescribed by Dr. Rivera."
                         + " Lisinopril was started on 2026-10-01. Lisinopril ends on 2026-12-31."
                         + " Lisinopril notes: Take with food.");
     }
@@ -174,5 +177,55 @@ class RetrievalIndexingServiceTest {
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText())
                 .isEqualTo("Call pharmacy is a task. Call pharmacy is completed.");
+    }
+
+    @Test
+    void reindexMedication_returnsTheSavedChunk() {
+        when(medicationRepository.findById(10L))
+                .thenReturn(Optional.of(MedicationFixtures.activeMedication(10L, patient)));
+
+        final Optional<RetrievalIndexChunk> result = service.reindexMedication(10L, PATIENT_ID);
+
+        assertThat(result).get()
+                .extracting(RetrievalIndexChunk::getSourceRecordId).isEqualTo("medication-10");
+    }
+
+    @Test
+    void reindexMedication_returnsEmptyWhenNoChunkWritten() {
+        when(medicationRepository.findById(10L))
+                .thenReturn(Optional.of(MedicationFixtures.inactiveMedication(10L, patient)));
+
+        assertThat(service.reindexMedication(10L, PATIENT_ID)).isEmpty();
+    }
+
+    @Test
+    void reindexTask_oneOffTaskWithVowelTypeReadsNaturally() {
+        // Arrange: "once" marks a one-off task; "an" precedes a vowel
+        final Task task = Task.builder().id(22L).name("Physical therapy").taskType("Appointment")
+                .frequency("Once").isCompleted(false).patient(patient).build();
+        when(taskRepository.findById(22L)).thenReturn(Optional.of(task));
+
+        // Act
+        service.reindexTask(22L, PATIENT_ID);
+
+        // Assert
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText())
+                .isEqualTo("Physical therapy is an Appointment task. Physical therapy is not completed.");
+    }
+
+    @Test
+    void reindexTask_blankTypeIsTreatedAsMissing() {
+        final Task task = Task.builder().id(23L).name("Call pharmacy").taskType("  ")
+                .isCompleted(false).patient(patient).build();
+        when(taskRepository.findById(23L)).thenReturn(Optional.of(task));
+
+        service.reindexTask(23L, PATIENT_ID);
+
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText())
+                .isEqualTo("Call pharmacy is a task. Call pharmacy is not completed.");
     }
 }

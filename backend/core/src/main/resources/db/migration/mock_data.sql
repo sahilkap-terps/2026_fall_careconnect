@@ -389,8 +389,9 @@ SELECT
     pm.medication_name
         || CASE WHEN pm.dosage IS NOT NULL THEN ' ' || pm.dosage ELSE '' END
         || CASE WHEN pm.is_active THEN ' is an active medication.' ELSE ' is an inactive medication.' END
-        || CASE WHEN pm.frequency IS NOT NULL THEN ' ' || pm.medication_name || ' is taken ' || pm.frequency || '.' ELSE '' END
-        || CASE WHEN pm.route IS NOT NULL THEN ' ' || pm.medication_name || ' is taken by the ' || pm.route || ' route.' ELSE '' END
+        || CASE WHEN pm.dosage IS NOT NULL THEN ' The ' || pm.medication_name || ' dose is ' || pm.dosage || '.' ELSE '' END
+        || CASE WHEN pm.frequency IS NOT NULL THEN ' Take ' || pm.medication_name || ' ' || pm.frequency || '.' ELSE '' END
+        || CASE WHEN pm.route IS NOT NULL THEN ' Take ' || pm.medication_name || ' by the ' || pm.route || ' route.' ELSE '' END
         || CASE WHEN pm.prescribed_by IS NOT NULL THEN ' ' || pm.medication_name || ' was prescribed by ' || pm.prescribed_by || '.' ELSE '' END
         || CASE WHEN pm.start_date IS NOT NULL THEN ' ' || pm.medication_name || ' was started on ' || pm.start_date || '.' ELSE '' END
         || CASE WHEN pm.end_date IS NOT NULL THEN ' ' || pm.medication_name || ' ends on ' || pm.end_date || '.' ELSE '' END
@@ -514,11 +515,14 @@ SELECT
     'task-' || t.id,
     -- Same one-fact-per-sentence wording as RetrievalIndexingService.buildTaskText.
     t.name
-        || CASE WHEN t.task_type IS NOT NULL THEN ' is a ' || t.task_type || ' task' ELSE ' is a task' END
+        || CASE WHEN coalesce(trim(t.task_type), '') = '' THEN ' is a task'
+                ELSE ' is ' || CASE WHEN upper(left(trim(t.task_type), 1)) IN ('A', 'E', 'I', 'O', 'U') THEN 'an' ELSE 'a' END
+                     || ' ' || trim(t.task_type) || ' task' END
         || CASE WHEN t.date IS NOT NULL THEN ' scheduled for ' || t.date ELSE '' END
         || CASE WHEN t.time_of_day IS NOT NULL THEN ' at ' || t.time_of_day ELSE '' END
         || '.'
-        || CASE WHEN t.frequency IS NOT NULL THEN ' ' || t.name || ' repeats ' || t.frequency || '.' ELSE '' END
+        || CASE WHEN lower(coalesce(trim(t.frequency), '')) NOT IN ('', 'once')
+                THEN ' ' || t.name || ' repeats ' || t.frequency || '.' ELSE '' END
         || CASE WHEN t.description IS NOT NULL THEN ' ' || t.name || ' details: ' || trim(t.description)
                 || CASE WHEN right(trim(t.description), 1) IN ('.', '!', '?') THEN '' ELSE '.' END
            ELSE '' END
