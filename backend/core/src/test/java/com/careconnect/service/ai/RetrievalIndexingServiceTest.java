@@ -120,7 +120,7 @@ class RetrievalIndexingServiceTest {
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getSourceRecordId()).isEqualTo("task-20");
         assertThat(saved.getValue().getChunkText()).isEqualTo(
-                "Check Vitals is a Health task scheduled for 2025-01-01 at 08:00."
+                "Check Vitals is a Health task scheduled for Wednesday, January 1, 2025 at 08:00."
                         + " Check Vitals repeats daily. Check Vitals details: Daily vitals check."
                         + " Check Vitals is pending and not yet completed.");
     }
@@ -159,7 +159,7 @@ class RetrievalIndexingServiceTest {
                 "Lisinopril 10mg is an active medication. The Lisinopril dose is 10mg."
                         + " Take Lisinopril 10mg by the oral route once daily."
                         + " Lisinopril was prescribed by Dr. Rivera."
-                        + " Lisinopril was started on 2026-10-01. Lisinopril ends on 2026-12-31."
+                        + " Lisinopril was started on Thursday, October 1, 2026. Lisinopril ends on Thursday, December 31, 2026."
                         + " Lisinopril notes: Take with food.");
     }
 
@@ -274,7 +274,20 @@ class RetrievalIndexingServiceTest {
         final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText()).isEqualTo(
-                "Check Blood Sugar is a HEALTH_CHECK task scheduled for 2025-10-06 at 07:30."
+                "Check Blood Sugar is a HEALTH_CHECK task scheduled for Monday, October 6, 2025 at 07:30."
                         + " Check Blood Sugar is pending and not yet completed.");
+    }
+
+    @Test
+    void reindexTask_keepsANonIsoDateAsEntered() {
+        final Task task = Task.builder().id(25L).name("Check Blood Sugar").date("next Tuesday")
+                .isCompleted(false).patient(patient).build();
+        when(taskRepository.findById(25L)).thenReturn(Optional.of(task));
+
+        service.reindexTask(25L, PATIENT_ID);
+
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText()).startsWith("Check Blood Sugar is a task scheduled for next Tuesday.");
     }
 }

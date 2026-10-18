@@ -398,8 +398,18 @@ SELECT
                      || '.'
                 ELSE '' END
         || CASE WHEN pm.prescribed_by IS NOT NULL THEN ' ' || pm.medication_name || ' was prescribed by ' || pm.prescribed_by || '.' ELSE '' END
-        || CASE WHEN pm.start_date IS NOT NULL THEN ' ' || pm.medication_name || ' was started on ' || pm.start_date || '.' ELSE '' END
-        || CASE WHEN pm.end_date IS NOT NULL THEN ' ' || pm.medication_name || ' ends on ' || pm.end_date || '.' ELSE '' END
+        || CASE WHEN coalesce(trim(pm.start_date), '') <> ''
+                THEN ' ' || pm.medication_name || ' was started on '
+                     || CASE WHEN left(trim(pm.start_date), 10) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                             THEN to_char(CAST(left(trim(pm.start_date), 10) AS date), 'FMDay, FMMonth FMDD, YYYY')
+                             ELSE trim(pm.start_date) END || '.'
+                ELSE '' END
+        || CASE WHEN coalesce(trim(pm.end_date), '') <> ''
+                THEN ' ' || pm.medication_name || ' ends on '
+                     || CASE WHEN left(trim(pm.end_date), 10) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                             THEN to_char(CAST(left(trim(pm.end_date), 10) AS date), 'FMDay, FMMonth FMDD, YYYY')
+                             ELSE trim(pm.end_date) END || '.'
+                ELSE '' END
         || CASE WHEN pm.notes IS NOT NULL THEN ' ' || pm.medication_name || ' notes: ' || trim(pm.notes)
                 || CASE WHEN right(trim(pm.notes), 1) IN ('.', '!', '?') THEN '' ELSE '.' END
            ELSE '' END,
@@ -524,8 +534,9 @@ SELECT
                 ELSE ' is ' || CASE WHEN upper(left(trim(t.task_type), 1)) IN ('A', 'E', 'I', 'O', 'U') THEN 'an' ELSE 'a' END
                      || ' ' || trim(t.task_type) || ' task' END
         || CASE WHEN coalesce(trim(t.date), '') <> ''
-                THEN ' scheduled for ' || CASE WHEN position('T' IN trim(t.date)) = 11
-                                              THEN left(trim(t.date), 10) ELSE trim(t.date) END
+                THEN ' scheduled for ' || CASE WHEN left(trim(t.date), 10) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                                              THEN to_char(CAST(left(trim(t.date), 10) AS date), 'FMDay, FMMonth FMDD, YYYY')
+                                              ELSE trim(t.date) END
                 ELSE '' END
         || CASE WHEN coalesce(trim(t.time_of_day), '') <> '' THEN ' at ' || trim(t.time_of_day) ELSE '' END
         || '.'

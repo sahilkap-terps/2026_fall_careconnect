@@ -10,7 +10,11 @@ import com.careconnect.repository.VitalsRepository;
 import com.careconnect.repository.retrieval.RetrievalIndexChunkRepository;
 import com.careconnect.service.ai.retrieval.RetrievalRecordType;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -48,6 +52,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class RetrievalIndexingService {
+
+    private static final DateTimeFormatter HUMAN_DATE =
+            DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.US);
 
     private final RetrievalIndexChunkRepository chunkRepository;
     private final MedicationRepository medicationRepository;
@@ -222,8 +229,8 @@ public class RetrievalIndexingService {
             appendSentence(sb, take.toString());
         }
         if (med.getPrescribedBy() != null) appendSentence(sb, name + " was prescribed by " + med.getPrescribedBy());
-        if (med.getStartDate() != null) appendSentence(sb, name + " was started on " + med.getStartDate());
-        if (med.getEndDate() != null) appendSentence(sb, name + " ends on " + med.getEndDate());
+        if (hasText(med.getStartDate())) appendSentence(sb, name + " was started on " + humanDate(med.getStartDate()));
+        if (hasText(med.getEndDate())) appendSentence(sb, name + " ends on " + humanDate(med.getEndDate()));
         if (med.getNotes() != null) appendSentence(sb, name + " notes: " + med.getNotes());
         return sb.toString();
     }
@@ -233,7 +240,7 @@ public class RetrievalIndexingService {
         StringBuilder sb = new StringBuilder(name);
         String type = task.getTaskType() == null ? "" : task.getTaskType().trim();
         sb.append(type.isEmpty() ? " is a task" : " is " + article(type) + " " + type + " task");
-        if (hasText(task.getDate())) sb.append(" scheduled for ").append(datePart(task.getDate()));
+        if (hasText(task.getDate())) sb.append(" scheduled for ").append(humanDate(task.getDate()));
         if (hasText(task.getTimeOfDay())) sb.append(" at ").append(task.getTimeOfDay().trim());
         sb.append('.');
         if (isRecurring(task.getFrequency())) appendSentence(sb, name + " repeats " + task.getFrequency());
@@ -253,6 +260,18 @@ public class RetrievalIndexingService {
         String trimmed = date.trim();
         int t = trimmed.indexOf('T');
         return t == 10 ? trimmed.substring(0, t) : trimmed;
+    }
+
+    // People ask "anything in October?" or "what's on Wednesday?", so dates are written
+    // the way they are asked about ("Wednesday, October 21, 2026"). Anything that is not
+    // an ISO date is kept as entered.
+    private static String humanDate(String date) {
+        String day = datePart(date);
+        try {
+            return LocalDate.parse(day).format(HUMAN_DATE);
+        } catch (DateTimeParseException e) {
+            return day;
+        }
     }
 
     private static String article(String word) {
