@@ -159,6 +159,16 @@ void main() {
       addTearDown(() => TestDefaultBinaryMessengerBinding
           .instance.defaultBinaryMessenger
           .setMockMethodCallHandler(connectivity, null));
+      // ...and listens for connection changes; without a stream handler that
+      // listen fails after the test ends and is reported against a later test.
+      const connectivityStatus =
+          EventChannel('dev.fluttercommunity.plus/connectivity_status');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(connectivityStatus,
+              MockStreamHandler.inline(onListen: (_, __) {}));
+      addTearDown(() => TestDefaultBinaryMessengerBinding
+          .instance.defaultBinaryMessenger
+          .setMockStreamHandler(connectivityStatus, null));
       await UserRoleStorageService.instance
           .setUserData(role: 'PATIENT', userId: 70, patientId: 7);
       await QrCodeStore().save(StoredQrCode(
@@ -173,7 +183,7 @@ void main() {
           reason: 'sign-out ran: the session token is gone');
       expect(memory.keys.where((k) => k.startsWith('cc12_emergency_qr_')),
           isEmpty);
-    }, skip: 'DEF-EMG-11: sign-out does not remove the kept QR code yet');
+    });
   }
 
   test('TC-EMG-462: clear forgets only this patient\'s code', () async {
@@ -194,5 +204,28 @@ void main() {
       throw PlatformException(code: 'unavailable');
     });
     await QrCodeStore(patientId: () async => 5).clear();
+  });
+
+  test('clearAll removes every kept QR code and leaves other keys alone',
+      () async {
+    await QrCodeStore(patientId: () async => 1)
+        .save(StoredQrCode(url: 'a', createdAt: DateTime.utc(2026)));
+    await QrCodeStore(patientId: () async => 2)
+        .save(StoredQrCode(url: 'b', createdAt: DateTime.utc(2026)));
+    memory['other_key'] = 'kept';
+
+    await QrCodeStore.clearAll();
+
+    expect(memory.keys.where((k) => k.startsWith('cc12_emergency_qr_')),
+        isEmpty);
+    expect(memory['other_key'], 'kept');
+  });
+
+  test('clearAll with failing storage does not throw', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      throw PlatformException(code: 'unavailable');
+    });
+    await QrCodeStore.clearAll();
   });
 }

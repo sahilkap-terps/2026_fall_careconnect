@@ -1,5 +1,6 @@
 import 'package:care_connect_app/features/dashboard/models/patient_model.dart';
 import 'package:flutter/material.dart';
+import '../features/emergency_passport/services/qr_code_store.dart';
 import '../services/auth_token_manager.dart';
 import '../services/auth_service.dart';
 import '../services/user_role_storage_service.dart';
@@ -493,6 +494,7 @@ class UserProvider extends ChangeNotifier {
     _caregiverModel = null;
     await AuthTokenManager.clearAuthData();
     await UserRoleStorageService.instance.clearUserData();
+    await QrCodeStore.clearAll(); // DEF-EMG-11
     notifyListeners();
   }
 
