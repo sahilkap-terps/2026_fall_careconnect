@@ -154,6 +154,12 @@ public class CaregiverController {
         Caregiver caregiver = caregiverRepository.findById(caregiverId)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Caregiver not found"));
 
+        // A caregiver may add patients only to their own list; caregiverId is the caregiver entity ID.
+        if (!currentUser.isAdmin()
+                && (caregiver.getUser() == null || !currentUser.getId().equals(caregiver.getUser().getId()))) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Caregivers can only add patients to their own list");
+        }
+
         // Look up patient by email in the User table
         User patientUser = userRepository.findByEmailAndRole(patientEmail, Role.PATIENT)
                 .orElse(null);

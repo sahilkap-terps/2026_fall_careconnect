@@ -41,16 +41,6 @@ public interface FamilyMemberLinkRepository extends JpaRepository<FamilyMemberLi
     boolean existsByFamilyUserAndPatientUserAndStatus(
             User familyUser, User patientUser, FamilyMemberLink.LinkStatus status);
 
-    @Query("SELECT COUNT(f) > 0 FROM FamilyMemberLink f " +
-            "WHERE f.familyUser.id = :familyMemberUserId " +
-            "AND (f.patientId = :patientId OR f.patientUser.id = :patientId) " +
-            "AND f.status = 'ACTIVE' " +
-            "AND (f.expiresAt IS NULL OR f.expiresAt > :now)")
-    boolean existsByFamilyMemberUserIdAndPatientId(
-            @Param("familyMemberUserId") Long familyMemberUserId,
-            @Param("patientId") Long patientId,
-            @Param("now") LocalDateTime now);
-
     // Both IDs must belong to the same patient. The denormalized patientId column is
     // unset on some rows (seeded links carry only patientUser), so either may match,
     // but never one ID compared against the other column: a patient's entity ID can

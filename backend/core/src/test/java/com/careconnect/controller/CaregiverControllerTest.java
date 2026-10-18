@@ -16,6 +16,7 @@ import com.careconnect.security.AuthorizationService;
 import com.careconnect.service.CaregiverService;
 import com.careconnect.util.SecurityUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -203,6 +204,37 @@ class CaregiverControllerTest {
 
     @Nested
     class AddPatient {
+
+        @BeforeEach
+        void callerOwnsCaregiverRecord() throws Exception {
+            lenient().when(securityUtil.resolveCurrentUser()).thenReturn(makeUser(CG_USER_ID, Role.CAREGIVER));
+        }
+
+        @Test
+        void throwsForbiddenWhenCaregiverAddsToAnotherCaregiversList() throws Exception {
+            // Arrange: caregiver record 1 belongs to user 10, the caller is caregiver user 11
+            when(securityUtil.resolveCurrentUser()).thenReturn(makeUser(11L, Role.CAREGIVER));
+            when(caregiverRepository.findById(CAREGIVER_ID))
+                    .thenReturn(Optional.of(makeCaregiver(CAREGIVER_ID, makeUser(CG_USER_ID, Role.CAREGIVER))));
+
+            // Act / Assert
+            assertThatThrownBy(() -> controller.addPatient(CAREGIVER_ID, emailBody(PATIENT_EMAIL)))
+                    .isInstanceOf(AppException.class)
+                    .hasMessage("Caregivers can only add patients to their own list");
+            verifyNoInteractions(caregiverPatientLinkService);
+        }
+
+        @Test
+        void adminMayAddToAnyCaregiversList() throws Exception {
+            when(securityUtil.resolveCurrentUser()).thenReturn(makeUser(99L, Role.ADMIN));
+            when(caregiverRepository.findById(CAREGIVER_ID))
+                    .thenReturn(Optional.of(makeCaregiver(CAREGIVER_ID, makeUser(CG_USER_ID, Role.CAREGIVER))));
+            when(userRepository.findByEmailAndRole(PATIENT_EMAIL, Role.PATIENT)).thenReturn(Optional.empty());
+
+            final ResponseEntity<?> response = controller.addPatient(CAREGIVER_ID, emailBody(PATIENT_EMAIL));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        }
 
         @Test
         void throwsBadRequestWhenEmailKeyIsAbsent() throws Exception {
