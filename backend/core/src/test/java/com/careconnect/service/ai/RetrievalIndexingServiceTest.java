@@ -122,7 +122,7 @@ class RetrievalIndexingServiceTest {
         assertThat(saved.getValue().getChunkText()).isEqualTo(
                 "Check Vitals is a Health task scheduled for 2025-01-01 at 08:00."
                         + " Check Vitals repeats daily. Check Vitals details: Daily vitals check."
-                        + " Check Vitals is not completed.");
+                        + " Check Vitals is pending and not yet completed.");
     }
 
     @Test
@@ -212,7 +212,7 @@ class RetrievalIndexingServiceTest {
         final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText())
-                .isEqualTo("Physical therapy is an Appointment task. Physical therapy is not completed.");
+                .isEqualTo("Physical therapy is an Appointment task. Physical therapy is pending and not yet completed.");
     }
 
     @Test
@@ -226,7 +226,7 @@ class RetrievalIndexingServiceTest {
         final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText())
-                .isEqualTo("Call pharmacy is a task. Call pharmacy is not completed.");
+                .isEqualTo("Call pharmacy is a task. Call pharmacy is pending and not yet completed.");
     }
 
     @Test
@@ -257,5 +257,24 @@ class RetrievalIndexingServiceTest {
         final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
         verify(chunkRepository).save(saved.capture());
         assertThat(saved.getValue().getChunkText()).isEqualTo("Saline spray is an active medication.");
+    }
+
+    @Test
+    void reindexTask_calendarTaskWithIsoDateAndEmptyDescription() {
+        // Arrange: the calendar saves an ISO date-time and an empty description
+        final Task task = Task.builder().id(24L).name("Check Blood Sugar").taskType("HEALTH_CHECK")
+                .date("2025-10-06T00:00:00.000").timeOfDay("07:30").description("")
+                .isCompleted(false).patient(patient).build();
+        when(taskRepository.findById(24L)).thenReturn(Optional.of(task));
+
+        // Act
+        service.reindexTask(24L, PATIENT_ID);
+
+        // Assert
+        final ArgumentCaptor<RetrievalIndexChunk> saved = ArgumentCaptor.forClass(RetrievalIndexChunk.class);
+        verify(chunkRepository).save(saved.capture());
+        assertThat(saved.getValue().getChunkText()).isEqualTo(
+                "Check Blood Sugar is a HEALTH_CHECK task scheduled for 2025-10-06 at 07:30."
+                        + " Check Blood Sugar is pending and not yet completed.");
     }
 }

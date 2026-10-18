@@ -233,13 +233,26 @@ public class RetrievalIndexingService {
         StringBuilder sb = new StringBuilder(name);
         String type = task.getTaskType() == null ? "" : task.getTaskType().trim();
         sb.append(type.isEmpty() ? " is a task" : " is " + article(type) + " " + type + " task");
-        if (task.getDate() != null) sb.append(" scheduled for ").append(task.getDate());
-        if (task.getTimeOfDay() != null) sb.append(" at ").append(task.getTimeOfDay());
+        if (hasText(task.getDate())) sb.append(" scheduled for ").append(datePart(task.getDate()));
+        if (hasText(task.getTimeOfDay())) sb.append(" at ").append(task.getTimeOfDay().trim());
         sb.append('.');
         if (isRecurring(task.getFrequency())) appendSentence(sb, name + " repeats " + task.getFrequency());
-        if (task.getDescription() != null) appendSentence(sb, name + " details: " + task.getDescription());
-        appendSentence(sb, name + (task.isCompleted() ? " is completed" : " is not completed"));
+        if (hasText(task.getDescription())) appendSentence(sb, name + " details: " + task.getDescription());
+        // "pending" is how people ask about open tasks ("Do I have any pending tasks?").
+        appendSentence(sb, name + (task.isCompleted() ? " is completed" : " is pending and not yet completed"));
         return sb.toString();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    // The calendar stores dates as ISO date-times ("2026-10-20T00:00:00.000"); the
+    // time of day is a separate field, so only the date part belongs in the sentence.
+    private static String datePart(String date) {
+        String trimmed = date.trim();
+        int t = trimmed.indexOf('T');
+        return t == 10 ? trimmed.substring(0, t) : trimmed;
     }
 
     private static String article(String word) {

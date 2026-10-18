@@ -523,15 +523,18 @@ SELECT
         || CASE WHEN coalesce(trim(t.task_type), '') = '' THEN ' is a task'
                 ELSE ' is ' || CASE WHEN upper(left(trim(t.task_type), 1)) IN ('A', 'E', 'I', 'O', 'U') THEN 'an' ELSE 'a' END
                      || ' ' || trim(t.task_type) || ' task' END
-        || CASE WHEN t.date IS NOT NULL THEN ' scheduled for ' || t.date ELSE '' END
-        || CASE WHEN t.time_of_day IS NOT NULL THEN ' at ' || t.time_of_day ELSE '' END
+        || CASE WHEN coalesce(trim(t.date), '') <> ''
+                THEN ' scheduled for ' || CASE WHEN position('T' IN trim(t.date)) = 11
+                                              THEN left(trim(t.date), 10) ELSE trim(t.date) END
+                ELSE '' END
+        || CASE WHEN coalesce(trim(t.time_of_day), '') <> '' THEN ' at ' || trim(t.time_of_day) ELSE '' END
         || '.'
         || CASE WHEN lower(coalesce(trim(t.frequency), '')) NOT IN ('', 'once')
                 THEN ' ' || t.name || ' repeats ' || t.frequency || '.' ELSE '' END
-        || CASE WHEN t.description IS NOT NULL THEN ' ' || t.name || ' details: ' || trim(t.description)
+        || CASE WHEN coalesce(trim(t.description), '') <> '' THEN ' ' || t.name || ' details: ' || trim(t.description)
                 || CASE WHEN right(trim(t.description), 1) IN ('.', '!', '?') THEN '' ELSE '.' END
            ELSE '' END
-        || ' ' || t.name || CASE WHEN t.is_completed THEN ' is completed.' ELSE ' is not completed.' END,
+        || ' ' || t.name || CASE WHEN t.is_completed THEN ' is completed.' ELSE ' is pending and not yet completed.' END,
     'ACTIVE',
     now()
 FROM tasks t;
