@@ -13,6 +13,7 @@ import com.careconnect.security.AuthorizationService;
 import com.careconnect.security.Role;
 import com.careconnect.security.UnauthorizedException;
 import com.careconnect.service.CaregiverPatientLinkService;
+import com.careconnect.service.ConnectionRequestService;
 import com.careconnect.service.CaregiverService;
 import com.careconnect.dto.CaregiverRegistration;
 import com.careconnect.dto.PatientRegistration;
@@ -44,6 +45,9 @@ public class CaregiverController {
 
     @Autowired
     private CaregiverPatientLinkService caregiverPatientLinkService;
+
+    @Autowired
+    private ConnectionRequestService connectionRequestService;
 
     @Autowired
     private UserRepository userRepository;
@@ -191,7 +195,21 @@ public class CaregiverController {
                     "Patient is already linked to this caregiver");
         }
 
-        // Create the caregiver-patient link using the permanent link method
+        // A caregiver only asks; the patient decides in the app. Admins still link directly.
+        if (!currentUser.isAdmin()) {
+            try {
+                connectionRequestService.createRequest(
+                        currentUser.getId(), patientEmail, "Caregiver", null);
+            } catch (IllegalStateException e) {
+                throw new AppException(HttpStatus.BAD_REQUEST, e.getMessage());
+            }
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
+                    "message", "Connection request sent to " + patientEmail
+                            + ". They will appear in your patient list once they accept.",
+                    "action", "request_sent"
+            ));
+        }
+
         caregiverPatientLinkService.createPermanentLink(
                 caregiver.getUser().getId(),
                 patientUser.getId(),
