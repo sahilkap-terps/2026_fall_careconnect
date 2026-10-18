@@ -299,6 +299,40 @@ class AiAskServiceTest {
     }
 
     @Test
+    @DisplayName("ask accepts a claim that is one complete sentence of a longer quoted evidence")
+    void ask_claimIsCompleteSentenceInsideLongerEvidence_isDelivered() throws Exception {
+        // Arrange: the model quotes the whole record but states only its first sentence
+        final String record = "Metformin 500mg is an active medication. Take Metformin twice daily with meals.";
+        stubExtractiveResult(record, "Metformin 500mg is an active medication.", record);
+
+        // Act
+        final AiAskResponse response = service.ask(caller(), request("metformin"));
+
+        // Assert
+        assertThat(response.deliveryStatus()).isEqualTo(DeliveryStatus.DELIVERED);
+        assertThat(response.answer().text()).isEqualTo("Metformin 500mg is an active medication.");
+    }
+
+    @Test
+    void ask_claimInsideEvidenceButNotACompleteSentence_failsClosed() throws Exception {
+        // A fragment that drops "did not" must not pass just because the evidence holds it
+        final String record = "The patient did not take metformin today. Metformin is taken twice daily.";
+        stubExtractiveResult(record, "take metformin today.", record);
+
+        assertThatThrownBy(() -> service.ask(caller(), request("metformin")))
+                .isInstanceOf(AskAiGroundingException.class);
+    }
+
+    @Test
+    void ask_claimNotContainedInEvidence_failsClosed() throws Exception {
+        final String record = "Metformin 500mg is an active medication. Take Metformin twice daily with meals.";
+        stubExtractiveResult(record, "Metformin 1000mg is an active medication.", record);
+
+        assertThatThrownBy(() -> service.ask(caller(), request("metformin")))
+                .isInstanceOf(AskAiGroundingException.class);
+    }
+
+    @Test
     void ask_oneCharacterEvidence_failsClosed() throws Exception {
         stubExtractiveResult("A sufficiently long source record", "A", "A");
 

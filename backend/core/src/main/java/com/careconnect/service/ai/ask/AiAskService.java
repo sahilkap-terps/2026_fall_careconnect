@@ -385,14 +385,14 @@ public class AiAskService {
             final CitationAssembler.CitationResult claimCitations =
                     citationAssembler.assemble(
                             claim.citationRefs(), context.citationRefMap());
-            if (claim.text() == null
-                    || claim.text().isBlank()
-                    || !hasExtractiveEvidence(
+            final String verifiedSpan = claim.text() == null || claim.text().isBlank()
+                    ? null
+                    : verifiedEvidenceSpan(
                             claim,
                             sanitizedQuery,
                             context.promptExcerptMap(),
-                            context.citationRefMap())
-                    || !claimCitations.grounded()) {
+                            context.citationRefMap());
+            if (verifiedSpan == null || !claimCitations.grounded()) {
                 // Skip only the unsupported claim, not the whole answer — a model that
                 // pads its response with one extraneous or imperfectly-cited claim
                 // shouldn't cause an otherwise correctly-grounded claim to be withheld.
@@ -406,7 +406,7 @@ public class AiAskService {
             verifiedEvidenceByRef.computeIfAbsent(ref, ignored -> new ArrayList<>())
                     .add(surroundingCitationContext(
                             context.promptExcerptMap().get(ref).text(),
-                            claim.evidenceByRef().get(ref)));
+                            verifiedSpan));
         }
         final String draftAnswer = String.join(" ", verifiedClaimTexts);
         final CitationAssembler.CitationResult citationResult =
@@ -764,24 +764,49 @@ public class AiAskService {
                 null);
     }
 
-    private static boolean hasExtractiveEvidence(
+    /**
+     * Returns the source span that backs {@code claim}, or null when the claim is not
+     * verbatim, complete sentences of its cited excerpt that answer the query.
+     *
+     * <p>The span is normally the evidence quote itself, which must equal the claim.
+     * Models also quote a whole multi-sentence record as evidence while stating only
+     * one of its sentences as the claim; that claim is accepted when it appears inside
+     * the evidence and is itself a complete span of the excerpt, which is the same
+     * guarantee: what the user reads is exact source sentences.
+     */
+    private static String verifiedEvidenceSpan(
             final GroundedAskLlmService.GroundedClaim claim,
             final String query,
             final Map<String, RetrievalContextAssembler.PromptExcerpt> promptExcerptMap,
             final Map<String, com.careconnect.service.ai.retrieval.RankedChunk> refMap) {
         if (claim.citationRefs().size() != 1 || claim.evidenceByRef().size() != 1) {
-            return false;
+            return null;
         }
         final String ref = claim.citationRefs().get(0);
         final RetrievalContextAssembler.PromptExcerpt excerpt = promptExcerptMap.get(ref);
         final String evidence = claim.evidenceByRef().get(ref);
-        return excerpt != null
-                && evidence != null
-                && evidence.codePointCount(0, evidence.length()) >= 20
-                && normalizedTextEquals(claim.text(), evidence)
-                && isCompleteSpan(excerpt, evidence)
+        if (excerpt == null || evidence == null) {
+            return null;
+        }
+        final String span;
+        if (normalizedTextEquals(claim.text(), evidence)) {
+            span = evidence;
+        } else if (normalizedContains(evidence, claim.text())) {
+            span = claim.text();
+        } else {
+            return null;
+        }
+        final boolean verified = span.codePointCount(0, span.length()) >= 20
+                && isCompleteSpan(excerpt, span)
                 && GroundingRelevancePolicy.isRelevant(
-                        query, evidence, excerpt.text(), refMap.get(ref));
+                        query, span, excerpt.text(), refMap.get(ref));
+        return verified ? span : null;
+    }
+
+    private static boolean normalizedContains(final String haystack, final String needle) {
+        final String canonicalNeedle = canonicalizeForMatch(collapseWhitespace(needle));
+        return !canonicalNeedle.isEmpty()
+                && canonicalizeForMatch(collapseWhitespace(haystack)).contains(canonicalNeedle);
     }
 
     private static final Pattern GROUNDING_WHITESPACE_RUN = Pattern.compile("\\s+");
