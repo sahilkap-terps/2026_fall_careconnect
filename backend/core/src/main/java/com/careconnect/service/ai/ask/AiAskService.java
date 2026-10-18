@@ -561,7 +561,7 @@ public class AiAskService {
                 1,
                 false,
                 null,
-                new AiAnswerBlock(verifiedAnswer, locale),
+                new AiAnswerBlock(withLeadIn(caller, verifiedAnswer), locale),
                 citations,
                 disclaimer(locale),
                 new AiEscalation(1, escalationLevel, false),
@@ -1059,6 +1059,16 @@ public class AiAskService {
 
     private static int elapsedMs(final long startedNanos) {
         return (int) Math.min(Integer.MAX_VALUE, (System.nanoTime() - startedNanos) / 1_000_000L);
+    }
+
+    // Answer sentences are verbatim record text and cannot be reworded without failing
+    // grounding, so the answer's person comes from this lead-in instead. Retrieval scope
+    // limits a patient to their own records, so the caller's role says whose they are.
+    private static final String ANSWER_LEAD_IN_SELF = "From your records:";
+    private static final String ANSWER_LEAD_IN_OTHER = "From the patient's records:";
+
+    private static String withLeadIn(final User caller, final String answer) {
+        return (caller.isPatient() ? ANSWER_LEAD_IN_SELF : ANSWER_LEAD_IN_OTHER) + " " + answer;
     }
 
     private static String nullToEmpty(final String value) {

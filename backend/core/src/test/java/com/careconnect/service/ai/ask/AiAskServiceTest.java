@@ -310,7 +310,24 @@ class AiAskServiceTest {
 
         // Assert
         assertThat(response.deliveryStatus()).isEqualTo(DeliveryStatus.DELIVERED);
-        assertThat(response.answer().text()).isEqualTo("Metformin 500mg is an active medication.");
+        assertThat(response.answer().text())
+                .isEqualTo("From your records: Metformin 500mg is an active medication.");
+    }
+
+    @Test
+    void ask_caregiverAnswer_speaksAboutThePatient() throws Exception {
+        // Arrange
+        final String record = "Metformin 500mg is an active medication.";
+        stubExtractiveResult(record, record, record);
+        final User caregiver = caller();
+        caregiver.setRole(Role.CAREGIVER);
+
+        // Act
+        final AiAskResponse response = service.ask(caregiver, request("metformin"));
+
+        // Assert
+        assertThat(response.answer().text())
+                .isEqualTo("From the patient's records: Metformin 500mg is an active medication.");
     }
 
     @Test
@@ -515,7 +532,7 @@ class AiAskServiceTest {
 
         final AiAskResponse response = service.ask(caller(), request("metformin"));
 
-        assertThat(response.answer().text()).isEqualTo(evidence);
+        assertThat(response.answer().text()).isEqualTo("From your records: " + evidence);
         assertThat(response.citations().get(0).excerpt()).isEqualTo(evidence);
     }
 
