@@ -19,7 +19,7 @@ final class GroundingRelevancePolicy {
 
     private static final Pattern WORD_BOUNDARY = Pattern.compile("[^\\p{L}\\p{N}]+");
     private static final Set<String> GRAMMAR_AND_STOP_WORDS = Set.of(
-            "about", "am", "are", "be", "been", "being", "can", "compare", "could",
+            "about", "all", "am", "any", "are", "be", "been", "being", "can", "compare", "could",
             "did", "do", "does", "from", "had", "has", "have", "how", "is", "may",
             "might", "must", "my", "please", "record", "records", "shall", "should",
             "show", "tell", "that", "the", "these", "this", "was", "were", "what",
@@ -32,7 +32,8 @@ final class GroundingRelevancePolicy {
             "medicine", "medicines", "meds", "most", "newest", "now", "patient",
             "pain", "recent", "recently", "status", "tablet", "tablets", "take", "takes",
             "taking", "today", "update", "updates", "task", "tasks", "schedule", "scheduled",
-            "reminder", "reminders", "due", "upcoming");
+            "reminder", "reminders", "due", "upcoming", "pending", "remaining", "outstanding",
+            "incomplete");
     private static final Map<String, Set<String>> CONCEPTS = Map.of(
             "medication", Set.of("medication", "medications", "medicine", "medicines",
                     "drug", "drugs", "dose", "dosage", "mg", "tablet", "metformin", "insulin"),
@@ -40,7 +41,7 @@ final class GroundingRelevancePolicy {
             "pain", Set.of("pain", "ache", "sore"),
             "appointment", Set.of("appointment", "appointments", "visit", "followup", "follow-up"),
             "task", Set.of("task", "tasks", "schedule", "scheduled", "reminder", "reminders",
-                    "due", "upcoming"));
+                    "due", "upcoming", "pending", "remaining", "outstanding", "incomplete"));
 
     private GroundingRelevancePolicy() {
     }

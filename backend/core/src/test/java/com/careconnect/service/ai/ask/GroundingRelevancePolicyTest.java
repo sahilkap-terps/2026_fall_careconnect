@@ -214,4 +214,23 @@ class GroundingRelevancePolicyTest {
                 "What dose of Lisinopril do I take?", evidence, evidence, weakChunk(evidence)))
                 .isTrue();
     }
+
+    @Test
+    void pendingTaskQuestionAcceptsPendingTaskEvidence() {
+        final String evidence = "Check Blood Sugar is pending and not yet completed.";
+        final String record = "Check Blood Sugar is a HEALTH_CHECK task scheduled for 2025-10-06 at 07:30. " + evidence;
+
+        assertThat(GroundingRelevancePolicy.isRelevant(
+                "Do I have any pending tasks?", evidence, record, weakChunk(record)))
+                .isTrue();
+    }
+
+    @Test
+    void anyIsFillerNotARequiredTerm() {
+        final String evidence = "Metformin 500mg is an active medication.";
+
+        assertThat(GroundingRelevancePolicy.isRelevant(
+                "Am I taking any medications?", evidence, evidence, weakChunk(evidence)))
+                .isTrue();
+    }
 }

@@ -55,7 +55,7 @@ final class ClinicalEntityExtractor {
             // Task wording: a question about "my tasks" or "my schedule" names the
             // record kind, not a specific clinical entity the quote must contain.
             "task", "tasks", "schedule", "scheduled", "reminder", "reminders", "due",
-            "upcoming");
+            "upcoming", "pending", "remaining", "outstanding", "incomplete");
 
     private ClinicalEntityExtractor() {
     }
