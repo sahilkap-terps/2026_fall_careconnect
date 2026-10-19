@@ -718,9 +718,6 @@ void main() {
   group('CheckoutLocationPage - user null error', () {
     testWidgets('shows error when user is null', (tester) async {
       _activeSpec = const _FakeSpec(200, '[]');
-      final provider = MockUserProvider(
-        mockUser: MockUser(id: 1, role: 'CAREGIVER', caregiverId: 1),
-      );
       // Create a provider that returns null user
       final nullUserProvider = _NullUserProvider();
 

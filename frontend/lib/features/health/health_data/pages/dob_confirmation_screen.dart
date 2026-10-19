@@ -101,15 +101,15 @@ class _DobConfirmationScreenState extends State<DobConfirmationScreen> {
           : _loadFailed
               ? _loadError()
               : _conflicts.isEmpty
-              ? _allDone()
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _intro(),
-                    const SizedBox(height: 16),
-                    ..._conflicts.map(_conflictCard),
-                  ],
-                ),
+                  ? _allDone()
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        _intro(),
+                        const SizedBox(height: 16),
+                        ..._conflicts.map(_conflictCard),
+                      ],
+                    ),
     );
   }
 
@@ -130,9 +130,10 @@ class _DobConfirmationScreenState extends State<DobConfirmationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_conflicts.length == 1
-                    ? '1 item needs your confirmation'
-                    : '${_conflicts.length} items need your confirmation',
+                Text(
+                    _conflicts.length == 1
+                        ? '1 item needs your confirmation'
+                        : '${_conflicts.length} items need your confirmation',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, color: _text)),
                 const SizedBox(height: 4),

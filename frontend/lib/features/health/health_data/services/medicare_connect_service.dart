@@ -41,7 +41,8 @@ class MedicareConnectService {
   static Future<bool> Function() isOffline = () async {
     try {
       final results = await Connectivity().checkConnectivity();
-      return results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+      return results.isEmpty ||
+          results.every((r) => r == ConnectivityResult.none);
     } catch (_) {
       return false; // Unknown: let the request decide.
     }
@@ -58,7 +59,8 @@ class MedicareConnectService {
     final ok = await launchUrl(
       url,
       // Web: same tab, so the backend's redirect lands back in the app.
-      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      mode:
+          kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
       webOnlyWindowName: kIsWeb ? '_self' : null,
     );
     if (!ok) throw const MedicareConnectException(MedicareConnectError.launch);
@@ -66,7 +68,8 @@ class MedicareConnectService {
 
   /// Sends a request; on 401 refreshes the token once and retries.
   static Future<http.Response> _send(
-      Future<http.Response> Function(Map<String, String> headers) request) async {
+      Future<http.Response> Function(Map<String, String> headers)
+          request) async {
     final first = await request(await ApiService.getAuthHeaders());
     if (first.statusCode != 401) return first;
     try {
@@ -116,7 +119,9 @@ class MedicareConnectService {
           await _send((h) => http.get(Uri.parse('$_base/status'), headers: h));
       if (resp.statusCode != 200) return null;
       final body = jsonDecode(resp.body);
-      return body is Map<String, dynamic> ? MedicareStatus.fromJson(body) : null;
+      return body is Map<String, dynamic>
+          ? MedicareStatus.fromJson(body)
+          : null;
     } catch (_) {
       return null;
     }
@@ -151,7 +156,14 @@ class MedicareStatus {
   }
 }
 
-enum MedicareConnectError { offline, network, signedOut, notPatient, server, launch }
+enum MedicareConnectError {
+  offline,
+  network,
+  signedOut,
+  notPatient,
+  server,
+  launch
+}
 
 class MedicareConnectException implements Exception {
   final MedicareConnectError error;

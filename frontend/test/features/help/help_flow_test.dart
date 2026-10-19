@@ -268,6 +268,10 @@ void main() {
       (tester) async {
     await _withoutNetwork((_) async {
       final router = await _pumpProductionRoutes(tester, stubLoginPage: true);
+      // develop's Connected Services card pushes Help below the first screen,
+      // so build it by scrolling before making it visible.
+      await tester.scrollUntilVisible(find.text('Help'), 300,
+          scrollable: find.byType(Scrollable).first);
       await tester.ensureVisible(find.text('Help'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Help'));
@@ -388,6 +392,10 @@ void main() {
       await _withoutNetwork((_) async {
         final catalog = HelpRepository.bundled();
         final router = await _pumpProductionRoutes(tester);
+        // develop's Connected Services card pushes Help below the first screen,
+        // so build it by scrolling before making it visible.
+        await tester.scrollUntilVisible(find.text('Help'), 300,
+            scrollable: find.byType(Scrollable).first);
         await tester.ensureVisible(find.text('Help'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Help'));

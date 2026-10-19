@@ -115,15 +115,13 @@ class HealthEventDetailsScreen extends StatelessWidget {
                           const SizedBox(height: 24),
                           Text(
                             'Where this came from',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                           ),
                           const SizedBox(height: 4),
                           Text(

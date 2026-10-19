@@ -1710,6 +1710,7 @@ void main() {
         } else {
           patientData = responseData;
         }
+      // ignore: dead_code
       } else {
         patientData = responseData;
       }
@@ -1726,6 +1727,7 @@ void main() {
         } else {
           patientData = responseData;
         }
+      // ignore: dead_code
       } else {
         patientData = responseData;
       }
@@ -1736,6 +1738,7 @@ void main() {
       final responseData = <String, dynamic>{'id': 1, 'firstName': 'PatientUser'};
       const isCaregiver = false;
       Map<String, dynamic> patientData;
+      // ignore: dead_code
       if (isCaregiver) {
         if (responseData.containsKey('patient')) {
           patientData = responseData['patient'] as Map<String, dynamic>;

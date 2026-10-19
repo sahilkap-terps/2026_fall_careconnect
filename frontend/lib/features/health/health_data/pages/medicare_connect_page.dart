@@ -39,16 +39,17 @@ class MedicareConnectPage extends StatelessWidget {
         elevation: 0,
         // The dark theme's title style is light grey; this bar stays white.
         titleTextStyle: const TextStyle(
-            color: Color(0xFF0F172A), fontSize: 20, fontWeight: FontWeight.w600),
+            color: Color(0xFF0F172A),
+            fontSize: 20,
+            fontWeight: FontWeight.w600),
         title: const Text('Connect Medicare'),
         leading: IconButton(
           tooltip: 'Back to Health Data',
           icon: const Icon(Icons.arrow_back),
           // After a full-page redirect there's nothing to pop, so go
           // somewhere sensible instead of leaving the patient stuck.
-          onPressed: () => context.canPop()
-              ? context.pop()
-              : context.go('/health-data'),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/health-data'),
         ),
       ),
       body: SafeArea(
