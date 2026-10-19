@@ -282,7 +282,7 @@ void main() {
   });
 
   tearDownAll(() {
-    HttpOverrides.global = null;
+    HttpOverrides.global = originalOverrides;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_secureStorageChannel, null);
   });
@@ -877,9 +877,6 @@ void main() {
 
       final hasAddress = find.text('Address').evaluate().isNotEmpty;
       final hasCity = find.text('City').evaluate().isNotEmpty;
-      final hasState = find.text('State/Province').evaluate().isNotEmpty;
-      final hasZip = find.text('ZIP/Postal Code').evaluate().isNotEmpty;
-      final hasCountry = find.text('Country').evaluate().isNotEmpty;
       final hasError = find.textContaining('Error').evaluate().isNotEmpty;
       expect((hasAddress && hasCity) || hasError, isTrue);
     });

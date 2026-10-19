@@ -108,29 +108,6 @@ Widget _wrap(Widget child) {
   );
 }
 
-/// Wraps widget in a tall scrollable-friendly environment to avoid off-screen issues.
-Widget _wrapSized(Widget child) {
-  final provider = UserProvider();
-  provider.setUser(UserSession(
-    id: 1,
-    email: 'test@example.com',
-    role: 'PATIENT',
-    token: 'tok',
-  ));
-  return ChangeNotifierProvider<UserProvider>.value(
-    value: provider,
-    child: MaterialApp(
-      locale: const Locale('en'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: MediaQuery(
-        data: const MediaQueryData(size: Size(800, 2000)),
-        child: child,
-      ),
-    ),
-  );
-}
-
 /// Pumps widget and waits for async operations to complete.
 Future<void> _pumpAndWait(WidgetTester tester) async {
   await tester.pump();
