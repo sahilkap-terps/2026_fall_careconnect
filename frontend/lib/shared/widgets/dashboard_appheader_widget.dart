@@ -123,7 +123,9 @@ class DashboardAppHeader extends StatelessWidget
                                   context.push('/medical-passport');
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(t.appheaderwidget_missingPtData)),
+                                    SnackBar(
+                                        content: Text(
+                                            t.appheaderwidget_missingPtData)),
                                   );
                                 }
                               },

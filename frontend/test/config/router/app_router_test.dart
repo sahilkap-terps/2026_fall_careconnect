@@ -109,14 +109,6 @@ int _countBuilderRoutes(List<RouteBase> routes) {
   return count;
 }
 
-/// Creates a test GoRouter with a single route for widget testing.
-GoRouter _createTestRouter(String path, GoRoute route) {
-  return GoRouter(
-    initialLocation: path,
-    routes: [route],
-  );
-}
-
 /// Creates a test GoRouter navigating to [initialLocation] using the full
 /// appRouter route list.  This lets builder closures run with real GoRouterState
 /// objects just like production.
@@ -1155,7 +1147,7 @@ void main() {
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
 
-      // No ?patientId= for the deep link: shown in the body and a SnackBar.
+      // The error is shown both in the body and via a SnackBar, so allow >= 1.
       expect(find.text('Invalid note ID or missing patient context'),
           findsWidgets);
     });

@@ -85,12 +85,10 @@ class _CaregiverShiftSchedulingScreenState
                           color: Colors.indigo,
                           size: 40,
                         ),
-
                         onTap: () async {
                           final TimeOfDay? time = await showTimePicker(
                             context: context,
-                            initialTime:
-                                selectedStartTime ??
+                            initialTime: selectedStartTime ??
                                 TimeOfDay(
                                   hour: 9,
                                   minute: 0,
@@ -133,12 +131,10 @@ class _CaregiverShiftSchedulingScreenState
                           color: Colors.indigo,
                           size: 40,
                         ),
-
                         onTap: () async {
                           final TimeOfDay? time = await showTimePicker(
                             context: context,
-                            initialTime:
-                                selectedEndTime ??
+                            initialTime: selectedEndTime ??
                                 TimeOfDay(
                                   hour: 17,
                                   minute: 0,
@@ -257,4 +253,3 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     );
   }
 }
-
