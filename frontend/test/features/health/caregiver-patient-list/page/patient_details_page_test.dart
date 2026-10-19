@@ -22,6 +22,8 @@ import 'package:care_connect_app/features/health/caregiver-patient-list/widgets/
 import 'package:care_connect_app/features/health/caregiver-patient-list/widgets/patient_header_card.dart';
 import 'package:care_connect_app/features/health/caregiver-patient-list/widgets/recent_symptom_card.dart'
     as sympt;
+import 'package:care_connect_app/features/health/symptom-tracker/widgets/symptom_card.dart';
+import 'package:care_connect_app/features/health/symptom-tracker/widgets/symptom_tab.dart';
 import 'package:care_connect_app/features/health/virtual_check_in/models/virtual_check_in.dart';
 import 'package:care_connect_app/features/health/virtual_check_in/presentation/widgets/virtual_check_in_history_card.dart';
 import 'package:care_connect_app/widgets/post_call_telemetry_summary_screen.dart';
@@ -993,6 +995,122 @@ void main() {
       expect(pain.currentPain, 8);
       expect(pain.dizziness, 4);
       expect(pain.fatigue, 10);
+    });
+
+    // DEF-MCR-36: TC-PDP-057 sets the pain card only from a Severe entry.
+    for (final (severity, label, pain, dizziness, fatigue) in [
+      (3, 'Moderate', 5, 3, 10),
+      (1, 'Mild', 2, 1, 4),
+    ]) {
+      testWidgets(
+          'TC-PDP-058: a $label latest symptom (backend $severity) sets the pain '
+          'card to $pain, dizziness $dizziness, fatigue $fatigue', (t) async {
+        final now = DateTime.now();
+        routes({
+          r'GET /symptoms/patient/42$': (_) => json({'data': [
+                {
+                  'id': 1,
+                  'symptomKey': 'Older',
+                  'severity': 5,
+                  'takenAt': now.subtract(const Duration(days: 1)).toIso8601String(),
+                },
+                {
+                  'id': 2,
+                  'symptomKey': 'Latest',
+                  'severity': severity,
+                  'takenAt': now.subtract(const Duration(hours: 1)).toIso8601String(),
+                },
+              ]}),
+        });
+        await pumpPage(t);
+        await openTab(t, 'Health');
+        final card = t.widget<PainLevelCard>(find.byType(PainLevelCard));
+        expect(card.location, 'Latest');
+        expect(card.currentPain, pain);
+        expect(card.dizziness, dizziness);
+        expect(card.fatigue, fatigue);
+      });
+    }
+
+    testWidgets(
+        'TC-PDP-059: a missing or 0 severity reads Mild, and a value above 5 '
+        'reads Severe', (t) async {
+      final now = DateTime.now();
+      final values = <Object?>[null, 0, 6, 10];
+      routes({
+        r'GET /symptoms/patient/42$': (_) => json({'data': [
+              for (var i = 0; i < values.length; i++)
+                {
+                  'id': i + 1,
+                  'symptomKey': 'Value ${values[i]}',
+                  'severity': values[i],
+                  'takenAt': now.subtract(Duration(hours: i + 1)).toIso8601String(),
+                },
+            ]}),
+      });
+      await pumpPage(t);
+      await openTab(t, 'Health');
+      final symptoms = t
+          .widget<sympt.RecentSymptomsSection>(
+              find.byType(sympt.RecentSymptomsSection))
+          .entries;
+      expect({for (final s in symptoms) s.name: s.severity}, {
+        'Value null': 'Mild',
+        'Value 0': 'Mild',
+        'Value 6': 'Severe',
+        'Value 10': 'Severe',
+      });
+    });
+
+    testWidgets(
+        'TC-PDP-060: for the same symptoms the caregiver page and the '
+        "patient's own symptom tab show the same severity", (t) async {
+      final now = DateTime.now();
+      final values = <Object?>[null, 0, 1, 2, 3, 4, 5, 6, 10];
+      final payload = {
+        'data': [
+          for (var i = 0; i < values.length; i++)
+            {
+              'id': i + 1,
+              'patientId': 42,
+              'symptomKey': 'Value ${values[i]}',
+              'severity': values[i],
+              'takenAt': now.subtract(Duration(hours: i + 1)).toIso8601String(),
+            },
+        ]
+      };
+      routes({r'GET /symptoms/patient/42$': (_) => json(payload)});
+
+      await pumpPage(t);
+      await openTab(t, 'Health');
+      final caregiverSees = {
+        for (final s in t
+            .widget<sympt.RecentSymptomsSection>(
+                find.byType(sympt.RecentSymptomsSection))
+            .entries)
+          s.name: s.severity.toLowerCase(),
+      };
+
+      await http.runWithClient(() async {
+        await t.pumpWidget(ChangeNotifierProvider<UserProvider>.value(
+          value: MockUserProvider(
+              mockUser: MockUser(id: 1, role: 'PATIENT', patientId: 42)),
+          child: const MaterialApp(
+              home: Scaffold(body: SymptomTab(patientId: '42'))),
+        ));
+        for (var i = 0; i < 20; i++) {
+          await t.pump(const Duration(milliseconds: 100));
+        }
+      }, () => _globalMockClient);
+      final patientSees = {
+        for (final c in t.widgetList<SymptomCard>(find.byType(SymptomCard)))
+          c.title: c.severity,
+      };
+
+      expect(patientSees, hasLength(values.length));
+      expect(caregiverSees, patientSees);
+      expect(caregiverSees['Value 5'], 'severe');
+      expect(caregiverSees['Value 3'], 'moderate');
     });
 
     // ── medications and known risks ──
