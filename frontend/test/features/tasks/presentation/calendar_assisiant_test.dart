@@ -29,7 +29,7 @@ import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
 import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 
-import '../../mock_user_provider.dart';
+import '../../../mock_user_provider.dart';
 
 /// Provider with null user to trigger the error branch in _loadTasksFromDb.
 class _NullUserProvider extends MockUserProvider {
