@@ -69,7 +69,9 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
     super.initState();
     _eventController = EventController<Task>();
     _selectedDay = DateTime.now();
-    _loadTasksFromDb();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTasksFromDb();
+    });
   }
 
   @override
