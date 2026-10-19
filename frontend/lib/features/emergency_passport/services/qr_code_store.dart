@@ -15,6 +15,26 @@ class StoredQrCode {
 
 /// Keeps the patient's current QR code in secure storage, one per patient.
 class QrCodeStore {
+  static const _prefix = 'cc12_emergency_qr_';
+
+  /// Removes every QR code kept on this device, for every patient. Called
+  /// when anyone signs out: the code is the only credential for a passport,
+  /// so it must not outlive the session on a shared device (DEF-EMG-11).
+  /// A picture the patient saved keeps working; the screen offers a new code
+  /// after the next sign-in. Never throws, so it can't block a sign-out.
+  static Future<void> clearAll({FlutterSecureStorage? storage}) async {
+    try {
+      final store = storage ??
+          const FlutterSecureStorage(webOptions: WebOptions.defaultOptions);
+      final all = await store.readAll();
+      for (final key in all.keys.where((k) => k.startsWith(_prefix))) {
+        await store.delete(key: key);
+      }
+    } catch (_) {
+      // Storage unavailable: nothing more can be done from here.
+    }
+  }
+
   QrCodeStore({FlutterSecureStorage? storage, Future<int?> Function()? patientId})
       : _storage = storage ??
             const FlutterSecureStorage(webOptions: WebOptions.defaultOptions),
@@ -25,7 +45,7 @@ class QrCodeStore {
 
   Future<String?> _key() async {
     final id = await _patientId();
-    return id == null ? null : 'cc12_emergency_qr_$id';
+    return id == null ? null : '$_prefix$id';
   }
 
   Future<StoredQrCode?> read() async {

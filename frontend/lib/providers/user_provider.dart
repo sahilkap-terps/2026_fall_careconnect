@@ -1,5 +1,6 @@
 import 'package:care_connect_app/features/dashboard/models/patient_model.dart';
 import 'package:flutter/material.dart';
+import '../features/emergency_passport/services/qr_code_store.dart';
 import '../services/auth_token_manager.dart';
 import '../services/auth_service.dart';
 import '../services/user_role_storage_service.dart';
@@ -285,7 +286,11 @@ class UserProvider extends ChangeNotifier {
 
       // Use new JWT authentication system to restore session
       final userSession = await AuthTokenManager.restoreSession();
-      if (userSession != null) {
+      if (userSession == null) {
+        // No valid session (none, expired or refused): the patient's emergency
+        // QR code must not outlive it (DEF-EMG-29).
+        await QrCodeStore.clearAll();
+      } else {
         _user = UserSession.fromJson(userSession);
 
         // Update last activity time
@@ -297,6 +302,7 @@ class UserProvider extends ChangeNotifier {
           // Session is stale, clear it and force re-login
           await AuthTokenManager.clearAuthData();
           await UserRoleStorageService.instance.clearUserData();
+          await QrCodeStore.clearAll(); // DEF-EMG-29
           _user = null;
         } else {
           // Sync user data with UserRoleStorageService
@@ -309,6 +315,7 @@ class UserProvider extends ChangeNotifier {
       // If there's an error, clear any stored auth data
       await AuthTokenManager.clearAuthData();
       await UserRoleStorageService.instance.clearUserData();
+      await QrCodeStore.clearAll(); // DEF-EMG-29
       _user = null;
     }
 
@@ -493,6 +500,7 @@ class UserProvider extends ChangeNotifier {
     _caregiverModel = null;
     await AuthTokenManager.clearAuthData();
     await UserRoleStorageService.instance.clearUserData();
+    await QrCodeStore.clearAll(); // DEF-EMG-11
     notifyListeners();
   }
 
