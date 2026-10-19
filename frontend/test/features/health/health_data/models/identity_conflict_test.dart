@@ -61,6 +61,29 @@ void main() {
     expect(IdentityCheck.of(IdentityCheckType.zip, 'ABCDE'), isNull);
   });
 
+  test('TC-EHR-REC-084: a phone number with an extension shows the last 4 '
+      'digits of the number, not of the extension (DEF-EHR-REC-07)', () {
+    // ehr_source_identity.phone is the FHIR ContactPoint value as sent, so it
+    // can carry an extension.
+    for (final raw in [
+      '410-555-0123 ext 45',
+      '410-555-0123 ext. 45',
+      '410-555-0123 extension 45',
+      '(410) 555-0123 x45',
+      '410.555.0123 X 4567',
+      '410-555-0123 #45',
+      'tel:+1-410-555-0123;ext=45',
+    ]) {
+      expect(IdentityCheck.phoneLast4(raw), '0123', reason: raw);
+    }
+    expect(IdentityCheck.phoneLast4('+1 410 555 0123'), '0123');
+    expect(
+        IdentityConflict.fromJson({
+          'identityCheck': {'type': 'PHONE', 'value': '410-555-0123 ext 45'}
+        }).identityCheck!.value,
+        '0123');
+  });
+
   test('TC-EHR-REC-080: a conflict built without a check has none', () {
     const c = IdentityConflict(
         id: 1,

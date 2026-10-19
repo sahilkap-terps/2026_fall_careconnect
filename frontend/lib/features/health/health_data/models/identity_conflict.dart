@@ -36,10 +36,18 @@ class IdentityCheck {
     return type == null ? null : of(type, json['value']?.toString());
   }
 
-  /// The last 4 digits, or null if there are fewer than 4. A full number is
-  /// cut down, so it is never kept or shown.
+  /// A trailing extension ("ext 45", "x45", "#45", ";ext=45"): the phone
+  /// column holds the FHIR value as sent, so it can have one (DEF-EHR-REC-07).
+  static final _extension = RegExp(
+      r'\s*(?:;\s*ext=|extension|ext\.?|x|#)\s*\d+\s*$',
+      caseSensitive: false);
+
+  /// The last 4 digits of the number (not of its extension), or null if there
+  /// are fewer than 4. A full number is cut down, so it is never kept or shown.
   static String? phoneLast4(String? phone) {
-    final digits = (phone ?? '').replaceAll(RegExp(r'\D'), '');
+    final digits = (phone ?? '')
+        .replaceFirst(_extension, '')
+        .replaceAll(RegExp(r'\D'), '');
     return digits.length < 4 ? null : digits.substring(digits.length - 4);
   }
 

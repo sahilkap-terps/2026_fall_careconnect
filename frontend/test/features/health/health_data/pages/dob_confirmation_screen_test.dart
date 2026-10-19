@@ -2,7 +2,10 @@
 // EhrConflictStatus PENDING / ACCEPTED / REJECTED, PENDING only for
 // date_of_birth (ck_ehr_identity_conflict_pending_dob).
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:care_connect_app/config/theme/app_theme.dart';
@@ -51,6 +54,28 @@ class _FakeConflicts extends IdentityConflictService {
     resolved.add('$conflictId:${accepted ? 'ACCEPTED' : 'REJECTED'}');
     if (throwOnResolve != null) throw throwOnResolve!;
     return resolveResult;
+  }
+}
+
+bool _isAncestor(RenderObject ancestor, RenderObject node) {
+  for (RenderObject? n = node; n != null; n = n.parent) {
+    if (identical(n, ancestor)) return true;
+  }
+  return false;
+}
+
+/// Holds every save open until [finish], to see the screen while it saves.
+class _SlowConflicts extends _FakeConflicts {
+  _SlowConflicts(super.pending);
+
+  final _done = Completer<bool>();
+
+  void finish(bool ok) => _done.complete(ok);
+
+  @override
+  Future<bool> resolve(int conflictId, {required bool accepted}) {
+    resolved.add('$conflictId:${accepted ? 'ACCEPTED' : 'REJECTED'}');
+    return _done.future;
   }
 }
 
@@ -365,4 +390,191 @@ void main() {
       });
     }
   }
+
+  // PR #378 review (Testing Lead): the save in flight, errors on both paths,
+  // 200% text, tap targets and what reaches the screen.
+
+  testWidgets(
+      'TC-EHR-REC-085: while "Not mine" is saving, a spinner '
+      'replaces both answers, so it can only be sent once', (t) async {
+    final s = _SlowConflicts([_dob(11, check: phone)]);
+    await _pump(t, s);
+    await _tap(t, find.text('Not mine'));
+    await t.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Not mine'), findsNothing);
+    expect(find.text('Yes, it’s mine'), findsNothing);
+    expect(find.text('Use new date'), findsNothing);
+    s.finish(true);
+    await t.pumpAndSettle();
+    expect(s.resolved, ['11:REJECTED']);
+    expect(find.text('Nothing was changed. This record may not be yours.'),
+        findsOneWidget);
+  });
+
+  testWidgets(
+      'TC-EHR-REC-086: when "Not mine" fails with an error, the '
+      'question and both answers come back and the patient is told', (t) async {
+    final s = _FakeConflicts([_dob(12, check: phone)],
+        throwOnResolve: Exception('offline'));
+    await _pump(t, s);
+    await _tap(t, find.text('Not mine'));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    expect(s.resolved, ['12:REJECTED']);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.textContaining('phone number you use'), findsOneWidget);
+    expect(find.text('Not mine'), findsOneWidget);
+    expect(find.text('Yes, it’s mine'), findsOneWidget);
+    expect(find.textContaining('may not be yours'), findsNothing);
+    expect(find.textContaining(RegExp('couldn.t save')), findsOneWidget);
+  });
+
+  testWidgets(
+      'TC-EHR-REC-087: after "Yes, it\'s mine", a date choice that '
+      'is not saved keeps the card on the date choice, without asking again',
+      (t) async {
+    final s = _FakeConflicts([_dob(13, check: phone)], resolveResult: false);
+    await _pump(t, s);
+    await _tap(t, find.text('Yes, it’s mine'));
+    await t.pumpAndSettle();
+    await _tap(t, find.text('Use new date'));
+    await t.pumpAndSettle();
+    expect(s.resolved, ['13:ACCEPTED']);
+    expect(find.text('Which date of birth is correct?'), findsOneWidget);
+    expect(find.text('Use new date'), findsOneWidget);
+    expect(find.text('Keep current'), findsOneWidget);
+    expect(find.textContaining('phone number you use'), findsNothing);
+    expect(find.textContaining(RegExp('couldn.t save')), findsOneWidget);
+  });
+
+  testWidgets(
+      'TC-EHR-REC-088: at 200% text on a 320 x 640 phone, each question, its '
+      'answers and the no-check warning lay out with no text cut off '
+      '(WCAG 2.1 SC 1.4.4, 1.4.10)', (t) async {
+    t.view.physicalSize = const Size(320, 640);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    final problems = <String>[];
+    for (final c in {
+      'phone question': phone,
+      'email question': email,
+      'ZIP question': zip,
+      'no-check warning': null,
+    }.entries) {
+      // The Current / New value rows above the question already overflow at
+      // 200% (inherited from PR #263, outside PR #378), so overflows are
+      // collected and only those outside those rows count here.
+      final errors = <FlutterErrorDetails>[];
+      final previous = FlutterError.onError;
+      FlutterError.onError = errors.add;
+      final Set<RenderObject> valueRows;
+      try {
+        await t.pumpWidget(MaterialApp(
+          key: UniqueKey(),
+          theme: AppTheme.lightTheme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: DobConfirmationScreen(
+              service: _FakeConflicts([_dob(1, check: c.value)])),
+        ));
+        await t.pumpAndSettle();
+        valueRows = {
+          for (final label in ['Current', 'New'])
+            t.renderObject(find
+                .ancestor(
+                  of: find.text(label, skipOffstage: false),
+                  matching: find.byType(Row, skipOffstage: false))
+                .first),
+        };
+        void measure(String where) {
+          // A paragraph squeezed into a box shorter than its text is cut off
+          // with no layout error, so compare each one's needed height with its
+          // size. The value rows' own texts are left out with their rows.
+          for (final el in find.byType(RichText).evaluate()) {
+            final para = el.renderObject! as RenderParagraph;
+            if (valueRows.any((row) => _isAncestor(row, para))) continue;
+            final needed = para.getMaxIntrinsicHeight(para.size.width);
+            if (needed > para.size.height + 0.5) {
+              problems.add('${c.key} ($where): "${para.text.toPlainText()}" '
+                  'needs ${needed.toStringAsFixed(0)} px, has '
+                  '${para.size.height.toStringAsFixed(0)} px');
+            }
+          }
+        }
+
+        measure('top');
+        await t.drag(find.byType(ListView), const Offset(0, -4000));
+        await t.pumpAndSettle();
+        measure('bottom');
+      } finally {
+        FlutterError.onError = previous;
+      }
+      for (final d in errors) {
+        final flex = (d.informationCollector?.call() ?? const [])
+            .map((n) => n.value)
+            .whereType<RenderFlex>()
+            .firstOrNull;
+        if (flex == null || !valueRows.contains(flex)) {
+          problems.add('${c.key}: ${d.exceptionAsString()}');
+        }
+      }
+      // The answers must be on screen here, so a missed scroll can't pass.
+      expect(
+          find
+              .text(c.value == null ? 'Use new date' : 'Yes, it’s mine')
+              .hitTestable(),
+          findsOneWidget,
+          reason: c.key);
+    }
+    expect(problems, isEmpty, reason: problems.join('\n'));
+  });
+
+  testWidgets(
+      'TC-EHR-REC-089: "Not mine" and "Yes, it\'s mine" are '
+      'labelled buttons at least 48 x 48 (WCAG 2.1 SC 2.5.5, 4.1.2)',
+      (t) async {
+    final handle = t.ensureSemantics();
+    await _pump(t, _FakeConflicts([_dob(1, check: phone)]));
+    await t.ensureVisible(find.text('Yes, it’s mine'));
+    await t.pumpAndSettle();
+    for (final label in ['Not mine', 'Yes, it’s mine']) {
+      expect(t.getSemantics(find.text(label)),
+          isSemantics(label: label, isButton: true, hasTapAction: true),
+          reason: label);
+    }
+    await expectLater(t, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(t, meetsGuideline(labeledTapTargetGuideline));
+    handle.dispose();
+  });
+
+  testWidgets(
+      'TC-EHR-REC-090: a full phone, email or ZIP+4 from the backend '
+      'never reaches the screen; only its hidden form does', (t) async {
+    for (final (type, full, shown, hidden) in [
+      ('PHONE', '+1 (410) 555-0123', 'ending in 0123.', '555'),
+      ('EMAIL', 'jane.doe@gmail.com', 'the email j•••@gmail.com.', 'jane'),
+      ('ZIP', '21201-1234', 'the ZIP code 21201.', '1234'),
+    ]) {
+      final c = IdentityConflict.fromJson({
+        'id': 14,
+        'fieldName': 'date_of_birth',
+        'canonicalValueBefore': '1980-05-14',
+        'incomingValue': '1985-05-14',
+        'incomingSourceLabel': 'Cerner',
+        'status': 'PENDING',
+        'identityCheck': {'type': type, 'value': full},
+      });
+      await t.pumpWidget(MaterialApp(
+          key: UniqueKey(),
+          home: DobConfirmationScreen(service: _FakeConflicts([c]))));
+      await t.pumpAndSettle();
+      expect(find.textContaining(shown), findsOneWidget, reason: type);
+      expect(find.textContaining(full), findsNothing, reason: type);
+      expect(find.textContaining(hidden), findsNothing, reason: type);
+    }
+  });
 }
