@@ -1,8 +1,9 @@
 // CC-12 Increment 2: keeping the QR code on the device. Test Plan §3.27:
 // TC-EMG-272…275 and 462, 463 (the pull request's), 299…301 (Testing Lead:
 // the signed-in patient's id, what is stored, and sign-out), 484, 485 (#365's
-// clearAll), 486…488 (Testing Lead: sign-out when the server fails, and the
-// DEF-EMG-29 target: a session that ends without a sign-out).
+// clearAll), 486…488 (Testing Lead: sign-out when the server fails, and
+// DEF-EMG-29: a session that ends without a sign-out), 492, 493 (Testing Lead:
+// a session that is still valid keeps the code).
 
 import 'dart:convert';
 
@@ -23,15 +24,21 @@ void main() {
   const channel =
       MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
   final memory = <String, String>{};
+  // Keys whose writes fail, as storage that is unavailable would (TC-EMG-488).
+  final failWrites = <String>{};
 
   setUp(() {
     memory.clear();
+    failWrites.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
       final args = (call.arguments as Map?) ?? const {};
       final key = args['key'] as String?;
       switch (call.method) {
         case 'write':
+          if (failWrites.contains(key)) {
+            throw PlatformException(code: 'unavailable');
+          }
           memory[key!] = args['value'] as String;
           return null;
         case 'read':
@@ -207,6 +214,42 @@ void main() {
     memory['jwt_token'] = 'synthetic.jwt.value';
   }
 
+  // A session that is still valid: its expiry an hour away, and the user it
+  // belongs to (synthetic).
+  void keepValidSession() {
+    memory['token_expiry'] =
+        '${DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600}';
+    memory['user_session'] = jsonEncode({
+      'id': 70,
+      'email': 'patient70@example.test',
+      'role': 'PATIENT',
+      'token': 'synthetic.jwt.value',
+      'patientId': 7,
+      'name': 'Synthetic Patient',
+    });
+  }
+
+  // UserProvider checks the connection when it is made, and listens for
+  // changes (see TC-EMG-301).
+  void fakeConnectivity() {
+    const connectivity =
+        MethodChannel('dev.fluttercommunity.plus/connectivity');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(connectivity,
+            (call) async => call.method == 'check' ? ['wifi'] : null);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(connectivity, null));
+    const connectivityStatus =
+        EventChannel('dev.fluttercommunity.plus/connectivity_status');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(connectivityStatus,
+            MockStreamHandler.inline(onListen: (_, __) {}));
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockStreamHandler(connectivityStatus, null));
+  }
+
   test(
       'TC-EMG-486: signing out while the server is unreachable still removes '
       'the kept QR code (the error still reaches the caller)', () async {
@@ -254,28 +297,37 @@ void main() {
               () => MockClient((_) async => http.Response('{}', 401))),
           isNull);
     },
+    'a token refresh fails with an error (AuthService.forceRefreshToken)':
+        () async {
+      memory['token_expiry'] =
+          '${DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600}';
+      expect(
+          await http.runWithClient(
+              AuthService.forceRefreshToken,
+              () => MockClient(
+                  (_) async => throw http.ClientException('unreachable'))),
+          isNull);
+    },
+    'the app starts with a damaged stored session '
+        '(UserProvider.initializeUser)': () async {
+      // The token is valid but the stored user can't be read back.
+      keepValidSession();
+      memory['user_session'] = '{}';
+      await UserProvider().initializeUser();
+    },
+    'the app starts after an hour without activity and the new activity '
+        'time cannot be stored (UserProvider.initializeUser)': () async {
+      keepValidSession();
+      memory['last_activity'] =
+          '${DateTime.now().millisecondsSinceEpoch ~/ 1000 - 7200}';
+      failWrites.add('last_activity');
+      await UserProvider().initializeUser();
+    },
   }.entries) {
     test(
         'TC-EMG-488: when ${sessionEnd.key}, the session ends and the kept QR '
         'code goes with it (DEF-EMG-29)', () async {
-      // UserProvider checks the connection when it is made, and listens for
-      // changes (see TC-EMG-301).
-      const connectivity =
-          MethodChannel('dev.fluttercommunity.plus/connectivity');
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(connectivity,
-              (call) async => call.method == 'check' ? ['wifi'] : null);
-      addTearDown(() => TestDefaultBinaryMessengerBinding
-          .instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(connectivity, null));
-      const connectivityStatus =
-          EventChannel('dev.fluttercommunity.plus/connectivity_status');
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockStreamHandler(connectivityStatus,
-              MockStreamHandler.inline(onListen: (_, __) {}));
-      addTearDown(() => TestDefaultBinaryMessengerBinding
-          .instance.defaultBinaryMessenger
-          .setMockStreamHandler(connectivityStatus, null));
+      fakeConnectivity();
       await keepSevensCode();
 
       await sessionEnd.value();
@@ -286,6 +338,42 @@ void main() {
           isEmpty);
     });
   }
+
+  test(
+      'TC-EMG-492: the app starting with a valid session keeps the session '
+      'and the kept QR code', () async {
+    fakeConnectivity();
+    await keepSevensCode();
+    keepValidSession();
+
+    await http.runWithClient(UserProvider().initializeUser,
+        () => MockClient((_) async => http.Response('{}', 404)));
+
+    expect(memory['jwt_token'], 'synthetic.jwt.value');
+    expect(memory.keys, contains('cc12_emergency_qr_7'));
+  });
+
+  test('TC-EMG-493: a token refresh that succeeds keeps the kept QR code',
+      () async {
+    await keepSevensCode();
+    keepValidSession();
+
+    final refreshed = await http.runWithClient(
+        AuthService.forceRefreshToken,
+        () => MockClient((_) async => http.Response(
+            jsonEncode({
+              'id': 70,
+              'email': 'patient70@example.test',
+              'role': 'PATIENT',
+              'token': 'synthetic.jwt.refreshed',
+              'patientId': 7,
+            }),
+            200)));
+
+    expect(refreshed, isNotNull);
+    expect(memory['jwt_token'], 'synthetic.jwt.refreshed');
+    expect(memory.keys, contains('cc12_emergency_qr_7'));
+  });
 
   test('TC-EMG-462: clear forgets only this patient\'s code', () async {
     final a = QrCodeStore(patientId: () async => 1);
