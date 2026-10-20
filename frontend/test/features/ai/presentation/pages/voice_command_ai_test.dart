@@ -3485,3 +3485,4 @@ testWidgets('WBS 5.2.73 opens informed delivery through voice command',
       await _tearDown(tester);
     });
   });
+}
