@@ -633,8 +633,12 @@ public class SchemaPatchRunner implements CommandLineRunner {
             log.info("Skipping PostgreSQL ehr_resource jsonb patch for non-PostgreSQL datasource");
             return;
         }
+        // Label is traceability-only (patches are not ledger-keyed). Uses a fresh, unused version
+        // string rather than V2610041200, which belongs to the unrelated crosswalk pending-link
+        // change — the Flyway V2610041200__ehr_crosswalk_pending_link.sql migration (#296) and its
+        // ddl-auto counterpart patch V2610041200a below.
         applyRequiredPatch(
-                "V2610041200 - ehr_resource.payload_json is jsonb, payloads preserved (was @Lob oid)",
+                "V2610151300 - ehr_resource.payload_json is jsonb, payloads preserved (was @Lob oid)",
                 "DO $$ DECLARE r RECORD; converted INT := 0; skipped INT := 0; BEGIN "
                         + "IF EXISTS (SELECT 1 FROM information_schema.columns "
                         + "WHERE table_schema = current_schema() AND table_name = 'ehr_resource' "
