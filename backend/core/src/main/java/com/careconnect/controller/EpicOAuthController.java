@@ -195,7 +195,7 @@ public class EpicOAuthController {
      * is enabled (dev/sandbox); production returns just {@code error=sync_failed} plus the correlation
      * id, which the caller can quote to an operator who reads the detail from the log.
      */
-    @GetMapping("/resync")
+    @PostMapping("/resync")
     public ResponseEntity<Map<String, Object>> resync(
             @RequestParam(name = "mode", defaultValue = "auto") String mode) {
         User me = securityUtil.resolveCurrentUser();

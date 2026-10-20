@@ -78,7 +78,7 @@ public class EpicSyncService {
      * a {@code category} (or {@code code}) — we sweep the standard US Core categories. Types absent
      * here are fetched patient-only (a single empty set).
      *
-     * <p>NOTE: if a type still 400s in your Epic environment, {@code GET /api/epic/resync} returns
+     * <p>NOTE: if a type still 400s in your Epic environment, {@code POST /api/epic/resync} returns
      * Epic's exact {@code responseBody} naming the missing parameter — add the fix here.
      */
     private static final Map<String, List<Map<String, String>>> REQUIRED_SEARCH_PARAMS = Map.of(
