@@ -1129,7 +1129,7 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
 
       // --- SOS DIRECT HANDLER ---
         if (match.intent == 'sos') {
-          final confirmed = await _showSosConfirmationDialog(contactName: '[contact name]');
+          final confirmed = await _showSosConfirmationDialog();
           unawaited(_stopListeningBackend());
 
           if (!mounted) return;
@@ -1140,6 +1140,9 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
             }
 
             _setStatus(
+              //change to emergency alert success message after implimenting full 
+              //emergency alert functionality. currently just shows a message to call 911 instead of sending an alert
+              //need to have it send message to associated emergency contacts
               status: _VoiceStatus.success,
               detail: 'Alert not currently implemented; please call 911 instead.',
             );
@@ -1488,8 +1491,9 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
     }
   }
 
-  
-  Future<bool?> _showSosConfirmationDialog({String contactName = '[contact name]'}) async {
+  //add further functionality to allow for sos dialog to show contact associated with 
+  //the user and allow for sending an alert to them. Currently just shows a message to call 911 instead of sending an alert
+  Future<bool?> _showSosConfirmationDialog() async {
     final localeTag = Localizations.localeOf(context).toLanguageTag();
 
     return showDialog<bool>(
@@ -1553,7 +1557,10 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
 
         return AlertDialog(
           title: const Text('Emergency Alert'),
-          content: Text('Send emergency alert to $contactName?'),
+          content: Text(
+            'Emergency dispatch is currently in development.\n\n'
+            'If this is an immediate emergency, please dial 911.',
+          ),
           actions: [
             TextButton(
               onPressed: () {

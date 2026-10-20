@@ -175,8 +175,12 @@ final _defaultIntents = [
     riskLevel: IntentRiskLevel.high,
     requiresConfirmation: true,
     handler: (Map<String, String> entities) async {
-      // TODO: Replace with real emergency dispatch:
-      // "Emergency alert sent to ${entities['contact'] ?? '[contact name]'}"
+      // TODO: Replace with real emergency dispatch: 
+      // reveal contact associated with account that triggered the SOS, send alert to them.
+      //for now, show a debug message in the console.
+      if (kDebugMode) {
+        debugPrint('SOS emergency command triggered');
+      }
     },
   ),
 
