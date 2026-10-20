@@ -77,7 +77,7 @@ public class EpicIdentitySync {
         for (final ReconciliationOutcome outcome : outcomes) {
             if (outcome != null && outcome.decision() == ReconciliationOutcome.Decision.PENDING_PATIENT_CONFIRMATION) {
                 log.info("Epic identity: date_of_birth PENDING patient confirmation for patient {} "
-                        + "(resolve via POST /api/epic/identity/date-of-birth)", patientId);
+                        + "(resolve via POST /v1/api/ehr/identity-conflicts/{id}/resolve)", patientId);
             }
         }
     }
