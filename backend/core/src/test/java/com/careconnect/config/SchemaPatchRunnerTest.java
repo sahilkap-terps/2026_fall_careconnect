@@ -298,7 +298,7 @@ class SchemaPatchRunnerTest {
         for (final String method : new String[]{
                 "applyEhrResourceJsonbPatch",
                 "applyEhrResourcePatientIdPatch",
-                "applyEhrTypedProjectionDedupPatches"}) {
+                "applyEhrTypedProjectionUniqueIndexes"}) {
             final java.lang.reflect.Method m =
                     SchemaPatchRunner.class.getDeclaredMethod(method);
             m.setAccessible(true);
@@ -326,7 +326,7 @@ class SchemaPatchRunnerTest {
         for (final String method : new String[]{
                 "applyEhrResourceJsonbPatch",
                 "applyEhrResourcePatientIdPatch",
-                "applyEhrTypedProjectionDedupPatches"}) {
+                "applyEhrTypedProjectionUniqueIndexes"}) {
             final java.lang.reflect.Method m =
                     SchemaPatchRunner.class.getDeclaredMethod(method);
             m.setAccessible(true);
