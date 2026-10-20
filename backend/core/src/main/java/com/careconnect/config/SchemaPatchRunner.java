@@ -721,10 +721,25 @@ public class SchemaPatchRunner implements CommandLineRunner {
             log.info("Skipping PostgreSQL ehr typed-projection dedup patches for non-PostgreSQL datasource");
             return;
         }
+        // I3d: each CREATE UNIQUE INDEX is preceded by a guarded de-dup so the server still starts on
+        // a dev database built from an earlier Step-6 branch that may hold duplicate rows from before
+        // the constraint existed. The de-dup runs only when the table exists and the index is still
+        // absent, so it is a no-op on fresh databases (ddl-auto creates the table with the
+        // constraint) and on any database already carrying the index.
+        applyRequiredPatch(
+                "V2610191200a - dedup ehr_medication_record before unique index (I3d)",
+                dedupBeforeUniqueIndex("ehr_medication_record", "external_medication_id",
+                        "uq_ehr_medication_record_source_external")
+        );
         applyRequiredPatch(
                 "V2610151200a - unique ehr_medication_record(patient_id, source_id, external_medication_id)",
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_ehr_medication_record_source_external "
                         + "ON ehr_medication_record (patient_id, source_id, external_medication_id)"
+        );
+        applyRequiredPatch(
+                "V2610191200b - dedup ehr_condition_record before unique index (I3d)",
+                dedupBeforeUniqueIndex("ehr_condition_record", "external_condition_id",
+                        "uq_ehr_condition_record_source_external")
         );
         applyRequiredPatch(
                 "V2610151200b - unique ehr_condition_record(patient_id, source_id, external_condition_id)",
@@ -732,10 +747,40 @@ public class SchemaPatchRunner implements CommandLineRunner {
                         + "ON ehr_condition_record (patient_id, source_id, external_condition_id)"
         );
         applyRequiredPatch(
+                "V2610191200c - dedup ehr_observation_record before unique index (I3d)",
+                dedupBeforeUniqueIndex("ehr_observation_record", "external_observation_id",
+                        "uq_ehr_observation_record_source_external")
+        );
+        applyRequiredPatch(
                 "V2610151200c - unique ehr_observation_record(patient_id, source_id, external_observation_id)",
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_ehr_observation_record_source_external "
                         + "ON ehr_observation_record (patient_id, source_id, external_observation_id)"
         );
+    }
+
+    /**
+     * I3d: delete duplicate {@code (patient_id, source_id, <keyColumn>)} rows so the following
+     * required {@code CREATE UNIQUE INDEX} succeeds on a dev database built from an earlier Step-6
+     * branch (before the constraint existed). Guarded to run only when the table exists and the
+     * index is still absent — a no-op on a fresh database (ddl-auto creates the table with the
+     * constraint) and on any database already carrying the index. NULL keys never collide in a
+     * unique index and the {@code =} self-join excludes them, so NULL-keyed rows are left untouched;
+     * the lowest-{@code ctid} row of each duplicate group is kept.
+     */
+    private static String dedupBeforeUniqueIndex(
+            final String table, final String keyColumn, final String indexName) {
+        requireSafeIdentifier(table);
+        requireSafeIdentifier(keyColumn);
+        requireSafeIdentifier(indexName);
+        return "DO $$ BEGIN "
+                + "IF EXISTS (SELECT 1 FROM information_schema.tables "
+                + "WHERE table_schema = current_schema() AND table_name = '" + table + "') "
+                + "AND NOT EXISTS (SELECT 1 FROM pg_indexes "
+                + "WHERE schemaname = current_schema() AND indexname = '" + indexName + "') THEN "
+                + "DELETE FROM " + table + " a USING " + table + " b "
+                + "WHERE a.patient_id = b.patient_id AND a.source_id = b.source_id "
+                + "AND a." + keyColumn + " = b." + keyColumn + " AND a.ctid > b.ctid; "
+                + "END IF; END $$;";
     }
 
     /**
