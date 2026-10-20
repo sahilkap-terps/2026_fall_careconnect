@@ -74,7 +74,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import static com.careconnect.service.ehr.EhrService.ctxR4;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,7 +105,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * Test IDs TC-MCR-CACHE-026…032 (Testing Lead, 2026-10-06, PR #272 review), TC-MCR-AUTHZ-038…040
  * (PR #310 author's, named by the Testing Lead, 2026-10-11), TC-MCR-AUTHZ-043…046 (Testing Lead,
  * 2026-10-11), TC-MCR-AUTHZ-047…068 (PR #326 author's, named by the Testing Lead, 2026-10-13) and
- * TC-MCR-AUTHZ-069…074 (Testing Lead, 2026-10-13) are permanent. Never
+ * TC-MCR-AUTHZ-069…074 (Testing Lead, 2026-10-13), TC-MCR-CACHE-057 (PR #382 author's, 2026-10-20) and
+ * TC-MCR-CACHE-060…063 (Testing Lead, 2026-10-20, PR #382 review) are permanent. Never
  * renumber, never reuse.
  */
 @DataJpaTest
@@ -510,6 +513,129 @@ class MedicareReadIntegrationTest {
         assertThat(auditEvents.findFirstByPatientIdAndSourceAndResourceTypeAndOutcomeInOrderByEventTimeDesc(
                 patient1.getId(), "MEDICARE", "Coverage", List.of(EhrRetrievalOutcome.SUCCESS, EhrRetrievalOutcome.EMPTY)))
                 .get().satisfies(e -> assertThat(e.getDetails()).doesNotContainKey("cached"));
+    }
+
+    private List<EhrAuditEvent> cachedReadAudits(final Patient p) {
+        return auditEvents.findAll().stream()
+                .filter(e -> e.getPatientId().equals(p.getId()) && e.getSource().equals("MEDICARE_CACHE"))
+                .toList();
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-060: a caregiver's cached reads of Patient, Coverage and visits each write one MEDICARE_CACHE row naming the caregiver, with the stored count and only cached=true in details (DEF-MCR-37, NFR-SEC-03)")
+    void caregiversCachedReadsOfEveryTypeAreAudited() throws Exception {
+        link(patient1, "enc");
+        final User cg = caregiver("cg-every-type@example.test");
+        caregiverLink(cg, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        medicareView(patient1, cg);
+        blueButtonServesFixtures();
+        signIn(cg);
+
+        for (int i = 0; i < 2; i++) {
+            assertThat(controller.fetchIdentity("medicare", patient1.getId()).getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(controller.fetchCoverage("medicare", patient1.getId()).getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(controller.fetchVisits("medicare", patient1.getId()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        }
+
+        verify(medicare, times(1)).requestMedicarePatientInfo(anyString());
+        verify(medicare, times(1)).requestMedicareCoverageInfo(anyString());
+        verify(medicare, times(1)).requestMedicareEOBInfo(anyString());
+        for (final String type : List.of("Patient", "Coverage", "ExplanationOfBenefit")) {
+            final int stored = rawPayloads.findByPatientIdAndSourceIdAndResourceTypeOrderByRetrievedAtDescIdDesc(
+                    patient1.getId(), medicareId, type).size();
+            assertThat(audits(patient1, type)).as(type).hasSize(2);
+            assertThat(audits(patient1, type)).as(type).filteredOn(e -> e.getSource().equals("MEDICARE_CACHE"))
+                    .singleElement()
+                    .satisfies(e -> {
+                        assertThat(e.getActorUserId()).isEqualTo(cg.getId());
+                        assertThat(e.getOutcome()).isEqualTo(EhrRetrievalOutcome.SUCCESS);
+                        assertThat(e.getRecordCount()).isEqualTo(stored);
+                        assertThat(e.getDetails()).as("counts only: no token, no clinical content")
+                                .isEqualTo(Map.of("cached", true));
+                    });
+        }
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-061: on the real audit query, a newer MEDICARE_CACHE event does not make a day-old Blue Button retrieval fresh: the next read asks Blue Button for changes (DEF-MCR-37)")
+    void cachedReadEventsDoNotKeepTheCacheFreshOnTheRealQuery() throws Exception {
+        link(patient1, "enc");
+        final User cg = caregiver("cg-freshness@example.test");
+        caregiverLink(cg, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        medicareView(patient1, cg);
+        blueButtonServesFixtures();
+        when(medicare.requestMedicareCoverageInfo(anyString(), any(Date.class))).thenReturn(List.of());
+        signIn(patient1);
+        controller.fetchCoverage("medicare", null);
+
+        // The Blue Button retrieval is 25 hours old; a caregiver's cached read was audited an hour ago.
+        final OffsetDateTime now = OffsetDateTime.now();
+        final EhrAuditEvent retrieval = audits(patient1, "Coverage").get(0);
+        retrieval.setEventTime(now.minusHours(25));
+        auditEvents.saveAndFlush(retrieval);
+        auditEvents.saveAndFlush(EhrAuditEvent.builder().patientId(patient1.getId()).source("MEDICARE_CACHE")
+                .resourceType("Coverage").outcome(EhrRetrievalOutcome.SUCCESS).actorUserId(cg.getId())
+                .recordCount(3).details(Map.of("cached", true)).eventTime(now.minusHours(1)).build());
+
+        signIn(cg);
+        assertThat(controller.fetchCoverage("medicare", patient1.getId()).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        verify(medicare).requestMedicareCoverageInfo(anyString(), any(Date.class));
+        assertThat(audits(patient1, "Coverage")).filteredOn(e -> e.getSource().equals("MEDICARE"))
+                .as("the refresh is a new Blue Button event, by the caregiver")
+                .hasSize(2)
+                .anySatisfy(e -> {
+                    assertThat(e.getActorUserId()).isEqualTo(cg.getId());
+                    assertThat(e.getOutcome()).isEqualTo(EhrRetrievalOutcome.EMPTY);
+                });
+        assertThat(cachedReadAudits(patient1)).as("a refresh is not a cached read").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-062: with the patient's cache warm, a caregiver with a revoked grant, a caregiver with no link, another patient and an administrator each get the 404, and no MEDICARE_CACHE row is written (DEF-MCR-37, FR-MCR-17)")
+    void refusedReadsOfAWarmCacheWriteNoCachedReadEvent() {
+        link(patient1, "enc");
+        blueButtonServesFixtures();
+        signIn(patient1);
+        controller.fetchCoverage("medicare", null);
+        controller.fetchVisits("medicare", null);
+
+        final User revoked = caregiver("cg-warm-revoked@example.test");
+        caregiverLink(revoked, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        grant(patient1, revoked, MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, null, Instant.now().minusSeconds(60));
+        final User unlinked = caregiver("cg-warm-unlinked@example.test");
+        medicareView(patient1, unlinked);
+        final User admin = account("admin-warm@example.test", Role.ADMIN);
+
+        for (final User u : List.of(revoked, unlinked, patient2.getUser(), admin)) {
+            signIn(u);
+            assertRefused(() -> controller.fetchCoverage("medicare", patient1.getId()), u.getEmail() + " coverage");
+            assertRefused(() -> controller.fetchVisits("medicare", patient1.getId()), u.getEmail() + " visits");
+        }
+
+        assertThat(cachedReadAudits(patient1)).isEmpty();
+        verify(medicare, times(1)).requestMedicareCoverageInfo(anyString());
+        verify(medicare, times(1)).requestMedicareEOBInfo(anyString());
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-063: the patient's own cached reads write no MEDICARE_CACHE row, by their own patient id as well as without one (draft SRS Addendum B item B7, question D33)")
+    void patientsOwnCachedReadsByIdAreNotAudited() throws Exception {
+        link(patient1, "enc");
+        blueButtonServesFixtures();
+        signIn(patient1);
+
+        controller.fetchCoverage("medicare", patient1.getId());
+        controller.fetchCoverage("medicare", patient1.getId());
+        controller.fetchCoverage("medicare", null);
+        controller.fetchIdentity("medicare", patient1.getId());
+        controller.fetchIdentity("medicare", patient1.getId());
+
+        verify(medicare, times(1)).requestMedicareCoverageInfo(anyString());
+        verify(medicare, times(1)).requestMedicarePatientInfo(anyString());
+        assertThat(cachedReadAudits(patient1)).isEmpty();
+        assertThat(audits(patient1, "Coverage")).singleElement()
+                .satisfies(e -> assertThat(e.getSource()).isEqualTo("MEDICARE"));
     }
 
     @Test

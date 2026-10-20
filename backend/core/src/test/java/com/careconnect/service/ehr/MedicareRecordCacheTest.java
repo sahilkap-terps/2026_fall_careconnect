@@ -58,7 +58,8 @@ import static org.mockito.Mockito.when;
  * <p>
  * Resources come from a parsed Bundle with fullUrl and a version, as Blue Button sends them, so the
  * id handling is tested against what HAPI really produces. Test IDs TC-MCR-CACHE-001..010 (the PR
- * author's) and 020..024 (the Testing Lead's; 011..019 are the entity and properties tests) are
+ * author's), 020..024 (the Testing Lead's; 011..019 are the entity and properties tests) and 053..056
+ * (PR #382's author, DEF-MCR-37; 053 is the Testing Lead's target case for that defect) are
  * permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
@@ -205,7 +206,7 @@ class MedicareRecordCacheTest {
     }
 
     @Test
-    @DisplayName("TC-MCR-CACHE-002: data retrieved under a day ago is served from the cache, without calling Blue Button")
+    @DisplayName("TC-MCR-CACHE-002: the patient's own read of data retrieved under a day ago is served from the cache, without calling Blue Button or writing an audit event")
     void freshCacheIsServed() {
         // Regression: this branch used to compare an OffsetDateTime with a LocalDateTime and throw.
         final OffsetDateTime twoHoursAgo = NOW.minusHours(2);
@@ -412,7 +413,7 @@ class MedicareRecordCacheTest {
     }
 
     @Test
-    @DisplayName("TC-MCR-CACHE-021: an EMPTY retrieval inside the day is still fresh: nothing cached is the right answer, and Blue Button is not asked again")
+    @DisplayName("TC-MCR-CACHE-021: an EMPTY retrieval inside the day is still fresh: nothing cached is the right answer to the patient's own read, Blue Button is not asked again and no audit event is written")
     void emptyAnswerInsideTheDayIsServed() {
         cached(MedicareRecordCache.EOB);
         lastEvent(MedicareRecordCache.EOB, NOW.minusHours(2), EhrRetrievalOutcome.EMPTY, 0);

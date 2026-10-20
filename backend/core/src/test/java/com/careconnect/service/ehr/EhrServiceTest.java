@@ -44,7 +44,7 @@ import static org.mockito.Mockito.when;
  * {@code EhrService}: finding the signed-in patient's linked Medicare row, the acting user for the audit
  * log, upserting coverage and visit rows, and the shared FHIR context's HTTP client setup (DEF-MCR-06).
  * <p>
- * Test IDs TC-MCR-CACHE-043..052 and TC-MCR-AUTHZ-037, 041, 042 are permanent. Never renumber, never reuse.
+ * Test IDs TC-MCR-CACHE-043..052, 058 (PR #382's author), 059 and TC-MCR-AUTHZ-037, 041, 042 are permanent. Never renumber, never reuse.
  */
 @ExtendWith(MockitoExtension.class)
 class EhrServiceTest {
@@ -220,7 +220,7 @@ class EhrServiceTest {
     }
 
     @Test
-    @DisplayName("an ExplanationOfBenefit serializes to JSON and to a Jackson tree")
+    @DisplayName("TC-MCR-CACHE-059: an ExplanationOfBenefit serializes to JSON and to a Jackson tree")
     void eobToJsonAndNode() throws Exception {
         final ExplanationOfBenefit eob = new ExplanationOfBenefit();
         eob.setId("claim-1");
