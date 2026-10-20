@@ -211,6 +211,8 @@ class MedicareRecordCacheTest {
         final OffsetDateTime twoHoursAgo = NOW.minusHours(2);
         cached(MedicareRecordCache.COVERAGE, stored("part-a--1", coverage("part-a--1", "A"), NOW.minusDays(3)));
         lastAnswered(MedicareRecordCache.COVERAGE, twoHoursAgo);
+        // The patient's own read: not audited from the cache (another user's read is, TC-MCR-CACHE-053).
+        when(ehrService.isPatientsOwnAccount(PATIENT_ID, ACTOR)).thenReturn(true);
 
         final CachedRead read = cache.coverage(crosswalk, ACTOR);
 
@@ -414,12 +416,76 @@ class MedicareRecordCacheTest {
     void emptyAnswerInsideTheDayIsServed() {
         cached(MedicareRecordCache.EOB);
         lastEvent(MedicareRecordCache.EOB, NOW.minusHours(2), EhrRetrievalOutcome.EMPTY, 0);
+        when(ehrService.isPatientsOwnAccount(PATIENT_ID, ACTOR)).thenReturn(true);
 
         final CachedRead read = cache.visits(crosswalk, ACTOR);
 
         assertThat(read.resources()).isEmpty();
         assertThat(read.fetchedAt()).isEqualTo(NOW.minusHours(2));
         verifyNoInteractions(medicare, connections, audit);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-053: another user's read served from the cache is audited under MEDICARE_CACHE with the reader, the count and cached=true, and Blue Button is not asked (DEF-MCR-37)")
+    void anotherUsersCachedReadIsAudited() {
+        cached(MedicareRecordCache.COVERAGE,
+                stored("part-a--1", coverage("part-a--1", "A"), NOW.minusDays(3)),
+                stored("part-b--1", coverage("part-b--1", "B"), NOW.minusDays(3)));
+        lastAnswered(MedicareRecordCache.COVERAGE, NOW.minusHours(2));
+        when(ehrService.isPatientsOwnAccount(PATIENT_ID, ACTOR)).thenReturn(false);
+
+        final CachedRead read = cache.coverage(crosswalk, ACTOR);
+
+        assertThat(plans(read)).containsExactly("A", "B");
+        verify(audit).log(PATIENT_ID, MedicareRecordCache.CACHED_READ_SOURCE, "Coverage", EhrRetrievalOutcome.SUCCESS,
+                ACTOR, 2, java.util.Map.of("cached", true), NOW);
+        verifyNoInteractions(medicare, connections);
+        verify(rawPayloads, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-054: another user's cached read of nothing is audited EMPTY with a count of 0 (DEF-MCR-37)")
+    void anotherUsersEmptyCachedReadIsAudited() {
+        cached(MedicareRecordCache.EOB);
+        lastEvent(MedicareRecordCache.EOB, NOW.minusHours(2), EhrRetrievalOutcome.EMPTY, 0);
+
+        cache.visits(crosswalk, ACTOR);
+
+        verify(audit).log(PATIENT_ID, MedicareRecordCache.CACHED_READ_SOURCE, "ExplanationOfBenefit",
+                EhrRetrievalOutcome.EMPTY, ACTOR, 0, java.util.Map.of("cached", true), NOW);
+        verifyNoInteractions(medicare, connections);
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-055: a cached read with nobody signed in is audited with no acting user, not skipped (DEF-MCR-37)")
+    void cachedReadWithNoActorIsAudited() {
+        cached(MedicareRecordCache.PATIENT, stored("-1", patient("-1"), NOW.minusDays(3)));
+        lastAnswered(MedicareRecordCache.PATIENT, NOW.minusHours(2));
+
+        cache.patient(crosswalk, null);
+
+        verify(audit).log(eq(PATIENT_ID), eq(MedicareRecordCache.CACHED_READ_SOURCE), eq("Patient"),
+                eq(EhrRetrievalOutcome.SUCCESS), isNull(), eq(1), anyMap(), eq(NOW));
+    }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-056: cached-read events never count as Blue Button answering: freshness asks only for MEDICARE events, so a day-old cache is refreshed however often it was viewed (DEF-MCR-37)")
+    void cachedReadsDoNotKeepTheCacheFresh() {
+        assertThat(MedicareRecordCache.CACHED_READ_SOURCE).isNotEqualTo("MEDICARE");
+        final OffsetDateTime twoDaysAgo = NOW.minusDays(2);
+        cached(MedicareRecordCache.COVERAGE, stored("part-a--1", coverage("part-a--1", "A"), twoDaysAgo));
+        // lastAnswered stubs the freshness lookup for source MEDICARE only; a MEDICARE_CACHE lookup would not match.
+        lastAnswered(MedicareRecordCache.COVERAGE, twoDaysAgo);
+        when(connections.requireAccessToken(crosswalk)).thenReturn("tok");
+        when(medicare.requestMedicareCoverageInfo(eq("tok"), any(Date.class))).thenReturn(List.of());
+
+        cache.coverage(crosswalk, ACTOR);
+
+        verify(medicare).requestMedicareCoverageInfo(eq("tok"), any(Date.class));
+        verify(audit).log(eq(PATIENT_ID), eq("MEDICARE"), eq("Coverage"), eq(EhrRetrievalOutcome.EMPTY),
+                eq(ACTOR), eq(0), anyMap(), eq(NOW));
+        verify(audit, never()).log(any(), eq(MedicareRecordCache.CACHED_READ_SOURCE), anyString(), any(), any(), any(),
+                anyMap(), any());
     }
 
     @Test

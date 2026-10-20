@@ -112,6 +112,19 @@ public class EhrService {
     }
 
     /**
+     * Whether {@code userId} is the patient's own account. A read by anyone else, a caregiver or an unknown
+     * caller, is PHI access by another user and is audited even when it is served from the cache
+     * (SR-007, NFR-SEC-07 (b), DEF-MCR-37).
+     *
+     * @param patientId the {@code patient.id}, not a user id
+     */
+    public boolean isPatientsOwnAccount(Long patientId, Long userId) {
+        return userId != null && patientRepository.findByUserId(userId)
+                .map(patient -> patient.getId().equals(patientId))
+                .orElse(false);
+    }
+
+    /**
      * The signed-in patient's <em>linked</em> crosswalk row for this source. Empty for a user with no
      * patient record, no row, or a link that is still pending (no token yet).
      * <p>

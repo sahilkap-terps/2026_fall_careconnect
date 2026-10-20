@@ -69,6 +69,9 @@ public class MedicareRecordCache {
     static final String EOB = "ExplanationOfBenefit";
 
     private static final String MEDICARE = MedicareProperties.SOURCE_MEDICARE;
+
+    /** The audit source of a read served from this cache rather than retrieved from Blue Button. */
+    static final String CACHED_READ_SOURCE = MEDICARE + "_CACHE";
     private static final Set<EhrRetrievalOutcome> ANSWERED =
             EnumSet.of(EhrRetrievalOutcome.SUCCESS, EhrRetrievalOutcome.EMPTY);
 
@@ -174,7 +177,9 @@ public class MedicareRecordCache {
         final OffsetDateTime now = OffsetDateTime.now(clock);
 
         if (lastAnswered.isPresent() && Duration.between(lastAnswered.get(), now).compareTo(MAX_AGE) < 0) {
-            return new CachedRead(toJson(current.values()), lastAnswered.get());
+            final List<JsonNode> resources = toJson(current.values());
+            auditCachedRead(patientId, resourceType, actorUserId, resources.size(), now);
+            return new CachedRead(resources, lastAnswered.get());
         }
 
         // Ask only for what changed when there is a cache to apply the changes to.
@@ -220,6 +225,24 @@ public class MedicareRecordCache {
                 results.isEmpty() ? EhrRetrievalOutcome.EMPTY : EhrRetrievalOutcome.SUCCESS,
                 actorUserId, results.size(), Map.of("incremental", since != null, "changed", changed), now);
         return new CachedRead(toJson(current.values()), now);
+    }
+
+    /**
+     * A read served from the cache by anyone but the patient is PHI access by another user, so it is
+     * audited like a retrieval (SR-007, NFR-SEC-07 (b), DEF-MCR-37). The patient's own cached reads are not.
+     * It is recorded under {@link #CACHED_READ_SOURCE}, not {@code MEDICARE}: freshness reads the last
+     * {@code MEDICARE} SUCCESS or EMPTY, and a cached read must not count as the source answering, or a
+     * caregiver viewing the data every few hours would keep it from ever being refreshed.
+     */
+    private void auditCachedRead(final Long patientId, final String resourceType, final Long actorUserId,
+                                 final int served, final OffsetDateTime now) {
+        if (ehrService.isPatientsOwnAccount(patientId, actorUserId)) {
+            return;
+        }
+        // Counts only: never tokens or clinical content (NFR-SEC-03).
+        audit.log(patientId, CACHED_READ_SOURCE, resourceType,
+                served == 0 ? EhrRetrievalOutcome.EMPTY : EhrRetrievalOutcome.SUCCESS,
+                actorUserId, served, Map.of("cached", true), now);
     }
 
     /** The newest stored row per external resource id, newest first. */

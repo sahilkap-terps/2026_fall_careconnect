@@ -276,4 +276,16 @@ class EhrServiceTest {
         when(crosswalks.findByPatientIdAndSourceId(3L, MEDICARE)).thenReturn(Optional.of(crosswalk(null)));
         assertThat(service.getCrosswalkForPatient(3L, MEDICARE)).isEmpty();
     }
+
+    @Test
+    @DisplayName("TC-MCR-CACHE-058: only the patient's own account is the patient; a caregiver, a user with no patient row and no user are not (DEF-MCR-37)")
+    void patientsOwnAccountIsRecognised() {
+        when(patientRepository.findByUserId(6L)).thenReturn(Optional.of(Patient.builder().id(2L).build()));
+        when(patientRepository.findByUserId(7L)).thenReturn(Optional.empty());
+
+        assertThat(service.isPatientsOwnAccount(2L, 6L)).isTrue();
+        assertThat(service.isPatientsOwnAccount(3L, 6L)).as("another patient's data").isFalse();
+        assertThat(service.isPatientsOwnAccount(2L, 7L)).as("a caregiver has no patient row").isFalse();
+        assertThat(service.isPatientsOwnAccount(2L, null)).as("nobody signed in").isFalse();
+    }
 }

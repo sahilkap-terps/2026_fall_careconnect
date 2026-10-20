@@ -483,6 +483,36 @@ class MedicareReadIntegrationTest {
     }
 
     @Test
+    @DisplayName("TC-MCR-CACHE-057: a caregiver's second read, served from the cache, writes a MEDICARE_CACHE audit row naming the caregiver; the patient's own cached read writes none, and freshness still reads the Blue Button retrieval (DEF-MCR-37)")
+    void caregiversCachedReadIsAudited() throws Exception {
+        link(patient1, "enc");
+        final User cg = caregiver("cg-cached@example.test");
+        caregiverLink(cg, patient1, CaregiverPatientLink.LinkStatus.ACTIVE, null);
+        medicareView(patient1, cg);
+        blueButtonServesFixtures();
+
+        signIn(cg);
+        controller.fetchCoverage("medicare", patient1.getId());
+        controller.fetchCoverage("medicare", patient1.getId());
+        signIn(patient1);
+        controller.fetchCoverage("medicare", null);
+
+        verify(medicare, times(1)).requestMedicareCoverageInfo(anyString());
+        assertThat(audits(patient1, "Coverage")).hasSize(2);
+        assertThat(audits(patient1, "Coverage")).filteredOn(e -> e.getSource().equals("MEDICARE_CACHE"))
+                .singleElement()
+                .satisfies(e -> {
+                    assertThat(e.getActorUserId()).isEqualTo(cg.getId());
+                    assertThat(e.getOutcome()).isEqualTo(EhrRetrievalOutcome.SUCCESS);
+                    assertThat(e.getRecordCount()).as("every stored resource; the status gate hides cancelled ones after").isEqualTo(3);
+                    assertThat(e.getDetails()).containsEntry("cached", true);
+                });
+        assertThat(auditEvents.findFirstByPatientIdAndSourceAndResourceTypeAndOutcomeInOrderByEventTimeDesc(
+                patient1.getId(), "MEDICARE", "Coverage", List.of(EhrRetrievalOutcome.SUCCESS, EhrRetrievalOutcome.EMPTY)))
+                .get().satisfies(e -> assertThat(e.getDetails()).doesNotContainKey("cached"));
+    }
+
+    @Test
     @DisplayName("TC-MCR-AUTHZ-039: an expired, revoked or missing caregiver link is the policy's 404 even with a MEDICARE_VIEW grant, and Blue Button is never asked")
     void inactiveCaregiverLinksAreRefused() {
         link(patient1, "enc");
