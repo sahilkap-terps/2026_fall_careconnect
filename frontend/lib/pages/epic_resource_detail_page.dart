@@ -3,22 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:care_connect_app/widgets/app_bar_helper.dart';
 import 'package:care_connect_app/services/epic_service.dart';
 
-/// Destination for Epic citation deep links (`/epic/{type}/{id}?patientId=...`) — Epic Phase 2.
+/// Destination for Epic citation deep links (`/epic/{type}/{id}?patientUserId=...`) — Epic Phase 2.
 ///
 /// Fetches the mirrored `ehr_resource` via `GET /api/epic/resource/{type}/{id}` and renders its
-/// provenance plus the FHIR payload. The optional `patientId` from the deep link is forwarded as
-/// `patientUserId` so a caregiver targets the linked patient's record; the backend enforces
-/// EHR_VIEW access and scopes to the caller's own records when no patient is given.
+/// provenance plus the FHIR payload. The optional `patientUserId` from the deep link is forwarded
+/// so a caregiver targets the linked patient's record; the backend enforces EHR_VIEW access and
+/// scopes to the caller's own records when no patient is given.
 class EpicResourceDetailPage extends StatefulWidget {
   final String resourceType;
   final String resourceId;
-  final String? patientId;
+  final String? patientUserId;
 
   const EpicResourceDetailPage({
     super.key,
     required this.resourceType,
     required this.resourceId,
-    this.patientId,
+    this.patientUserId,
   });
 
   @override
@@ -36,13 +36,13 @@ class _EpicResourceDetailPageState extends State<EpicResourceDetailPage> {
   }
 
   Future<void> _load() async {
-    // Forward the citation deep link's patientId so a caregiver viewing a linked patient's
+    // Forward the citation deep link's patientUserId so a caregiver viewing a linked patient's
     // record targets that patient (EHR_VIEW); without it the backend scopes to the caller's own
     // records and a caregiver gets a 404. (I3c)
     final data = await EpicService.getResource(
       widget.resourceType,
       widget.resourceId,
-      patientUserId: widget.patientId,
+      patientUserId: widget.patientUserId,
     );
     if (!mounted) return;
     setState(() {
