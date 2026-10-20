@@ -151,7 +151,9 @@ class ConsentControllerTest {
         mockMvc.perform(post("/api/v3/consent/ehr-view")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"granteeUserId\":30}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                // I3b: the refusal names EHR view consent, not AI retrieval consent.
+                .andExpect(jsonPath("$.error").value("Only the patient may manage EHR view consent"));
 
         verify(consentService, never()).grantEhrViewConsent(any(), any(), any(), any());
     }
@@ -201,7 +203,9 @@ class ConsentControllerTest {
         mockMvc.perform(delete("/api/v3/consent/ehr-view")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"granteeUserId\":30}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                // I3b: the refusal names EHR view consent, not AI retrieval consent.
+                .andExpect(jsonPath("$.error").value("Only the patient may manage EHR view consent"));
 
         verify(consentService, never()).revokeEhrViewConsent(any(), any());
     }
