@@ -11,7 +11,7 @@ import com.careconnect.model.ehr.EhrResource;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.ehr.EhrResourceRepository;
 import com.careconnect.security.EpicAccessPolicy;
-import com.careconnect.service.ConsentService;
+import com.careconnect.service.consent.ConsentService;
 import com.careconnect.service.ehr.EpicAuthStateStore;
 import com.careconnect.service.ehr.EpicOAuthService;
 import com.careconnect.service.ehr.EpicSyncService;

@@ -643,6 +643,7 @@
 
   "appheaderwidget_invalidDOB": "Invalid date of birth. Cannot generate emergency QR.",
   "appheaderwidget_missingPtData": "Patient data not available for emergency QR",
+  "appheaderwidget_medicalPassport": "Medical passport",
   "appheaderwidget_welcomeBack": "Welcome back",
   "appheaderwidget_greetingPt": "How are you feeling today?",
   "appheaderwidget_greetingNonPt": "Your patients' health summary",
