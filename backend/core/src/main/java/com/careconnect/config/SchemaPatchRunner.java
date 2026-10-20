@@ -722,10 +722,15 @@ public class SchemaPatchRunner implements CommandLineRunner {
             return;
         }
         // I3d: each CREATE UNIQUE INDEX is preceded by a guarded de-dup so the server still starts on
-        // a dev database built from an earlier Step-6 branch that may hold duplicate rows from before
-        // the constraint existed. The de-dup runs only when the table exists and the index is still
-        // absent, so it is a no-op on fresh databases (ddl-auto creates the table with the
-        // constraint) and on any database already carrying the index.
+        // any database whose table predates the constraint and may hold duplicate rows from before it
+        // existed. The de-dup runs only when the table exists and the index is still absent, so it is a
+        // no-op on fresh databases (ddl-auto creates the table with the constraint) and on any database
+        // already carrying the index. Losers are copied to ehr_dedup_quarantine before deletion
+        // (reversible, not silently destructive), so that backup table is created first.
+        applyRequiredPatch(
+                "V2610201200 - dedup quarantine backup table (I3d)",
+                createDedupQuarantineTable()
+        );
         applyRequiredPatch(
                 "V2610191200a - dedup ehr_medication_record before unique index (I3d)",
                 dedupBeforeUniqueIndex("ehr_medication_record", "external_medication_id",
@@ -759,28 +764,69 @@ public class SchemaPatchRunner implements CommandLineRunner {
     }
 
     /**
-     * I3d: delete duplicate {@code (patient_id, source_id, <keyColumn>)} rows so the following
-     * required {@code CREATE UNIQUE INDEX} succeeds on a dev database built from an earlier Step-6
-     * branch (before the constraint existed). Guarded to run only when the table exists and the
-     * index is still absent — a no-op on a fresh database (ddl-auto creates the table with the
-     * constraint) and on any database already carrying the index. NULL keys never collide in a
-     * unique index and the {@code =} self-join excludes them, so NULL-keyed rows are left untouched;
-     * the lowest-{@code ctid} row of each duplicate group is kept.
+     * I3d: within each duplicate {@code (patient_id, source_id, <keyColumn>)} group, back up every
+     * non-winning row to {@code ehr_dedup_quarantine} and then delete it, so the following required
+     * {@code CREATE UNIQUE INDEX} succeeds on a database whose table predates the constraint (before
+     * it existed). Guarded to run only when the table exists and the index is still absent — a no-op
+     * on a fresh database (ddl-auto creates the table with the constraint) and on any database
+     * already carrying the index.
+     *
+     * <p>Retention rule (deterministic, domain-driven — not physical {@code ctid}): the survivor is
+     * the row with the greatest {@code source_updated_at} (the source's own {@code meta.lastUpdated},
+     * NOT NULL on all three typed-projection tables), tie-broken by the greatest {@code id} (the
+     * monotonic {@code IDENTITY} surrogate, i.e. last inserted). Because {@code id} is unique this
+     * always resolves to exactly one survivor, and it keeps the freshest clinical content rather than
+     * an arbitrary physical row. The key columns are {@code NOT NULL}, so no NULL-key special case is
+     * needed.
+     *
+     * <p>Losers are copied to {@code ehr_dedup_quarantine} as full {@code jsonb} before deletion so a
+     * startup de-dup is reversible rather than silently destructive, and the per-table count is
+     * surfaced via {@code RAISE LOG} so an operator can tell from the boot log whether any target
+     * database actually held duplicates. The quarantine INSERT and the DELETE share one predicate and
+     * run in a single DO block / transaction, so they are atomic.
      */
-    private static String dedupBeforeUniqueIndex(
+    static String dedupBeforeUniqueIndex(
             final String table, final String keyColumn, final String indexName) {
         requireSafeIdentifier(table);
         requireSafeIdentifier(keyColumn);
         requireSafeIdentifier(indexName);
-        return "DO $$ BEGIN "
+        return "DO $$ DECLARE n bigint; BEGIN "
                 + "IF EXISTS (SELECT 1 FROM information_schema.tables "
                 + "WHERE table_schema = current_schema() AND table_name = '" + table + "') "
                 + "AND NOT EXISTS (SELECT 1 FROM pg_indexes "
                 + "WHERE schemaname = current_schema() AND indexname = '" + indexName + "') THEN "
+                + "INSERT INTO ehr_dedup_quarantine (table_name, index_name, row_data) "
+                + "SELECT '" + table + "', '" + indexName + "', to_jsonb(a.*) "
+                + "FROM " + table + " a WHERE EXISTS (SELECT 1 FROM " + table + " b "
+                + "WHERE a.patient_id = b.patient_id AND a.source_id = b.source_id "
+                + "AND a." + keyColumn + " = b." + keyColumn + " "
+                + "AND (b.source_updated_at > a.source_updated_at "
+                + "OR (b.source_updated_at = a.source_updated_at AND b.id > a.id))); "
+                + "GET DIAGNOSTICS n = ROW_COUNT; "
                 + "DELETE FROM " + table + " a USING " + table + " b "
                 + "WHERE a.patient_id = b.patient_id AND a.source_id = b.source_id "
-                + "AND a." + keyColumn + " = b." + keyColumn + " AND a.ctid > b.ctid; "
+                + "AND a." + keyColumn + " = b." + keyColumn + " "
+                + "AND (a.source_updated_at < b.source_updated_at "
+                + "OR (a.source_updated_at = b.source_updated_at AND a.id < b.id)); "
+                + "RAISE LOG 'I3d dedup: quarantined % loser row(s) from % before building %', "
+                + "n, '" + table + "', '" + indexName + "'; "
                 + "END IF; END $$;";
+    }
+
+    /**
+     * I3d: durable backup table for rows removed by {@link #dedupBeforeUniqueIndex}, so a startup
+     * de-dup is reversible and auditable rather than silently destructive. Each quarantined row keeps
+     * its source table and the index it was blocking, a timestamp, and the full original row as
+     * {@code jsonb}. Created once before the typed-projection dedup patches; {@code IF NOT EXISTS}
+     * makes it a no-op on every subsequent boot.
+     */
+    static String createDedupQuarantineTable() {
+        return "CREATE TABLE IF NOT EXISTS ehr_dedup_quarantine ("
+                + "id bigserial PRIMARY KEY, "
+                + "table_name text NOT NULL, "
+                + "index_name text NOT NULL, "
+                + "quarantined_at timestamptz NOT NULL DEFAULT now(), "
+                + "row_data jsonb NOT NULL)";
     }
 
     /**
