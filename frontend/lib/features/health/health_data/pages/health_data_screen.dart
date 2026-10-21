@@ -6,6 +6,7 @@ import '../models/health_record.dart';
 import '../models/patient_demographics.dart';
 import '../services/medicare_data_service.dart';
 import '../services/ehr_data_service.dart';
+import '../services/identity_conflict_service.dart';
 import '../services/athena_connect_service.dart';
 import '../services/athena_data_service.dart';
 import '../services/record_choice_store.dart';
@@ -73,6 +74,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
   bool _conflictPromptShown = false;
   final RecordChoiceStore _choiceStore = RecordChoiceStore();
   PatientDemographics? _patientDemographics;
+
+  /// Epic and athenahealth disagree on the date of birth and the patient
+  /// hasn't confirmed which is right yet.
+  bool _dobNeedsConfirmation = false;
   String _searchQuery = '';
   final Set<RecordType> _selectedTypes = {};
   String _selectedDateRange = 'any';
@@ -131,8 +136,13 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       ehrRecords = await ehrService.tryFetchRecords();
     } catch (_) {}
     PatientDemographics? demographics;
+    var dobNeedsConfirmation = false;
     try {
-      demographics = await ehrService.fetchPatientDemographics();
+      final perSource = await ehrService.fetchDemographicsBySource();
+      demographics = EhrDataService.mergeDemographics(perSource);
+      final resolved = await _resolveBirthDate(demographics, perSource);
+      demographics = resolved.$1;
+      dobNeedsConfirmation = resolved.$2;
     } catch (_) {}
     MedicareFetchResult medicare =
         const MedicareFetchResult(records: [], complete: false);
@@ -155,6 +165,7 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       _medicareProblem = medicare.problem;
       _medicare = medicare.records;
       _patientDemographics = demographics;
+      _dobNeedsConfirmation = dobNeedsConfirmation;
       _synthetic = medicare.synthetic;
       _medicareUnreachable = !medicare.complete;
       _medicareEmpty = medicare.complete && medicare.records.isEmpty;
@@ -164,12 +175,12 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       _loading = false;
     });
     // Only records whose details differ pop up by themselves; possible
-    // duplicates and medications for the caregiver wait in the banner.
+    // duplicates wait in the banner.
     if (_conflicts.any((c) => c.kind == RecordConflictKind.differs) &&
         !_conflictPromptShown) {
       _conflictPromptShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _reviewConflicts();
+        if (mounted) _reviewConflicts(onlyDiffers: true);
       });
     }
   }
@@ -195,6 +206,40 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     );
   }
 
+  /// When Epic and athenahealth disagree on the date of birth, the patient
+  /// confirms which is right through the DOB confirmation flow
+  /// (FR-XSRC-10…15) instead of Epic's silently winning. Until they choose,
+  /// the current (Epic) date stays shown and the screen asks them to confirm.
+  /// Returns the demographics to show and whether a confirmation is pending.
+  Future<(PatientDemographics?, bool)> _resolveBirthDate(
+      PatientDemographics? merged,
+      List<PatientDemographics?> perSource) async {
+    const sources = EhrDataService.demographicsSources;
+    final current = perSource[sources.indexOf('EPIC')]?.birthDate;
+    final incoming = perSource[sources.indexOf('ATHENAHEALTH')]?.birthDate;
+    if (merged == null ||
+        current == null ||
+        incoming == null ||
+        DateUtils.isSameDay(current, incoming)) {
+      return (merged, false);
+    }
+    final chosen = await IdentityConflictService.reportDobDisagreement(
+      current: current,
+      currentSource: RecordSource.epic.label,
+      incoming: incoming,
+      incomingSource: RecordSource.athena.label,
+    );
+    return chosen == null
+        ? (merged, true)
+        : (merged.withBirthDate(chosen), false);
+  }
+
+  Future<void> _confirmDob() async {
+    await GoRouter.of(context).push('/dob-confirm');
+    // The patient may have chosen a date there.
+    if (mounted) _load();
+  }
+
   void _reconcile() {
     final result = RecordReconciler.reconcile(
         [..._ehr, ..._medicare, ..._athena],
@@ -204,18 +249,18 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
   }
 
   /// Goes through each flagged record in turn. "Decide later" stops and
-  /// leaves the rest flagged (WBS 6.2.41); a medication for the caregiver is
-  /// view only, so closing it moves on.
-  Future<void> _reviewConflicts() async {
-    final pending = List.of(_conflicts);
+  /// leaves the rest flagged (WBS 6.2.41). [onlyDiffers] is the automatic
+  /// review on load, which asks only about records whose details differ.
+  Future<void> _reviewConflicts({bool onlyDiffers = false}) async {
+    final pending = [
+      for (final c in _conflicts)
+        if (!onlyDiffers || c.kind == RecordConflictKind.differs) c,
+    ];
     for (var i = 0; i < pending.length; i++) {
       final conflict = pending[i];
       final decision = await showRecordConflictDialog(context, conflict,
           index: i + 1, total: pending.length);
       if (!mounted) return;
-      if (conflict.kind == RecordConflictKind.medicationNeedsCaregiver) {
-        continue;
-      }
       final versions =
           conflict.versions.map(RecordConflict.versionId).toList();
       if (decision == null) {
@@ -248,7 +293,6 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     String plural(int n, String one, String many) => n == 1 ? one : many;
     final differs = count(RecordConflictKind.differs);
     final duplicates = count(RecordConflictKind.possibleDuplicate);
-    final medications = count(RecordConflictKind.medicationNeedsCaregiver);
     return [
       if (differs > 0)
         '$differs ${plural(differs, 'record has', 'records have')} '
@@ -256,9 +300,6 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       if (duplicates > 0)
         '$duplicates possible duplicate '
             '${plural(duplicates, 'record was', 'records were')} combined.',
-      if (medications > 0)
-        '$medications ${plural(medications, 'medication needs', 'medications need')} '
-            'your caregiver\'s review.',
     ].join(' ');
   }
 
@@ -314,6 +355,7 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
         record.title,
         record.type.label,
         record.status ?? '',
+        ...record.sources.map((source) => source.label),
         ...record.details.map((detail) => detail.label),
         ...record.details.map((detail) => detail.value),
       ].join(' ').toLowerCase();
@@ -395,12 +437,25 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                     Icons.cloud_off_outlined,
                     'We couldn\'t load records from your other providers. Showing what we could.',
                   ),
+                if (_dobNeedsConfirmation)
+                  _noticeBanner(
+                    Icons.cake_outlined,
+                    'Your providers have different dates of birth for you. '
+                        'Please confirm which is correct.',
+                    action: TextButton(
+                      onPressed: _confirmDob,
+                      style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF006B80),
+                          minimumSize: const Size(48, 48)),
+                      child: const Text('Confirm'),
+                    ),
+                  ),
                 if (_conflicts.isNotEmpty)
                   _noticeBanner(
                     Icons.compare_arrows,
                     _conflictSummary(),
                     action: TextButton(
-                      onPressed: _reviewConflicts,
+                      onPressed: () => _reviewConflicts(),
                       style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF006B80),
                           minimumSize: const Size(48, 48)),
@@ -576,6 +631,16 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                                     fontWeight: FontWeight.w600,
                                                   ),
                                             ),
+                                            if (_dobNeedsConfirmation)
+                                              Text(
+                                                'Needs your confirmation',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: _mutedText(context),
+                                                    ),
+                                              ),
                                           ],
                                         ),
                                       ),

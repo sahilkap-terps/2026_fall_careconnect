@@ -9,6 +9,7 @@
 
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -221,5 +222,125 @@ void main() {
         await _with(() => AthenaConnectService().disconnect(),
             (_) async => http.Response('', 500)),
         isFalse);
+  });
+
+  // A 401 refreshes the CareConnect sign-in once and retries, the same rule
+  // as MedicareConnectService (pattern from its TC-MCR-CONN-033/034).
+  group('a 401 refreshes the sign-in once', () {
+    const secure = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    final store = <String, String>{};
+    // Unsigned test JWTs: only the payload's exp is read.
+    String jwt(String sub) =>
+        'e30.${base64Url.encode(utf8.encode('{"sub":"$sub","exp":4102444800}')).replaceAll('=', '')}.sig';
+
+    setUp(() {
+      store
+        ..clear()
+        ..['jwt_token'] = jwt('old')
+        ..['token_expiry'] = '4102444800';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(secure, (call) async {
+        final args = (call.arguments as Map?) ?? const {};
+        final key = args['key'] as String?;
+        switch (call.method) {
+          case 'read':
+            return store[key];
+          case 'write':
+            store[key!] = args['value'] as String;
+            return null;
+          case 'delete':
+            store.remove(key);
+            return null;
+          case 'deleteAll':
+            store.clear();
+            return null;
+          case 'containsKey':
+            return store.containsKey(key);
+          case 'readAll':
+            return Map<String, String>.of(store);
+        }
+        return null;
+      });
+    });
+    tearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(secure, null));
+
+    test('status: a 401 refreshes once and retries with the new token',
+        () async {
+      final seen = <http.Request>[];
+      final s = await _with(() => AthenaConnectService().status(), (req) async {
+        if (req.url.path.endsWith('/refresh-token')) {
+          return http.Response(
+              jsonEncode({'id': 1, 'email': 'p@example.test', 'role': 'PATIENT',
+                  'token': jwt('new')}),
+              200);
+        }
+        final auth = req.headers['Authorization'] ?? '';
+        return auth.contains(jwt('new').split('.')[1])
+            ? http.Response(jsonEncode({'connected': true, 'status': 'CONNECTED'}), 200)
+            : http.Response('{}', 401);
+      }, seen: seen);
+      expect(s!.connected, isTrue);
+      expect(seen.map((r) => '${r.method} ${r.url.path}'), [
+        'GET /api/athena/status',
+        'POST /v1/api/auth/refresh-token',
+        'GET /api/athena/status',
+      ]);
+      expect(seen.last.headers['Authorization'], 'Bearer ${jwt('new')}');
+    });
+
+    test('connect: a refused refresh is signed out after one attempt, with no '
+        'second retry', () async {
+      final seen = <http.Request>[];
+      AthenaConnectError? error;
+      try {
+        await _with(() => AthenaConnectService().connect(),
+            (_) async => http.Response('{}', 401), seen: seen);
+      } on AthenaConnectException catch (e) {
+        error = e.error;
+      }
+      expect(error, AthenaConnectError.signedOut);
+      expect(seen.map((r) => '${r.method} ${r.url.path}'), [
+        'POST /api/athena/connect',
+        'POST /v1/api/auth/refresh-token',
+      ]);
+    });
+  });
+
+  test('a 200 whose body is not a JSON object is a server error', () async {
+    for (final body in ['[]', 'not json']) {
+      expect(
+          await _error(() => AthenaConnectService().connect(),
+              (_) async => http.Response(body, 200)),
+          AthenaConnectError.server,
+          reason: body);
+      expect(
+          await _error(() => AthenaConnectService().sync(),
+              (_) async => http.Response(body, 200)),
+          AthenaConnectError.server,
+          reason: body);
+    }
+    expect(
+        await _with(() => AthenaConnectService().status(),
+            (_) async => http.Response('[]', 200)),
+        isNull);
+  });
+
+  // R381-D01: the backend's proposed answer when athena is turned off.
+  test('a DISABLED code reads as athenahealth turned off, whatever the status',
+      () async {
+    Future<http.Response> Function(http.Request) disabled(int status) =>
+        (_) async => http.Response(jsonEncode({'code': 'DISABLED'}), status);
+    for (final status in [404, 409, 500, 503]) {
+      expect(await _error(AthenaConnectService().connect, disabled(status)),
+          AthenaConnectError.disabled, reason: '$status');
+      expect(await _error(AthenaConnectService().sync, disabled(status)),
+          AthenaConnectError.disabled, reason: '$status');
+      final s = await _with(
+          () => AthenaConnectService().status(), disabled(status));
+      expect(s!.available, isFalse, reason: '$status');
+      expect(s.connected, isFalse, reason: '$status');
+      expect(s.shown, isTrue, reason: '$status');
+    }
   });
 }

@@ -35,8 +35,8 @@ class HealthEventDetailsScreen extends StatelessWidget {
   static Widget? _fullRecordPage(HealthRecord record) {
     final type = record.resourceType;
     if (type == null || record.id.isEmpty) return null;
-    // Epic's record page is the Ask AI citation target and names its source,
-    // so Health Data doesn't link to it.
+    // Only athenahealth records link to a full record page from here; Epic's
+    // record page is the Ask AI citation target.
     return record.primarySource == RecordSource.athena
         ? AthenaResourceDetailPage(resourceType: type, resourceId: record.id)
         : null;
@@ -122,8 +122,25 @@ class HealthEventDetailsScreen extends StatelessWidget {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ],
-                          // Where a record came from is never shown: only
-                          // "not connected" messages name a source.
+                          // Source is de-emphasized on the list (M2 feedback)
+                          // but always findable here, e.g. for conflicts and
+                          // to tell Medicare claims from clinical records.
+                          const SizedBox(height: 24),
+                          Text(
+                            'Where this came from',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            record.sources.map((s) => s.label).join(', '),
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
                           if (record.details.isNotEmpty) ...[
                             const SizedBox(height: 24),
                             const Divider(),

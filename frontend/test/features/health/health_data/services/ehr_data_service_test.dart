@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:care_connect_app/features/health/health_data/models/health_record.dart';
 import 'package:care_connect_app/features/health/health_data/models/patient_demographics.dart';
 import 'package:care_connect_app/features/health/health_data/services/ehr_data_service.dart';
+import 'package:care_connect_app/features/health/health_data/services/ehr_resource_mapper.dart';
 import 'package:care_connect_app/services/api_client.dart';
 
 import '../health_data_test_support.dart';
@@ -82,6 +83,19 @@ void main() {
     final records = await EhrDataService().fetchRecords();
     expect(records.single.sources, [RecordSource.athena]);
     expect(records.single.resourceType, 'Condition');
+  });
+
+  // R381-D05: Epic and athenahealth rows carry the same detail rows.
+  test('an Epic row has the same Category detail as an athenahealth row',
+      () async {
+    final epic = EhrResourceMapper.toHealthRecord(
+        {'source': 'EPIC', 'resourceId': 'e', 'category': 'Conditions'})!;
+    final athena = EhrResourceMapper.toHealthRecord(
+        {'source': 'ATHENAHEALTH', 'resourceId': 'a', 'category': 'Conditions'})!;
+    expect(epic.details.map((d) => '${d.label}: ${d.value}'),
+        ['Category: Conditions']);
+    expect(athena.details.map((d) => '${d.label}: ${d.value}'),
+        epic.details.map((d) => '${d.label}: ${d.value}'));
   });
 
   test('record types come from the FHIR resource type first, then the '

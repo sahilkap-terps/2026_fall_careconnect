@@ -64,7 +64,7 @@ class AthenaConnectTile extends StatefulWidget {
   State<AthenaConnectTile> createState() => _AthenaConnectTileState();
 }
 
-enum _Status { loading, connected, notConnected, unknown, hidden }
+enum _Status { loading, connected, notConnected, hidden }
 
 class _AthenaConnectTileState extends State<AthenaConnectTile> {
   // Same palette as MedicareConnectTile (WCAG AA).
@@ -94,7 +94,11 @@ class _AthenaConnectTileState extends State<AthenaConnectTile> {
     if (!mounted) return;
     setState(() {
       if (s == null) {
-        _status = _Status.unknown;
+        // A status that can't be read (offline, or a server with athena
+        // turned off answering 500 for the missing route; R381-D01) reads as
+        // not connected, as the Settings row, the banner and Epic's tile do.
+        // Connect then says what went wrong; a "Try again" here would loop.
+        _status = _Status.notConnected;
       } else if (!s.shown) {
         _status = _Status.hidden;
       } else {
@@ -338,10 +342,10 @@ class _AthenaConnectTileState extends State<AthenaConnectTile> {
                   ],
                 ),
               ),
-              if (_status == _Status.unknown || _status == _Status.loading ||
+              if (_status == _Status.loading ||
                   (_busy && _status != _Status.notConnected)) ...[
                 const SizedBox(width: 8),
-                _inlineAction(),
+                _spinner(),
               ],
             ],
           ),
@@ -422,9 +426,6 @@ class _AthenaConnectTileState extends State<AthenaConnectTile> {
       case _Status.loading:
         return const Text('Checking…',
             style: TextStyle(color: _muted, fontSize: 14));
-      case _Status.unknown:
-        return const Text('Couldn\'t check the connection',
-            style: TextStyle(color: _muted, fontSize: 14));
       case _Status.hidden:
         return const SizedBox.shrink();
       case _Status.connected:
@@ -458,21 +459,6 @@ class _AthenaConnectTileState extends State<AthenaConnectTile> {
               const CircularProgressIndicator(strokeWidth: 2.5, color: _teal),
         ),
       );
-
-  Widget _inlineAction() {
-    if (_status == _Status.unknown && !_busy) {
-      return TextButton(
-        onPressed: () {
-          setState(() => _status = _Status.loading);
-          _refresh();
-        },
-        style: TextButton.styleFrom(
-            foregroundColor: _teal, minimumSize: const Size(48, 48)),
-        child: const Text('Try again'),
-      );
-    }
-    return _spinner();
-  }
 
   Widget _messageBanner(_Message m) {
     final (Color fg, Color bg, IconData icon) = switch (m.tone) {

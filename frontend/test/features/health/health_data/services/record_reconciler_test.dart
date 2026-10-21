@@ -1,7 +1,8 @@
 // RecordReconciler (WBS 6.2.41, FR-EHR-07): the same record from several
 // providers is shown once as Epic's version and flagged as a possible
 // duplicate when the versions agree, flagged for the patient to decide when
-// they don't, and left untouched for a caregiver when it is a medication.
+// they don't, and left untouched (every version shown) when it is a
+// medication.
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -141,8 +142,8 @@ void main() {
     expect(r.records.single.id, 'epic-1');
   });
 
-  test('FR-EHR-07: a medication conflict keeps every version and waits for '
-      'a caregiver; a stored choice does not overwrite it', () {
+  test('FR-EHR-07: a medication the providers disagree on keeps every '
+      'version and is not flagged; a stored choice does not overwrite it', () {
     HealthRecord med(String id, RecordSource s, String status) => rec(id, s,
         type: RecordType.medication, title: 'Lisinopril 10 mg', status: status);
     final records = [
@@ -150,14 +151,19 @@ void main() {
       med('ath-1', RecordSource.athena, 'stopped'),
     ];
     final r = RecordReconciler.reconcile(records);
-    expect(r.unresolved.single.kind, RecordConflictKind.medicationNeedsCaregiver);
+    expect(r.unresolved, isEmpty);
     expect(r.records.map((x) => x.id), ['epic-1', 'ath-1']);
 
-    final c = r.unresolved.single;
-    final chosen = RecordReconciler.reconcile(records,
-        choices: {c.storageKey: RecordReconciler.encodeChoice(c, c.versions.first)});
+    // Even a choice stored under the same key can't collapse them.
+    final asDiffers = RecordConflict(
+        key: RecordReconciler.matchKey(records.first),
+        versions: records,
+        kind: RecordConflictKind.differs);
+    final chosen = RecordReconciler.reconcile(records, choices: {
+      asDiffers.storageKey:
+          RecordReconciler.encodeChoice(asDiffers, records.first),
+    });
     expect(chosen.records.map((x) => x.id), ['epic-1', 'ath-1']);
-    expect(chosen.unresolved, hasLength(1));
   });
 
   test('nothing about a record\'s title is stored with a decision', () {
@@ -169,5 +175,63 @@ void main() {
         '${RecordReconciler.encodeKeepBoth(c)}';
     expect(stored.toLowerCase(), isNot(contains('diabetes')));
     expect(stored, isNot(contains('active')));
+  });
+
+  // Failing-first for R381-D03.
+  test('the chosen version is shown with its own source first, the others '
+      'after it', () {
+    final records = [
+      rec('epic-1', RecordSource.epic, status: 'active'),
+      rec('ath-1', RecordSource.athena, status: 'resolved'),
+    ];
+    final c = RecordReconciler.reconcile(records).unresolved.single;
+    final r = RecordReconciler.reconcile(records, choices: {
+      c.storageKey: RecordReconciler.encodeChoice(c, c.versions.last),
+    });
+    expect(r.records.single.id, 'ath-1');
+    expect(r.records.single.primarySource, RecordSource.athena);
+    expect(r.records.single.sources, [RecordSource.athena, RecordSource.epic]);
+
+    // With no choice, the preferred version keeps the priority order.
+    final open = RecordReconciler.reconcile(records);
+    expect(open.records.single.sources, [RecordSource.epic, RecordSource.athena]);
+  });
+
+  test('a stored choice that is damaged or names no version is ignored', () {
+    final records = [
+      rec('epic-1', RecordSource.epic, status: 'active'),
+      rec('ath-1', RecordSource.athena, status: 'resolved'),
+    ];
+    final c = RecordReconciler.reconcile(records).unresolved.single;
+    final fp = RecordReconciler.encodeKeepBoth(c).split('#').first;
+    for (final stored in ['no-hash-mark', '$fp#cerner:x', '$fp#']) {
+      final r = RecordReconciler.reconcile(records,
+          choices: {c.storageKey: stored});
+      expect(r.unresolved, hasLength(1), reason: stored);
+      expect(r.records.single.id, 'epic-1', reason: stored);
+    }
+  });
+
+  test('three sources: one version each, in priority order', () {
+    final r = RecordReconciler.reconcile([
+      rec('m', RecordSource.medicare, status: 'x'),
+      rec('c', RecordSource.cerner),
+      rec('a', RecordSource.athena),
+    ]);
+    final c = r.unresolved.single;
+    expect(c.versions.map((v) => v.primarySource),
+        [RecordSource.athena, RecordSource.cerner, RecordSource.medicare]);
+    expect(c.kind, RecordConflictKind.differs);
+    expect(r.records.single.id, 'a');
+  });
+
+  test('records without a date: a one-off event matches another undated one',
+      () {
+    HealthRecord undated(String id, RecordSource s) => HealthRecord.single(
+        id: id, source: s, type: RecordType.appointment, title: 'Office visit');
+    final r = RecordReconciler.reconcile(
+        [undated('e', RecordSource.epic), undated('a', RecordSource.athena)]);
+    expect(r.unresolved.single.kind, RecordConflictKind.possibleDuplicate);
+    expect(r.unresolved.single.storageKey, hasLength(64));
   });
 }

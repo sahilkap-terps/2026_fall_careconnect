@@ -178,6 +178,22 @@ void main() {
     expect(await AthenaDataService().fetchResource('Condition', 'gone'),
         isNull);
   });
+
+  // R381-D02: a failed read is not a missing record.
+  test('fetchResource: 409 and 403 are no record (null); a server error or no '
+      'connection throws AthenaReadException', () async {
+    for (final status in [409, 403]) {
+      use(AthenaAdapter(status: status));
+      expect(await AthenaDataService().fetchResource('Condition', 'c-1'),
+          isNull, reason: '$status');
+    }
+    use(AthenaAdapter(status: 500));
+    await expectLater(AthenaDataService().fetchResource('Condition', 'c-1'),
+        throwsA(isA<AthenaReadException>()));
+    use(_DropAfter(AthenaAdapter(), 0));
+    await expectLater(AthenaDataService().fetchResource('Condition', 'c-1'),
+        throwsA(isA<AthenaReadException>()));
+  });
 }
 
 /// Answers the first [n] requests from [inner], then fails.

@@ -25,13 +25,10 @@ class RecordConflictDecision {
 /// - [RecordConflictKind.differs]: pick the correct version or keep both.
 /// - [RecordConflictKind.possibleDuplicate]: confirm it's one record or keep
 ///   both.
-/// - [RecordConflictKind.medicationNeedsCaregiver]: view only. FR-EHR-07
-///   leaves the decision to a caregiver.
 ///
-/// This review is the one place Health Data says where a record came from:
 /// WBS 6.2.41 requires flagged records to be "presented with source and
 /// provenance context", so each version names its source and when it was
-/// last updated. Everywhere else the source stays hidden.
+/// last updated.
 ///
 /// Returns null for "Decide later".
 Future<RecordConflictDecision?> showRecordConflictDialog(
@@ -63,8 +60,6 @@ class _RecordConflictDialog extends StatelessWidget {
   String get _title => switch (conflict.kind) {
         RecordConflictKind.differs => 'Which is correct?',
         RecordConflictKind.possibleDuplicate => 'Is this the same record?',
-        RecordConflictKind.medicationNeedsCaregiver =>
-          'Waiting for your caregiver',
       };
 
   String get _intro => switch (conflict.kind) {
@@ -76,14 +71,7 @@ class _RecordConflictDialog extends StatelessWidget {
           'Your providers both have this record with the same details, so '
               'Health Data shows it once. If they\'re different records, keep '
               'both. Nothing is deleted.',
-        RecordConflictKind.medicationNeedsCaregiver =>
-          'Your providers have different details for this medication. Both '
-              'are shown in Health Data, and nothing is changed until your '
-              'caregiver reviews them.',
       };
-
-  bool get _patientDecides =>
-      conflict.kind != RecordConflictKind.medicationNeedsCaregiver;
 
   @override
   Widget build(BuildContext context) {
@@ -119,36 +107,28 @@ class _RecordConflictDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        if (!_patientDecides)
-          TextButton(
-            style: textButton,
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          )
-        else ...[
-          TextButton(
-            style: textButton,
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Decide later'),
-          ),
-          TextButton(
-            style: textButton,
-            onPressed: () => Navigator.of(context)
-                .pop(const RecordConflictDecision.keepBoth()),
-            child: const Text('Keep both'),
-          ),
-          if (conflict.kind == RecordConflictKind.possibleDuplicate)
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _teal,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(48, 48),
-              ),
-              onPressed: () => Navigator.of(context)
-                  .pop(RecordConflictDecision.choose(versions.first)),
-              child: const Text('Same record'),
+        TextButton(
+          style: textButton,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Decide later'),
+        ),
+        TextButton(
+          style: textButton,
+          onPressed: () => Navigator.of(context)
+              .pop(const RecordConflictDecision.keepBoth()),
+          child: const Text('Keep both'),
+        ),
+        if (conflict.kind == RecordConflictKind.possibleDuplicate)
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _teal,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(48, 48),
             ),
-        ],
+            onPressed: () => Navigator.of(context)
+                .pop(RecordConflictDecision.choose(versions.first)),
+            child: const Text('Same record'),
+          ),
       ],
     );
   }

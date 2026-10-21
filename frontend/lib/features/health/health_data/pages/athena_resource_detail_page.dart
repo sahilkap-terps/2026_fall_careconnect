@@ -29,7 +29,11 @@ class AthenaResourceDetailPage extends StatefulWidget {
 
 class _AthenaResourceDetailPageState extends State<AthenaResourceDetailPage> {
   bool _loading = true;
+  bool _failed = false;
   Map<String, dynamic>? _data;
+
+  /// Counts reads, so an older read that finishes late is ignored.
+  int _read = 0;
 
   @override
   void initState() {
@@ -38,13 +42,44 @@ class _AthenaResourceDetailPageState extends State<AthenaResourceDetailPage> {
   }
 
   Future<void> _load() async {
-    final data = await (widget.service ?? AthenaDataService())
-        .fetchResource(widget.resourceType, widget.resourceId);
-    if (!mounted) return;
+    final read = ++_read;
+    Map<String, dynamic>? data;
+    var failed = false;
+    try {
+      data = await (widget.service ?? AthenaDataService())
+          .fetchResource(widget.resourceType, widget.resourceId);
+    } catch (_) {
+      failed = true;
+    }
+    if (!mounted || read != _read) return;
     setState(() {
       _data = data;
+      _failed = failed;
       _loading = false;
     });
+  }
+
+  /// The router reuses this page when only the type or id in the URL
+  /// changes (browser history, an edited address): read the new record.
+  @override
+  void didUpdateWidget(AthenaResourceDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.resourceType != widget.resourceType ||
+        oldWidget.resourceId != widget.resourceId) {
+      // build() follows didUpdateWidget, so no setState here.
+      _loading = true;
+      _failed = false;
+      _data = null;
+      _load();
+    }
+  }
+
+  void _retry() {
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    _load();
   }
 
   @override
@@ -59,7 +94,9 @@ class _AthenaResourceDetailPageState extends State<AthenaResourceDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_data == null)
+                  if (_failed)
+                    ..._loadFailed(theme)
+                  else if (_data == null)
                     ..._notFound(theme)
                   else
                     ..._details(theme),
@@ -77,6 +114,27 @@ class _AthenaResourceDetailPageState extends State<AthenaResourceDetailPage> {
           'This record is no longer available. It may have been removed when '
           'its provider was disconnected, or it has not been synced yet.',
           style: theme.textTheme.bodyMedium,
+        ),
+      ];
+
+  /// The read failed (offline, server error): the record may well still be
+  /// there, so don't say it was removed.
+  List<Widget> _loadFailed(ThemeData theme) => [
+        Text(
+          'We couldn\'t load this record. Check your connection and try again.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          // The light theme's primary is 2.85:1 on white.
+          style: TextButton.styleFrom(
+            foregroundColor: theme.brightness == Brightness.dark
+                ? theme.colorScheme.primary
+                : const Color(0xFF006B80),
+            minimumSize: const Size(48, 48),
+          ),
+          onPressed: _retry,
+          child: const Text('Try again'),
         ),
       ];
 

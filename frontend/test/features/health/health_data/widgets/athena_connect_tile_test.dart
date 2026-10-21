@@ -145,6 +145,34 @@ void main() {
     expect(find.textContaining('athenahealth is disconnected'), findsOneWidget);
   });
 
+  testWidgets('Keep connected cancels the disconnect: nothing is deleted',
+      (t) async {
+    final s = _FakeService(const AthenaStatus(connected: true));
+    await _pump(t, s);
+    await t.tap(find.text('Disconnect'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Keep connected'));
+    await t.pumpAndSettle();
+    expect(s.disconnects, 0);
+    expect(find.text('Refresh records'), findsOneWidget);
+    expect(find.text('Not connected'), findsNothing);
+  });
+
+  testWidgets('a disconnect the backend does not confirm says so and stays '
+      'connected', (t) async {
+    final s = _FakeService(const AthenaStatus(connected: true))
+      ..disconnectResult = false;
+    await _pump(t, s);
+    await t.tap(find.text('Disconnect'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(TextButton, 'Disconnect').last);
+    await t.pumpAndSettle();
+    expect(s.disconnects, 1);
+    expect(find.text('We couldn\'t disconnect athenahealth. Please try again.'),
+        findsOneWidget);
+    expect(find.text('Refresh records'), findsOneWidget);
+  });
+
   testWidgets('with athena turned off it still offers Connect, which says '
       'athenahealth isn\'t available (as Epic\'s tile does)', (t) async {
     final s = _FakeService(AthenaStatus.unavailable)
@@ -166,10 +194,25 @@ void main() {
     expect(find.textContaining('athenahealth'), findsNothing);
   });
 
-  testWidgets('a status that cannot be checked offers Try again', (t) async {
-    await _pump(t, _FakeService(null));
-    expect(find.text('Couldn\'t check the connection'), findsOneWidget);
-    expect(find.text('Try again'), findsOneWidget);
+  // R381-D01: with athena turned off the server answers 500, so the status
+  // can't be read. That used to show "Couldn't check the connection" with a
+  // Try again that looped.
+  testWidgets('a status that cannot be read shows Not connected and the '
+      'consent, not a Try again that loops', (t) async {
+    final s = _FakeService(null)
+      ..connectError =
+          const AthenaConnectException(AthenaConnectError.server);
+    await _pump(t, s);
+    expect(find.text('Couldn\'t check the connection'), findsNothing);
+    expect(find.text('Try again'), findsNothing);
+    expect(find.text('Not connected'), findsOneWidget);
+    expect(find.text(AthenaConnectTile.consentText), findsOneWidget);
+    await t.tap(find.byType(Checkbox));
+    await t.pump();
+    await t.tap(_connectButton());
+    await t.pumpAndSettle();
+    expect(s.connects, 1);
+    expect(find.textContaining('We couldn\'t complete that'), findsOneWidget);
   });
 
   testWidgets('every text meets 4.5:1 contrast, before and after a link '

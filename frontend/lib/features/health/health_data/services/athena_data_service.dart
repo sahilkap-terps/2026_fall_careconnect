@@ -32,6 +32,12 @@ enum AthenaReadProblem {
   unreachable,
 }
 
+/// An athenahealth read that failed (offline, server error), as opposed to a
+/// record that isn't there.
+class AthenaReadException implements Exception {
+  const AthenaReadException();
+}
+
 /// Reads the patient's athenahealth records from AthenaController.
 ///
 ///   GET /api/athena/resources?page&size&from&to
@@ -77,8 +83,7 @@ class AthenaDataService {
       if (items is List) {
         records.addAll(items
             .whereType<Map<String, dynamic>>()
-            .map((row) => EhrResourceMapper.toHealthRecord(row,
-                details: _details(row)))
+            .map(EhrResourceMapper.toHealthRecord)
             .whereType<HealthRecord>());
       }
       if (body['hasNext'] != true) {
@@ -91,13 +96,21 @@ class AthenaDataService {
         problem: AthenaReadProblem.unreachable);
   }
 
-  /// One record with its FHIR resource, or null when it can't be read.
+  /// One record with its FHIR resource, or null when there is no such record
+  /// to read (404, 409 not connected, 403). Throws [AthenaReadException] when
+  /// the read itself fails (offline, server error), so the page can say it
+  /// couldn't load the record rather than that the record was removed.
   Future<Map<String, dynamic>?> fetchResource(String type, String id) async {
     try {
       return await ApiClient.instance.getJson<Map<String, dynamic>?>(
         '/api/athena/resources/${Uri.encodeComponent(type)}/${Uri.encodeComponent(id)}',
         parser: (json) => json is Map<String, dynamic> ? json : null,
       );
+    } on DioException catch (e) {
+      if (_problemFor(e) == AthenaReadProblem.unreachable) {
+        throw const AthenaReadException();
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -117,11 +130,6 @@ class AthenaDataService {
         return AthenaReadProblem.unreachable;
     }
   }
-
-  static List<RecordDetail> _details(Map<String, dynamic> row) => [
-        if (EhrResourceMapper.stringOrNull(row['category']) case final c?)
-          RecordDetail('Category', c),
-      ];
 
   static String _isoDate(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-'

@@ -66,7 +66,9 @@ class AthenaConnectService {
     try {
       final resp =
           await _send((h) => http.get(Uri.parse('$_base/status'), headers: h));
-      if (resp.statusCode == 404) return AthenaStatus.unavailable;
+      if (resp.statusCode == 404 || _code(resp) == 'DISABLED') {
+        return AthenaStatus.unavailable;
+      }
       if (resp.statusCode == 403) return AthenaStatus.notPatient;
       if (resp.statusCode != 200) return null;
       final body = jsonDecode(resp.body);
@@ -337,6 +339,10 @@ enum AthenaConnectError {
 
   static AthenaConnectError fromResponse(int status, String? code) {
     switch (code) {
+      // The backend's answer when athenahealth is turned off (R381-D01),
+      // whatever the status code.
+      case 'DISABLED':
+        return disabled;
       case 'SYNC_IN_PROGRESS':
         return syncInProgress;
       case 'NOT_CONNECTED':

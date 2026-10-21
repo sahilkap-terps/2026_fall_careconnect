@@ -72,7 +72,9 @@ class EhrResourceMapper {
     }
   }
 
-  /// The record for [row], or null when its source is unknown. Ends with a
+  /// The record for [row], or null when its source is unknown. Ends with the
+  /// row's Category, for every source alike (so neither the cards nor a
+  /// conflict review can tell sources apart by it), then a
   /// [lastUpdatedLabel] detail when the row says when it was retrieved, the
   /// provenance a conflict review shows (WBS 6.2.41).
   static HealthRecord? toHealthRecord(Map<String, dynamic> row,
@@ -80,6 +82,7 @@ class EhrResourceMapper {
     final source = sourceFrom(row['source']);
     if (source == null) return null;
     final synced = parseDate(row['lastSyncedAt']);
+    final category = stringOrNull(row['category']);
     return HealthRecord.single(
       id: (row['resourceId'] ?? '').toString(),
       source: source,
@@ -90,13 +93,14 @@ class EhrResourceMapper {
       resourceType: stringOrNull(row['resourceType']),
       details: [
         ...details,
+        if (category != null) RecordDetail('Category', category),
         if (synced != null) RecordDetail(lastUpdatedLabel, shortDate(synced)),
       ],
     );
   }
 
   /// When the record was retrieved (FR-MCR-21). Same label for every
-  /// source, so it doesn't hint at where a record came from.
+  /// source.
   static const lastUpdatedLabel = 'Retrieved';
 
   static String shortDate(DateTime d) {

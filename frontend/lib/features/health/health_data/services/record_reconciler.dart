@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 
 import '../models/health_record.dart';
 
-/// Why a record needs the patient's (or caregiver's) attention.
+/// Why a record needs the patient's attention.
 enum RecordConflictKind {
   /// Two providers reported the same record with the same details. It is
   /// shown once (the preferred source's version) and flagged so the patient
@@ -15,11 +15,6 @@ enum RecordConflictKind {
   /// Two providers reported the same record with different details. The
   /// patient confirms one version, keeps both, or decides later.
   differs,
-
-  /// A medication whose providers disagree. FR-EHR-07: it goes to caregiver
-  /// review and is never overwritten silently, so every version stays shown
-  /// and the patient is not asked to pick.
-  medicationNeedsCaregiver,
 }
 
 /// Records from several providers that look like the same record.
@@ -109,20 +104,18 @@ class RecordReconciler {
       final sources = versions.map((v) => v.primarySource).toList();
       final preferred = versions.first;
       final same = versions.every((v) => _sameDetails(v, preferred));
-      final kind = same
-          ? RecordConflictKind.possibleDuplicate
-          : preferred.type == RecordType.medication
-              ? RecordConflictKind.medicationNeedsCaregiver
-              : RecordConflictKind.differs;
-      final conflict =
-          RecordConflict(key: entry.key, versions: versions, kind: kind);
-
-      if (kind == RecordConflictKind.medicationNeedsCaregiver) {
-        // Never overwritten: every version shows until a caregiver acts.
+      // A medication whose providers disagree is never overwritten
+      // (FR-EHR-07): every version stays shown. It isn't flagged either, as
+      // the caregiver review FR-EHR-07 asks for doesn't exist yet.
+      if (!same && preferred.type == RecordType.medication) {
         out.addAll(versions);
-        unresolved.add(conflict);
         continue;
       }
+      final kind = same
+          ? RecordConflictKind.possibleDuplicate
+          : RecordConflictKind.differs;
+      final conflict =
+          RecordConflict(key: entry.key, versions: versions, kind: kind);
 
       final stored = choices[conflict.storageKey];
       if (_keptBoth(conflict, stored)) {
@@ -131,7 +124,13 @@ class RecordReconciler {
       }
       final choice = _chosen(conflict, stored);
       if (choice == null) unresolved.add(conflict);
-      out.add((choice ?? preferred).copyWith(sources: sources));
+      // The shown version's own source stays first (primarySource), so its
+      // full record is still the one that opens; the others follow.
+      final shown = choice ?? preferred;
+      out.add(shown.copyWith(sources: [
+        shown.primarySource,
+        ...sources.where((s) => s != shown.primarySource),
+      ]));
     }
     return ReconciledRecords(records: out, unresolved: unresolved);
   }

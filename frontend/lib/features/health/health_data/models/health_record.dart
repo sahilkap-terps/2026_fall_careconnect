@@ -17,7 +17,8 @@ enum RecordSource {
       case RecordSource.cerner:
         return 'Cerner';
       case RecordSource.athena:
-        return 'Athena';
+        // The brand's own spelling, as everywhere else in the app.
+        return 'athenahealth';
       case RecordSource.medicare:
         return 'Medicare';
     }
