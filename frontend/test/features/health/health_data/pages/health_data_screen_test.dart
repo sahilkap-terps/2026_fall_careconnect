@@ -372,6 +372,54 @@ void main() {
     expect(find.text('Female'), findsOneWidget);
   });
 
+  testWidgets('TC-HDATA-040: a Cerner allergy appears in the shared history, '
+      'uses the Allergies filter, and preserves Cerner provenance',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage':
+              envelope(fixtureResources('coverage-bundle.json')),
+          '/api/ehr/resources':
+              '[{"resourceId":"cerner-allergy-1","source":"CERNER",'
+                  '"category":"Allergies","title":"Penicillin",'
+                  '"occurredAt":"2026-09-10T00:00:00Z","status":"active"},'
+                  '{"resourceId":"epic-medication-1","source":"EPIC",'
+                  '"category":"Medications","title":"Lisinopril 10 mg",'
+                  '"occurredAt":"2026-09-01T00:00:00Z","status":"active"}]',
+          '/api/ehr/patient':
+              '{"name":"Test Patient","birthDate":"1980-05-14",'
+                  '"gender":"female"}',
+        }));
+
+    await settle(t);
+
+    // Cerner, Epic, and Medicare use the same health-history list.
+    expect(find.text('Penicillin'), findsOneWidget);
+    expect(find.text('Lisinopril 10 mg'), findsOneWidget);
+    expect(find.text('Medicare Part A (Hospital Insurance)'), findsOneWidget);
+
+    // The shared record-type filter recognizes the Cerner allergy.
+    await t.tap(find.widgetWithText(FilterChip, 'Allergies'));
+    await t.pumpAndSettle();
+
+    expect(find.text('Penicillin'), findsOneWidget);
+    expect(find.text('Lisinopril 10 mg'), findsNothing);
+    expect(find.text('Medicare Part A (Hospital Insurance)'), findsNothing);
+
+    // The existing details screen preserves the record's source.
+    final details = find.text('View details');
+    expect(details, findsOneWidget);
+    await t.tap(details);
+    await t.pumpAndSettle();
+
+    expect(find.text('Where this came from'), findsOneWidget);
+    expect(find.text('Cerner'), findsOneWidget);
+  });
   // Testing Lead (PR #364 review): the new forbidden problem must not change
   // what a patient sees on their own screen.
   testWidgets(
