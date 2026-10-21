@@ -25,6 +25,7 @@ class CernerAllergyHttpClientIntegrationTest {
     private final AtomicInteger calls = new AtomicInteger();
     private volatile int upstream = 200;
     private volatile String body;
+    private volatile String secondBody;
     private volatile byte[] rawBody;
     private volatile long delay;
     private volatile String query;
@@ -40,12 +41,14 @@ class CernerAllergyHttpClientIntegrationTest {
         executor = Executors.newCachedThreadPool();
         server.setExecutor(executor);
         server.createContext("/fhir/AllergyIntolerance", exchange -> {
-            calls.incrementAndGet();
+            int callNumber = calls.incrementAndGet();
             query = exchange.getRequestURI().getRawQuery();
             authorization = exchange.getRequestHeaders().getFirst("Authorization");
             try {
                 Thread.sleep(delay);
-                byte[] bytes = rawBody == null ? body.getBytes(StandardCharsets.UTF_8) : rawBody;
+                String selectedBody = callNumber == 2 && secondBody != null ? secondBody : body;
+                byte[] bytes = rawBody == null
+                        ? selectedBody.getBytes(StandardCharsets.UTF_8) : rawBody;
                 exchange.getResponseHeaders().set("Content-Type", "application/fhir+json");
                 exchange.getResponseHeaders().set("Location", "/fhir/AllergyIntolerance");
                 exchange.sendResponseHeaders(upstream, bytes.length);
@@ -134,9 +137,23 @@ class CernerAllergyHttpClientIntegrationTest {
 
     @Test
     @Tag("M3-REQ-08")
-    void paginationExplicitlyBlocked() {
-        body = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\",\"link\":[{\"relation\":\"next\",\"url\":\"https://example.test/next\"}]}";
-        assertFailure("CERNER_PAGINATION_UNSUPPORTED", false);
+    void followsTrustedPaginationAndCombinesResults() {
+        String next = "http://127.0.0.1:" + server.getAddress().getPort()
+                + "/fhir/AllergyIntolerance?patient=synthetic-patient-1&page=2";
+        body = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\","
+                + "\"link\":[{\"relation\":\"next\",\"url\":\"" + next + "\"}]}";
+        secondBody = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\",\"entry\":[]}";
+
+        assertTrue(client.getAllergies("synthetic-patient-1", "synthetic-token").isEmpty());
+        assertEquals(2, calls.get());
+    }
+
+    @Test
+    @Tag("M3-REQ-03")
+    void rejectsPaginationToAnotherHost() {
+        body = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\","
+                + "\"link\":[{\"relation\":\"next\",\"url\":\"https://example.test/next\"}]}";
+        assertFailure("CERNER_INVALID_RESPONSE", false);
         assertEquals(1, calls.get());
     }
 

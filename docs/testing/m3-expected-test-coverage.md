@@ -115,7 +115,7 @@ Validate:
 - Every approved authorization/error envelope.
 - Empty and partial-result responses.
 - CamelCase field names and required/optional field behavior.
-- Approved source values, including `CERNER`.
+- Approved source values, including the Team C canonical identifier `ORACLE_HEALTH`.
 - `sourceRecordId` and date/date-time formats.
 - The standard error fields: `code`, `message`, `source`, and `retryable`.
 - Frontend mock fixtures and backend responses against the same contract path, version, and checksum.
@@ -154,7 +154,7 @@ Create unit tests for frontend models, parsing, services, repositories, and stat
 - Approved success fixtures deserialize every required normalized field.
 - Optional and nullable fields deserialize without crashes or invented clinical values.
 - Unknown future enum/code values follow the approved safe fallback rather than breaking the screen.
-- `source: CERNER` and `sourceRecordId` are preserved in frontend models where required.
+- `source: ORACLE_HEALTH` and `sourceRecordId` are preserved in frontend models where required.
 - UTC date-time values and partial dates are displayed according to approved presentation rules.
 - An empty successful response becomes an empty-data state, not an error.
 - Source authorization expiry becomes the reconnect-required state.

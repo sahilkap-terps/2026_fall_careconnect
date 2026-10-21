@@ -36,7 +36,7 @@ All requests must keep the SMART persona, authorization endpoint, token host, `a
 
 | ID | Requirement | Level | Pri. | Scenario and expected result | Automation |
 |---|---|---:|---:|---|---|
-| M3-SC-MAP-001 | M3-REQ-01, 02, 04, 12 | Unit | P0 | A complete AllergyIntolerance maps every approved field: substance text/code, clinical status, verification status, reaction manifestations, severity, recorded date, `source: CERNER`, and `sourceRecordId`. A recursive comparison asserts every field in the paired expected output. | After canonical approval |
+| M3-SC-MAP-001 | M3-REQ-01, 02, 04, 12 | Unit | P0 | A complete AllergyIntolerance maps every approved field: substance text/code, clinical status, verification status, reaction manifestations, severity, recorded date, `source: ORACLE_HEALTH`, and `sourceRecordId`. A recursive comparison asserts every field in the paired expected output. | After canonical approval |
 | M3-SC-MAP-002 | M3-REQ-01, 02 | Unit | P0 | Multiple codings and reaction manifestations preserve approved cardinality and do not collapse distinct source facts. | After canonical approval |
 | M3-SC-MAP-003 | M3-REQ-02 | Unit | P0 | Offset date-times normalize to the contract-required UTC representation without changing the instant. Partial FHIR dates retain approved precision and are not fabricated. | Now; finalize expected JSON after contract |
 | M3-SC-MAP-004 | M3-REQ-04, 06 | Unit | P0 | An AllergyIntolerance with no reaction maps to an empty reaction list, not an error. Other missing optional fields follow the approved absent/null/empty rule; no clinical values are invented. | Now; finalize output after canonical approval |
@@ -108,7 +108,7 @@ The first mapper pairing should implement MAP-001, MAP-004, MAP-005, MAP-006, an
 | M3-SC-CON-001 | M3-REQ-10 | Contract | P0 | Every success example and actual endpoint response validates against `contracts/unified-health-data.openapi.yaml` 1.0. | After contract |
 | M3-SC-CON-002 | M3-REQ-09, 10 | Contract | P0 | Every error/authorization/partial-result response validates against the same contract. | After contract |
 | M3-SC-CON-003 | M3-REQ-10 | Contract | P0 | Frontend mock fixtures validate against the exact contract version/checksum used by backend tests. | After contract |
-| M3-SC-CON-004 | M3-REQ-10 | Contract | P0 | Contract enumerates only approved source values (`MEDICARE`, `EPIC`, `CERNER`, `ATHENA`) and requires `sourceRecordId`, UTC dates, and the common error fields. | After contract |
+| M3-SC-CON-004 | M3-REQ-10 | Contract | P0 | Contract enumerates only approved source values (Team C proposes `ORACLE_HEALTH`, alongside the other approved EHR source identifiers) and requires `sourceRecordId`, UTC dates, and the common error fields. | After contract |
 
 The eight slice scenarios fall within the recommended range of 6–10 tests per workflow. Contract validation remains a distinct level even when invoked by a slice test because it protects a different boundary.
 
