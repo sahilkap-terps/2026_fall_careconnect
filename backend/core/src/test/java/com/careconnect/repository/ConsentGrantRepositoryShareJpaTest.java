@@ -94,6 +94,37 @@ class ConsentGrantRepositoryShareJpaTest {
     }
 
     @Test
+    @DisplayName("TC-CONSENT-082 CR-2: a recipient sees only active, unexpired grants made to them, newest first")
+    void findActiveGrantsForGrantee_filtersAndOrders() {
+        final Instant now = Instant.now();
+        final User recipient = user(Role.FAMILY_MEMBER);
+        final User someoneElse = user(Role.FAMILY_MEMBER);
+        final User first = user(Role.PATIENT);
+        final User second = user(Role.PATIENT);
+        final User revokedBy = user(Role.PATIENT);
+        final User expiredBy = user(Role.PATIENT);
+
+        final ConsentGrant older = grant(first, recipient, ConsentGrant.SCOPE_MEDICARE_VIEW,
+                ConsentGrant.STATUS_ACTIVE, now.minus(2, ChronoUnit.DAYS), now.plus(88, ChronoUnit.DAYS));
+        final ConsentGrant newer = grant(second, recipient, ConsentGrant.SCOPE_MEDICARE_VIEW,
+                ConsentGrant.STATUS_ACTIVE, now.minus(1, ChronoUnit.DAYS), now.plus(89, ChronoUnit.DAYS));
+        grant(revokedBy, recipient, ConsentGrant.SCOPE_MEDICARE_VIEW,
+                ConsentGrant.STATUS_REVOKED, now.minus(3, ChronoUnit.DAYS), now.plus(87, ChronoUnit.DAYS));
+        grant(expiredBy, recipient, ConsentGrant.SCOPE_MEDICARE_VIEW,
+                ConsentGrant.STATUS_ACTIVE, now.minus(91, ChronoUnit.DAYS), now.minus(1, ChronoUnit.DAYS));
+        grant(first, recipient, ConsentGrant.SCOPE_AI_RETRIEVAL,
+                ConsentGrant.STATUS_ACTIVE, now.minus(1, ChronoUnit.DAYS), null);
+        grant(first, someoneElse, ConsentGrant.SCOPE_MEDICARE_VIEW,
+                ConsentGrant.STATUS_ACTIVE, now.minus(1, ChronoUnit.DAYS), now.plus(89, ChronoUnit.DAYS));
+
+        final List<ConsentGrant> found = repository.findActiveGrantsForGrantee(
+                recipient.getId(), ConsentGrant.SCOPE_MEDICARE_VIEW, now);
+
+        assertThat(found).extracting(ConsentGrant::getId)
+                .containsExactly(newer.getId(), older.getId());
+    }
+
+    @Test
     @DisplayName("TC-CONSENT-075 CR-2: a patient with no grants gets an empty list")
     void findActiveGrantsForPatient_emptyForNoGrants() {
         final User patient = user(Role.PATIENT);

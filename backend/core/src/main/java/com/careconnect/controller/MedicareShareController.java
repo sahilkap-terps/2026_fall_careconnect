@@ -2,6 +2,7 @@ package com.careconnect.controller;
 
 import com.careconnect.dto.MedicareShareRequest;
 import com.careconnect.dto.MedicareShareResponse;
+import com.careconnect.dto.MedicareSharedWithMeResponse;
 import com.careconnect.exception.AppException;
 import com.careconnect.model.User;
 import com.careconnect.security.Role;
@@ -27,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * CR-2 (#305) patient-facing record sharing: share Medicare records with a registered user by
- * email (read-only, 90 days), list current shares, and revoke one by its id.
+ * email (read-only, 90 days), list current shares, and revoke one by its id; plus the recipient's
+ * "Shared with me" list.
  */
 @RestController
 @RequiredArgsConstructor
@@ -64,6 +66,17 @@ public class MedicareShareController {
                 .toList());
     }
 
+    /**
+     * The caller's "Shared with me" list. Any signed-in user may ask, since a share recipient can
+     * hold any role; each user only ever sees shares made to them.
+     */
+    @GetMapping(value = "/received", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "List Medicare records other patients have shared with the caller")
+    public ResponseEntity<List<MedicareSharedWithMeResponse>> received() {
+        final User caller = requireAuthenticatedCaller();
+        return ResponseEntity.ok(medicareShareService.listSharedWithMe(caller.getId()));
+    }
+
     @DeleteMapping(value = "/{shareId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Revoke one of the patient's Medicare shares")
     public ResponseEntity<MedicareShareResponse> revoke(@PathVariable final Long shareId) {
@@ -74,13 +87,18 @@ public class MedicareShareController {
     }
 
     private User requirePatientCaller() {
-        final User caller = securityUtil.resolveCurrentUser();
-        if (caller == null || caller.getId() == null) {
-            throw new AppException(HttpStatus.UNAUTHORIZED, "Authentication required");
-        }
+        final User caller = requireAuthenticatedCaller();
         if (caller.getRole() != Role.PATIENT) {
             throw new AppException(
                     HttpStatus.FORBIDDEN, "Only the patient may share their Medicare records");
+        }
+        return caller;
+    }
+
+    private User requireAuthenticatedCaller() {
+        final User caller = securityUtil.resolveCurrentUser();
+        if (caller == null || caller.getId() == null) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
         return caller;
     }

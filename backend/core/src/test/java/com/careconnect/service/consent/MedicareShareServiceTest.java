@@ -15,7 +15,10 @@ import static org.mockito.Mockito.when;
 import com.careconnect.exception.AppException;
 import com.careconnect.model.ConsentGrant;
 import com.careconnect.model.User;
+import com.careconnect.dto.MedicareSharedWithMeResponse;
+import com.careconnect.model.Patient;
 import com.careconnect.repository.ConsentGrantRepository;
+import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.security.Role;
 import com.careconnect.service.EmailService;
@@ -47,6 +50,8 @@ class MedicareShareServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private PatientRepository patientRepository;
+    @Mock
     private EmailService emailService;
 
     private MedicareShareService service;
@@ -55,7 +60,8 @@ class MedicareShareServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new MedicareShareService(consentGrantRepository, userRepository, emailService);
+        service = new MedicareShareService(
+                consentGrantRepository, userRepository, patientRepository, emailService);
         patient = user(PATIENT_USER_ID, Role.PATIENT, "patient@example.com", "Pat Patient");
         recipient = user(RECIPIENT_USER_ID, Role.FAMILY_MEMBER, RECIPIENT_EMAIL, "Fran Friend");
     }
@@ -339,6 +345,53 @@ class MedicareShareServiceTest {
         assertThat(result.grant().getRevokedAt()).isEqualTo(revokedAt);
         assertThat(result.recipient()).isNull();
         verify(consentGrantRepository, never()).save(any(ConsentGrant.class));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-077 CR-2: Shared with me lists received shares with the patient's record id and name")
+    void sharedWithMe_listsReceivedShares() {
+        final ConsentGrant share = activeShare();
+        share.setGrantedAt(Instant.parse("2026-10-20T12:00:00Z"));
+        share.setExpiresAt(Instant.parse("2027-01-18T12:00:00Z"));
+        final ConsentGrant caregiverGrant = activeShare();
+        caregiverGrant.setId(2L);
+        caregiverGrant.setGranteeRole("CAREGIVER");
+        when(consentGrantRepository.findActiveGrantsForGrantee(
+                eq(RECIPIENT_USER_ID), eq(ConsentGrant.SCOPE_MEDICARE_VIEW), any(Instant.class)))
+                .thenReturn(List.of(share, caregiverGrant));
+        final Patient record = new Patient();
+        record.setId(500L);
+        record.setUser(patient);
+        when(patientRepository.findByUserId(PATIENT_USER_ID)).thenReturn(Optional.of(record));
+
+        final List<MedicareSharedWithMeResponse> received = service.listSharedWithMe(RECIPIENT_USER_ID);
+
+        assertThat(received).containsExactly(new MedicareSharedWithMeResponse(
+                1L, PATIENT_USER_ID, 500L, "Pat Patient",
+                Instant.parse("2026-10-20T12:00:00Z"), Instant.parse("2027-01-18T12:00:00Z")));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-078 CR-2: a sharer with no patient record still appears, with a null patientId")
+    void sharedWithMe_noPatientRecord() {
+        when(consentGrantRepository.findActiveGrantsForGrantee(
+                eq(RECIPIENT_USER_ID), eq(ConsentGrant.SCOPE_MEDICARE_VIEW), any(Instant.class)))
+                .thenReturn(List.of(activeShare()));
+        when(patientRepository.findByUserId(PATIENT_USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findById(PATIENT_USER_ID)).thenReturn(Optional.of(patient));
+
+        final List<MedicareSharedWithMeResponse> received = service.listSharedWithMe(RECIPIENT_USER_ID);
+
+        assertThat(received).hasSize(1);
+        assertThat(received.get(0).patientId()).isNull();
+        assertThat(received.get(0).patientName()).isEqualTo("Pat Patient");
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-079 CR-2: Shared with me with no user id is empty and queries nothing")
+    void sharedWithMe_nullUserIsEmpty() {
+        assertThat(service.listSharedWithMe(null)).isEmpty();
+        verifyNoInteractions(consentGrantRepository, patientRepository, userRepository);
     }
 
     @Test

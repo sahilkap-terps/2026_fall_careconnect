@@ -1,9 +1,12 @@
 package com.careconnect.service.consent;
 
+import com.careconnect.dto.MedicareSharedWithMeResponse;
 import com.careconnect.exception.AppException;
 import com.careconnect.model.ConsentGrant;
+import com.careconnect.model.Patient;
 import com.careconnect.model.User;
 import com.careconnect.repository.ConsentGrantRepository;
+import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.service.EmailService;
 
@@ -42,6 +45,7 @@ public class MedicareShareService {
 
     private final ConsentGrantRepository consentGrantRepository;
     private final UserRepository userRepository;
+    private final PatientRepository patientRepository;
     private final EmailService emailService;
 
     /**
@@ -156,6 +160,40 @@ public class MedicareShareService {
             }
         }
         return shares;
+    }
+
+    /**
+     * The caller's "Shared with me" list: active, unexpired CR-2 shares they received, newest
+     * first, each with the sharing patient's record id for the Medicare reads. Caregiver
+     * {@code MEDICARE_VIEW} grants are not shares and are left out.
+     *
+     * @param recipientUserId the authenticated user's id
+     * @return the shares received; empty when there are none
+     */
+    @Transactional(readOnly = true)
+    public List<MedicareSharedWithMeResponse> listSharedWithMe(final Long recipientUserId) {
+        if (recipientUserId == null) {
+            return List.of();
+        }
+        final List<MedicareSharedWithMeResponse> received = new ArrayList<>();
+        for (final ConsentGrant grant : consentGrantRepository.findActiveGrantsForGrantee(
+                recipientUserId, ConsentGrant.SCOPE_MEDICARE_VIEW, Instant.now())) {
+            if (!ConsentGrant.GRANTEE_ROLE_SHARE_RECIPIENT.equals(grant.getGranteeRole())) {
+                continue;
+            }
+            final Optional<Patient> record = patientRepository.findByUserId(grant.getPatientUserId());
+            final String name = record.map(Patient::getUser).map(User::getName)
+                    .or(() -> userRepository.findById(grant.getPatientUserId()).map(User::getName))
+                    .orElse(null);
+            received.add(new MedicareSharedWithMeResponse(
+                    grant.getId(),
+                    grant.getPatientUserId(),
+                    record.map(Patient::getId).orElse(null),
+                    name,
+                    grant.getGrantedAt(),
+                    grant.getExpiresAt()));
+        }
+        return received;
     }
 
     /**

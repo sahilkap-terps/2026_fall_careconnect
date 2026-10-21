@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.careconnect.dto.MedicareSharedWithMeResponse;
 import com.careconnect.exception.AppException;
 import com.careconnect.exception.GlobalExceptionHandler;
 import com.careconnect.model.ConsentGrant;
@@ -175,6 +176,32 @@ class MedicareShareControllerTest {
         mockMvc.perform(delete(URL + "/99")).andExpect(status().isForbidden());
 
         verify(medicareShareService, never()).revokeShare(any(), any());
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-080 CR-2: GET medicare-share/received works for any signed-in role and lists the caller's shares")
+    void received_listsSharesForAnyRole() throws Exception {
+        when(securityUtil.resolveCurrentUser()).thenReturn(user(30L, Role.FAMILY_MEMBER, "friend@example.com"));
+        when(medicareShareService.listSharedWithMe(30L)).thenReturn(List.of(
+                new MedicareSharedWithMeResponse(99L, 10L, 500L, "Pat Patient",
+                        Instant.parse("2026-10-20T12:00:00Z"), Instant.parse("2027-01-18T12:00:00Z"))));
+
+        mockMvc.perform(get(URL + "/received"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].shareId").value(99))
+                .andExpect(jsonPath("$[0].patientId").value(500))
+                .andExpect(jsonPath("$[0].patientName").value("Pat Patient"));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-081 CR-2: GET medicare-share/received with no signed-in user is 401")
+    void received_unauthenticated() throws Exception {
+        when(securityUtil.resolveCurrentUser()).thenReturn(null);
+
+        mockMvc.perform(get(URL + "/received")).andExpect(status().isUnauthorized());
+
+        verify(medicareShareService, never()).listSharedWithMe(any());
     }
 
     @Test
