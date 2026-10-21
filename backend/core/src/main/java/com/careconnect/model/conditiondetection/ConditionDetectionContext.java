@@ -1,4 +1,4 @@
-package com.careconnect.service.conditiondetection;
+package com.careconnect.model.conditiondetection;
 
 import java.time.LocalDateTime;
 

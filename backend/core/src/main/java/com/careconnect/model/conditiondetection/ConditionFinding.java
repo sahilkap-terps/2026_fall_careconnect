@@ -1,6 +1,4 @@
-package com.careconnect.service.conditiondetection;
-
-import com.careconnect.model.conditiondetection.ConditionName;
+package com.careconnect.model.conditiondetection;
 
 /**
  * One condition's result from an adapter.

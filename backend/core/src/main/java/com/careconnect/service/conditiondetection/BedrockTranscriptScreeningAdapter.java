@@ -2,6 +2,8 @@ package com.careconnect.service.conditiondetection;
 
 import com.careconnect.model.CallRecording;
 import com.careconnect.model.CallTranscriptSegment;
+import com.careconnect.model.conditiondetection.ConditionDetectionContext;
+import com.careconnect.model.conditiondetection.ConditionFinding;
 import com.careconnect.model.conditiondetection.ConditionInputKind;
 import com.careconnect.model.conditiondetection.ConditionName;
 import com.careconnect.model.conditiondetection.ConditionSkipReason;

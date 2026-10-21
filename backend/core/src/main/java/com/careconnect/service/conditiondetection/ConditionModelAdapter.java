@@ -1,5 +1,6 @@
 package com.careconnect.service.conditiondetection;
 
+import com.careconnect.model.conditiondetection.ConditionDetectionContext;
 import com.careconnect.model.conditiondetection.ConditionInputKind;
 import com.careconnect.model.conditiondetection.ConditionName;
 import java.util.Set;

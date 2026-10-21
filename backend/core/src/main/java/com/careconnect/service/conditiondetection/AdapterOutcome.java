@@ -1,5 +1,6 @@
 package com.careconnect.service.conditiondetection;
 
+import com.careconnect.model.conditiondetection.ConditionFinding;
 import com.careconnect.model.conditiondetection.ConditionSkipReason;
 import java.util.List;
 
