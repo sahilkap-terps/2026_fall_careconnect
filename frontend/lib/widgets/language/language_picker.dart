@@ -8,7 +8,6 @@ class LanguagePicker {
     final locales = AppLocalizations.supportedLocales;
     final current = context.read<LocaleProvider>().locale;
     final t = AppLocalizations.of(context)!;
-
     await showModalBottomSheet(
       context: context,
       showDragHandle: true,

@@ -1,13 +1,12 @@
-
 import 'package:calendar_view/calendar_view.dart';
 import 'package:care_connect_app/features/tasks/models/task_model.dart';
 import 'package:care_connect_app/features/tasks/presentation/widgets/event_tile.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 
 // ── Helpers from features/tasks/widgets/event_tile_test.dart (merged) ──
 
@@ -28,6 +27,8 @@ final _event = CalendarEventData<Task>(
 Widget _wrap(Widget child) {
   final manager = TaskTypeManager();
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<TaskTypeManager>.value(
       value: manager,
       child: Scaffold(
@@ -54,7 +55,11 @@ void main() {
     Widget wrapWithProvider(Widget child) {
       return ChangeNotifierProvider.value(
         value: manager,
-        child: MaterialApp(home: Scaffold(body: child)),
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: child),
+        ),
       );
     }
 
@@ -220,7 +225,8 @@ void main() {
     });
 
     group('EventTile – empty events', () {
-      testWidgets('renders SizedBox.shrink when events is empty', (tester) async {
+      testWidgets('renders SizedBox.shrink when events is empty',
+          (tester) async {
         // An empty event list must render an empty (zero-size) widget.
         await tester.pumpWidget(_wrap(const EventTile(events: [])));
         await tester.pump();
