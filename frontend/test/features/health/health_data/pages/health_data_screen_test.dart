@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -946,6 +947,134 @@ void main() {
       expect(find.textContaining('different dates of birth'), findsNothing);
       expect(await IdentityConflictService(useMock: false).fetchPending(),
           isEmpty);
+    });
+  });
+
+  // Review follow-up: the automatic review used to open only on the first
+  // load. Now each conflict pops up by itself once while the screen is open.
+  group('the automatic review after a reload', () {
+    late AthenaConnectService original;
+    setUp(() {
+      original = AthenaConnectService.instance;
+      IdentityConflictService.clearFound();
+    });
+    tearDown(() => AthenaConnectService.instance = original);
+
+    String condition(String id, String source, String status) =>
+        '{"resourceType":"Condition","resourceId":"$id","source":"$source",'
+        '"category":"Conditions","title":"Asthma","status":"$status",'
+        '"occurredAt":"2026-07-01T00:00:00Z"}';
+    String athenaPage(String status) =>
+        '{"items":[${condition('a1', 'ATHENAHEALTH', status)}],'
+        '"page":0,"size":100,"hasNext":false}';
+
+    /// Lets the reload, which runs on real time (Dio), finish.
+    Future<void> settleReload(WidgetTester t) async {
+      for (var i = 0; i < 30; i++) {
+        await t.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await t.pump(const Duration(milliseconds: 50));
+      }
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('a conflict that appears after connecting athenahealth opens '
+        'the review by itself', (t) async {
+      await t.binding.setSurfaceSize(const Size(800, 3000));
+      addTearDown(() => t.binding.setSurfaceSize(null));
+      AthenaConnectService.instance =
+          _BannerAthena(result: const AthenaStatus(connected: true));
+      final routes = <String, String>{
+        '/v1/api/medicare/visits': envelope(const []),
+        '/v1/api/medicare/coverage': envelope(const []),
+        '/api/ehr/resources': '[${condition('e1', 'EPIC', 'active')}]',
+      };
+      final status = <String, int>{'/api/athena/resources': 409};
+      await pump(
+          t,
+          RouteAdapter(routes,
+              status: status,
+              statusBodies: const {
+                '/api/athena/resources': '{"code":"NOT_CONNECTED"}'
+              }));
+      await settle(t);
+      expect(find.byType(AlertDialog), findsNothing);
+
+      // athenahealth connects and now has a different version of Asthma.
+      status.remove('/api/athena/resources');
+      routes['/api/athena/resources'] = athenaPage('resolved');
+      await t.tap(find.text('Connect athenahealth'));
+      await t.pumpAndSettle();
+      await t.tap(find.byType(Checkbox));
+      await t.pump();
+      await t.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Connect')));
+      await settleReload(t);
+      expect(find.text('Which is correct?'), findsOneWidget);
+    });
+
+    testWidgets('after a reload, a new conflict opens the review by itself '
+        'but one put off with "Decide later" is not asked again', (t) async {
+      await t.binding.setSurfaceSize(const Size(1200, 3000));
+      addTearDown(() => t.binding.setSurfaceSize(null));
+      final routes = <String, String>{
+        '/v1/api/medicare/visits': envelope(const []),
+        '/v1/api/medicare/coverage': envelope(const []),
+        '/api/ehr/resources': '[${condition('e1', 'EPIC', 'active')}]',
+        '/api/athena/resources': athenaPage('resolved'),
+      };
+      ApiClient.instance.debugSetHttpClientAdapter(_DobAdapter(
+        epic: '{"name":"Test Patient","birthDate":"1980-05-14"}',
+        athena: '{"name":"Test Patient","birthDate":"1980-05-15"}',
+        rest: RouteAdapter(routes),
+      ));
+      final router = GoRouter(initialLocation: '/health-data', routes: [
+        GoRoute(
+            path: '/health-data',
+            builder: (_, __) => const HealthDataScreen()),
+        GoRoute(
+            path: '/dob-confirm',
+            builder: (context, _) => Scaffold(
+                body: TextButton(
+                    onPressed: () => context.pop(),
+                    child: const Text('Back from DOB confirmation')))),
+      ]);
+      await t.pumpWidget(MaterialApp.router(routerConfig: router));
+      await settle(t);
+      expect(find.text('Which is correct?'), findsOneWidget);
+      await t.tap(find.text('Decide later'));
+      await t.pumpAndSettle();
+
+      // Meanwhile a second record starts to differ between the providers.
+      routes['/api/ehr/resources'] = '[${condition('e1', 'EPIC', 'active')},'
+          '${condition('e2', 'EPIC', 'active').replaceAll('Asthma', 'Gout')}]';
+      routes['/api/athena/resources'] = '{"items":['
+          '${condition('a1', 'ATHENAHEALTH', 'resolved')},'
+          '${condition('a2', 'ATHENAHEALTH', 'resolved').replaceAll('Asthma', 'Gout')}'
+          '],"page":0,"size":100,"hasNext":false}';
+
+      // Confirming the date of birth reloads the screen.
+      await t.tap(find.widgetWithText(TextButton, 'Confirm'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Back from DOB confirmation'));
+      await settleReload(t);
+
+      // Only the new one asks: one dialog, not "(1 of 2)", and it is Gout.
+      expect(find.text('Which is correct?'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(AlertDialog), matching: find.text('Gout')),
+          findsWidgets);
+      expect(
+          find.descendant(
+              of: find.byType(AlertDialog), matching: find.text('Asthma')),
+          findsNothing);
+      await t.tap(find.text('Decide later'));
+      await t.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('2 records have different details from your providers.'),
+          findsOneWidget);
     });
   });
 }

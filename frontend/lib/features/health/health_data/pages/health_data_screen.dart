@@ -71,7 +71,13 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
   /// Records whose providers disagree and the patient hasn't decided.
   List<RecordConflict> _conflicts = [];
   Map<String, String> _choices = {};
-  bool _conflictPromptShown = false;
+
+  /// Conflicts the automatic review has already opened for, by storage key.
+  /// While this screen is open, each one pops up by itself once: a conflict
+  /// that appears after a reload (connecting athenahealth, confirming the
+  /// date of birth) pops up too, but one the patient put off with "Decide
+  /// later" stays in the banner instead of asking again.
+  final Set<String> _autoReviewed = {};
   final RecordChoiceStore _choiceStore = RecordChoiceStore();
   PatientDemographics? _patientDemographics;
 
@@ -137,10 +143,14 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     } catch (_) {}
     PatientDemographics? demographics;
     var dobNeedsConfirmation = false;
+    Map<String, PatientDemographics?> bySource = const {};
     try {
-      final perSource = await ehrService.fetchDemographicsBySource();
-      demographics = EhrDataService.mergeDemographics(perSource);
-      final resolved = await _resolveBirthDate(demographics, perSource);
+      bySource = await ehrService.fetchDemographicsBySource();
+      demographics = EhrDataService.mergeDemographics(bySource);
+    } catch (_) {}
+    // Separate, so a date-of-birth check that fails still shows the card.
+    try {
+      final resolved = await _resolveBirthDate(demographics, bySource);
       demographics = resolved.$1;
       dobNeedsConfirmation = resolved.$2;
     } catch (_) {}
@@ -174,13 +184,19 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       _reconcile();
       _loading = false;
     });
-    // Only records whose details differ pop up by themselves; possible
+    // Only records whose details differ pop up by themselves, and each only
+    // once while this screen is open (see [_autoReviewed]); possible
     // duplicates wait in the banner.
-    if (_conflicts.any((c) => c.kind == RecordConflictKind.differs) &&
-        !_conflictPromptShown) {
-      _conflictPromptShown = true;
+    final fresh = [
+      for (final c in _conflicts)
+        if (c.kind == RecordConflictKind.differs &&
+            !_autoReviewed.contains(c.storageKey))
+          c,
+    ];
+    if (fresh.isNotEmpty) {
+      _autoReviewed.addAll(fresh.map((c) => c.storageKey));
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _reviewConflicts(onlyDiffers: true);
+        if (mounted) _reviewConflicts(only: fresh);
       });
     }
   }
@@ -213,10 +229,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
   /// Returns the demographics to show and whether a confirmation is pending.
   Future<(PatientDemographics?, bool)> _resolveBirthDate(
       PatientDemographics? merged,
-      List<PatientDemographics?> perSource) async {
-    const sources = EhrDataService.demographicsSources;
-    final current = perSource[sources.indexOf('EPIC')]?.birthDate;
-    final incoming = perSource[sources.indexOf('ATHENAHEALTH')]?.birthDate;
+      Map<String, PatientDemographics?> bySource) async {
+    // By name: a source that isn't fetched is simply null.
+    final current = bySource['EPIC']?.birthDate;
+    final incoming = bySource['ATHENAHEALTH']?.birthDate;
     if (merged == null ||
         current == null ||
         incoming == null ||
@@ -249,13 +265,11 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
   }
 
   /// Goes through each flagged record in turn. "Decide later" stops and
-  /// leaves the rest flagged (WBS 6.2.41). [onlyDiffers] is the automatic
-  /// review on load, which asks only about records whose details differ.
-  Future<void> _reviewConflicts({bool onlyDiffers = false}) async {
-    final pending = [
-      for (final c in _conflicts)
-        if (!onlyDiffers || c.kind == RecordConflictKind.differs) c,
-    ];
+  /// leaves the rest flagged (WBS 6.2.41). [only] is the automatic review
+  /// on load, which asks only about the new records whose details differ;
+  /// the banner's Review goes through every flagged record.
+  Future<void> _reviewConflicts({List<RecordConflict>? only}) async {
+    final pending = List.of(only ?? _conflicts);
     for (var i = 0; i < pending.length; i++) {
       final conflict = pending[i];
       final decision = await showRecordConflictDialog(context, conflict,

@@ -41,16 +41,25 @@ class EhrDataService {
   Future<PatientDemographics?> fetchPatientDemographics() async =>
       mergeDemographics(await fetchDemographicsBySource());
 
-  /// Each source's demographics, in [demographicsSources] order (null where
-  /// a source has none), so a caller can see where they disagree.
-  Future<List<PatientDemographics?>> fetchDemographicsBySource() =>
-      Future.wait(demographicsSources.map(_fetchPatientDemographicsFrom));
+  /// Each source's demographics by source name (null where a source has
+  /// none), so a caller can see where they disagree. Callers look sources
+  /// up by name: a source that isn't there is null, never an error.
+  Future<Map<String, PatientDemographics?>> fetchDemographicsBySource() async {
+    final results = await Future.wait(
+        demographicsSources.map(_fetchPatientDemographicsFrom));
+    return {
+      for (var i = 0; i < demographicsSources.length; i++)
+        demographicsSources[i]: results[i],
+    };
+  }
 
-  /// Field by field from the first source that has each one.
+  /// Field by field from the first source, in [demographicsSources] order,
+  /// that has each one. A source missing from [bySource] is skipped.
   static PatientDemographics? mergeDemographics(
-      List<PatientDemographics?> perSource) {
+      Map<String, PatientDemographics?> bySource) {
     PatientDemographics? merged;
-    for (final d in perSource) {
+    for (final source in demographicsSources) {
+      final d = bySource[source];
       merged = merged == null ? d : merged.fillFrom(d);
     }
     return merged == null || merged.isEmpty ? null : merged;

@@ -163,4 +163,38 @@ void main() {
     expect(r.unresolved, hasLength(1));
     expect(r.records.map((x) => x.id), ['epic-B']);
   });
+
+  // Review follow-up: save() and logDecision() read, change, then write, with
+  // awaits in between, so two calls that overlap could lose one write.
+  group('overlapping writes', () {
+    test('saves that overlap all keep their choice', () async {
+      final store = RecordChoiceStore();
+      await Future.wait([
+        for (var i = 0; i < 5; i++) store.save('k$i', 'fp$i#epic:e$i'),
+      ]);
+      expect(await store.load(), {
+        for (var i = 0; i < 5; i++) 'k$i': 'fp$i#epic:e$i',
+      });
+    });
+
+    test('decisions logged at the same time are all kept, in call order',
+        () async {
+      final store = RecordChoiceStore();
+      final at = DateTime.utc(2026, 10, 21);
+      await Future.wait([
+        for (var i = 0; i < 5; i++)
+          store.logDecision(RecordDecisionEntry(
+              at: at, decision: 'deferred', versions: ['epic:$i'])),
+      ]);
+      expect((await store.decisionLog()).map((e) => e.versions.single),
+          ['epic:0', 'epic:1', 'epic:2', 'epic:3', 'epic:4']);
+    });
+
+    test('a write that fails does not stop the ones after it', () async {
+      final store = RecordChoiceStore();
+      SharedPreferences.setMockInitialValues({_choicesKey: '{broken'});
+      await Future.wait([store.save('a', '1'), store.save('b', '2')]);
+      expect(await store.load(), {'a': '1', 'b': '2'});
+    });
+  });
 }

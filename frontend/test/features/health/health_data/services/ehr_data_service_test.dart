@@ -168,6 +168,37 @@ void main() {
       expect(d.gender, 'male');
     });
 
+    // Review follow-up: each source's demographics come back by name, so a
+    // caller looks a source up by name and a missing one is just null (it
+    // used to be a list read by index, where a missing name was index -1).
+    test('fetchDemographicsBySource returns each source by name', () async {
+      ApiClient.instance.debugSetHttpClientAdapter(_BySource({
+        'EPIC': '{"name":"Epic Name","birthDate":"1980-05-14"}',
+        'ATHENAHEALTH': null,
+      }));
+      final bySource = await EhrDataService().fetchDemographicsBySource();
+      expect(bySource.keys, EhrDataService.demographicsSources);
+      expect(bySource['EPIC']!.birthDate, DateTime(1980, 5, 14));
+      expect(bySource['ATHENAHEALTH'], isNull);
+      expect(bySource['CERNER'], isNull);
+    });
+
+    test('merging follows the preferred order and tolerates a missing source',
+        () {
+      const epic = PatientDemographics(name: 'Epic Name');
+      const athena = PatientDemographics(
+          name: 'Athena Name', gender: 'female', birthDate: null);
+      // Insertion order doesn't matter: Epic is still preferred.
+      final merged = EhrDataService.mergeDemographics(
+          {'ATHENAHEALTH': athena, 'EPIC': epic})!;
+      expect(merged.name, 'Epic Name');
+      expect(merged.gender, 'female');
+      // A source left out entirely doesn't throw.
+      expect(EhrDataService.mergeDemographics({'ATHENAHEALTH': athena})!.name,
+          'Athena Name');
+      expect(EhrDataService.mergeDemographics(const {}), isNull);
+    });
+
     test('no source with demographics means no card', () async {
       expect(await demographics({'EPIC': null, 'ATHENAHEALTH': null}), isNull);
     });

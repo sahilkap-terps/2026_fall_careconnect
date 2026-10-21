@@ -194,6 +194,23 @@ void main() {
     await expectLater(AthenaDataService().fetchResource('Condition', 'c-1'),
         throwsA(isA<AthenaReadException>()));
   });
+
+  // Review follow-up: the page cap that stops a server that always says
+  // "there's another page".
+  test('stops after maxPages pages and reports the read as incomplete',
+      () async {
+    final a = use(AthenaAdapter(pages: [
+      for (var i = 0; i < AthenaDataService.maxPages + 5; i++)
+        [athenaItem('p$i')],
+    ]));
+    final result = await AthenaDataService().fetchRecords();
+    expect(a.requests, hasLength(AthenaDataService.maxPages));
+    expect(a.requests.last.queryParameters['page'],
+        AthenaDataService.maxPages - 1);
+    expect(result.records, hasLength(AthenaDataService.maxPages));
+    expect(result.complete, isFalse);
+    expect(result.problem, AthenaReadProblem.unreachable);
+  });
 }
 
 /// Answers the first [n] requests from [inner], then fails.

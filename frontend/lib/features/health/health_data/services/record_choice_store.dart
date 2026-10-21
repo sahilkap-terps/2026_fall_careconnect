@@ -56,6 +56,20 @@ class RecordChoiceStore {
   /// Oldest entries are dropped past this, so the log can't grow forever.
   static const maxLogEntries = 500;
 
+  /// The last write queued on this store. Writes read, change, then write
+  /// the stored value with awaits in between, so two that overlap could lose
+  /// one; queuing them runs each in turn, in call order. Per store, not
+  /// shared: Health Data keeps one store, and a shared queue would let a
+  /// write left behind by a closed screen hold up every later one.
+  Future<void> _lastWrite = Future.value();
+
+  Future<void> _queued(Future<void> Function() write) {
+    final done = _lastWrite.then((_) => write());
+    // A failed write must not block the ones queued after it.
+    _lastWrite = done.catchError((_) {});
+    return done;
+  }
+
   /// Conflict key -> encoded choice (see RecordReconciler.encodeChoice).
   Future<Map<String, String>> load() async {
     try {
@@ -71,16 +85,17 @@ class RecordChoiceStore {
     }
   }
 
-  Future<void> save(String conflictKey, String encodedChoice) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final all = await load();
-      all[conflictKey] = encodedChoice;
-      await prefs.setString(_key, jsonEncode(all));
-    } catch (_) {
-      // Not saved: the patient is asked again next time, nothing is lost.
-    }
-  }
+  Future<void> save(String conflictKey, String encodedChoice) =>
+      _queued(() async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final all = await load();
+          all[conflictKey] = encodedChoice;
+          await prefs.setString(_key, jsonEncode(all));
+        } catch (_) {
+          // Not saved: the patient is asked again next time, nothing is lost.
+        }
+      });
 
   /// Every decision, oldest first.
   Future<List<RecordDecisionEntry>> decisionLog() async {
@@ -100,17 +115,17 @@ class RecordChoiceStore {
     }
   }
 
-  Future<void> logDecision(RecordDecisionEntry entry) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final log = [...await decisionLog(), entry];
-      final kept = log.length > maxLogEntries
-          ? log.sublist(log.length - maxLogEntries)
-          : log;
-      await prefs.setString(
-          _logKey, jsonEncode(kept.map((e) => e.toJson()).toList()));
-    } catch (_) {
-      // Logging must never block the patient's decision.
-    }
-  }
+  Future<void> logDecision(RecordDecisionEntry entry) => _queued(() async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final log = [...await decisionLog(), entry];
+          final kept = log.length > maxLogEntries
+              ? log.sublist(log.length - maxLogEntries)
+              : log;
+          await prefs.setString(
+              _logKey, jsonEncode(kept.map((e) => e.toJson()).toList()));
+        } catch (_) {
+          // Logging must never block the patient's decision.
+        }
+      });
 }
