@@ -10,6 +10,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.careconnect.model.CallTelemetryEvent;
 import com.careconnect.model.TerminationStep;
 import com.careconnect.service.BedrockSentimentService.SentimentResult;
@@ -27,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 class CallTerminationExecutorTest {
@@ -369,6 +374,48 @@ class CallTerminationExecutorTest {
         verify(sessionService).advanceTerminationStep("call-1", claimId, TerminationStep.MEETING);
         verify(sessionService).completeTermination("call-1", claimId);
         verify(sessionService, never()).recordTerminationFailure(any(), any(), any());
+    }
+
+    /**
+     * Scenario: the swallowed enqueue failure is still visible to operators as a WARN that names
+     * the call and the exception type, but not the exception message, which can carry details.
+     *
+     * <p>The logger level is set here rather than inherited: logback-test.xml turns logging off,
+     * and only a Spring context test turns WARN back on, so relying on it made this branch's
+     * coverage depend on test-class order (it passed locally and failed in CI).</p>
+     */
+    @Test
+    void execute_enqueueFailure_logsWarningWithoutExceptionMessage() {
+        // Arrange
+        final UUID claimId = arrangeAfterSummary();
+        stubRecordingStopped(claimId);
+        org.mockito.Mockito.doThrow(new IllegalStateException("db down at 10.0.0.5"))
+                .when(conditionDetectionService).enqueueForCall("call-1");
+        final Logger logger = (Logger) LoggerFactory.getLogger(CallTerminationExecutor.class);
+        final Level previousLevel = logger.getLevel();
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        logger.setLevel(Level.WARN);
+
+        try {
+            // Act
+            executor.execute("call-1", 9L, claimId);
+
+            // Assert
+            assertThat(appender.list)
+                    .filteredOn(event -> event.getLevel() == Level.WARN)
+                    .singleElement()
+                    .satisfies(event -> {
+                        assertThat(event.getFormattedMessage())
+                                .contains("call-1")
+                                .contains("IllegalStateException")
+                                .doesNotContain("10.0.0.5");
+                    });
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+        }
     }
 
     /**
