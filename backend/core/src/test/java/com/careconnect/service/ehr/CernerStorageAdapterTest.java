@@ -14,8 +14,11 @@ import java.net.URI;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("M3-REQ-16")
+@Tag("M3-REQ-19")
 class CernerStorageAdapterTest {
     private final ObjectMapper json = new ObjectMapper();
     private final EhrSourceRepository sources = mock(EhrSourceRepository.class);

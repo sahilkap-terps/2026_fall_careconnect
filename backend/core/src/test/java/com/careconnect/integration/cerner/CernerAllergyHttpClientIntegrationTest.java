@@ -61,6 +61,7 @@ class CernerAllergyHttpClientIntegrationTest {
     void stop() { server.stop(0); executor.shutdownNow(); }
 
     @Test
+    @Tag("M3-REQ-04")
     void mapsSharedFixtureAndSendsToken() {
         var result = client.getAllergies("synthetic-patient-1", "synthetic-token");
         assertEquals(1, result.size());
@@ -70,6 +71,8 @@ class CernerAllergyHttpClientIntegrationTest {
     }
 
     @ParameterizedTest
+    @Tag("M3-REQ-07")
+    @Tag("M3-REQ-09")
     @CsvSource({"401,CERNER_AUTH_EXPIRED,false", "403,CERNER_ACCESS_DENIED,false", "429,CERNER_UNAVAILABLE,true", "500,CERNER_UNAVAILABLE,true", "503,CERNER_UNAVAILABLE,true", "302,CERNER_UNEXPECTED_RESPONSE,false", "404,CERNER_UNEXPECTED_RESPONSE,false"})
     void translatesFailuresWithoutRetryOrRedirect(int statusCode, String code, boolean retryable) {
         upstream = statusCode; body = "private details synthetic-token";
@@ -80,6 +83,7 @@ class CernerAllergyHttpClientIntegrationTest {
     }
 
     @Test
+    @Tag("M3-REQ-07")
     void timeoutDoesNotLoop() {
         delay = 1500;
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> assertFailure("CERNER_TIMEOUT", true));
@@ -87,9 +91,11 @@ class CernerAllergyHttpClientIntegrationTest {
     }
 
     @Test
+    @Tag("M3-REQ-06")
     void malformedJsonIsNotEmptySuccess() { body = "{private"; assertFailure("CERNER_INVALID_RESPONSE", false); }
 
     @Test
+    @Tag("M3-REQ-06")
     void malformedUtf8Rejected() {
         // Invalid two-byte UTF-8 sequence in a clinical text field must not be replaced silently.
         rawBody = body.replace("aspirin", "PLACEHOLDER").getBytes(StandardCharsets.UTF_8);
@@ -101,12 +107,14 @@ class CernerAllergyHttpClientIntegrationTest {
     }
 
     @Test
+    @Tag("M3-REQ-06")
     void trailingJsonRejected() {
         body = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\"} {}";
         assertFailure("CERNER_INVALID_RESPONSE", false);
     }
 
     @Test
+    @Tag("M3-REQ-07")
     void disconnectedServerIsRetryable() {
         server.stop(0);
         assertFailure("CERNER_UNAVAILABLE", true);
@@ -114,15 +122,18 @@ class CernerAllergyHttpClientIntegrationTest {
     }
 
     @Test
+    @Tag("M3-REQ-03")
     void wrongPatientRejectsResponse() {
         var error = assertThrows(CernerSourceException.class, () -> client.getAllergies("other-patient", "synthetic-token"));
         assertEquals("CERNER_INVALID_RESPONSE", error.code());
     }
 
     @Test
+    @Tag("M3-REQ-06")
     void oversizedResponseRejected() { body = " ".repeat(1_048_577); assertFailure("CERNER_INVALID_RESPONSE", false); }
 
     @Test
+    @Tag("M3-REQ-08")
     void paginationExplicitlyBlocked() {
         body = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\",\"link\":[{\"relation\":\"next\",\"url\":\"https://example.test/next\"}]}";
         assertFailure("CERNER_PAGINATION_UNSUPPORTED", false);
@@ -130,18 +141,22 @@ class CernerAllergyHttpClientIntegrationTest {
     }
 
     @Test
+    @Tag("M3-REQ-04")
     void emptySearchsetSucceeds() {
         body = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\",\"entry\":[]}";
         assertTrue(client.getAllergies("synthetic-patient-1", "synthetic-token").isEmpty());
     }
 
     @Test
+    @Tag("M3-REQ-06")
     void invalidBundleShapeRejected() {
         body = "{\"resourceType\":\"Bundle\",\"type\":\"searchset\",\"entry\":{}}";
         assertFailure("CERNER_INVALID_RESPONSE", false);
     }
 
     @Test
+    @Tag("M3-REQ-03")
+    @Tag("M3-REQ-05")
     void invalidInputsMakeNoRequest() {
         assertThrows(IllegalArgumentException.class, () -> client.getAllergies("../bad", "synthetic-token"));
         assertThrows(CernerSourceException.class, () -> client.getAllergies("synthetic-patient-1", ""));
@@ -150,11 +165,14 @@ class CernerAllergyHttpClientIntegrationTest {
     }
 
     @Test
+    @Tag("M3-REQ-20")
     void remotePlainHttpRejected() {
         assertThrows(IllegalArgumentException.class, () -> new CernerAllergyHttpClient(URI.create("http://example.test/fhir/"), Duration.ofSeconds(1)));
     }
 
     @Test
+    @Tag("M3-REQ-09")
+    @Tag("M3-REQ-10")
     void httpFailureReachesControllerEnvelope() throws Exception {
         upstream = 401;
         // Test-only trusted link and access policy; actual app security is outside this test.
