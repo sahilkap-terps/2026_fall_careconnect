@@ -260,6 +260,87 @@ class MedicareShareServiceTest {
         assertThat(shares.get(0).recipient()).isSameAs(recipient);
     }
 
+    private ConsentGrant activeShare() {
+        return ConsentGrant.builder()
+                .id(1L).patientUserId(PATIENT_USER_ID).granteeUserId(RECIPIENT_USER_ID)
+                .granteeRole(ConsentGrant.GRANTEE_ROLE_SHARE_RECIPIENT)
+                .scope(ConsentGrant.SCOPE_MEDICARE_VIEW).status(ConsentGrant.STATUS_ACTIVE).build();
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-067 CR-2: revoking a share by id marks it REVOKED with a revoke time")
+    void revoke_marksShareRevoked() {
+        final ConsentGrant share = activeShare();
+        when(consentGrantRepository.findById(1L)).thenReturn(Optional.of(share));
+        when(consentGrantRepository.save(share)).thenReturn(share);
+        when(userRepository.findById(RECIPIENT_USER_ID)).thenReturn(Optional.of(recipient));
+
+        final MedicareShareService.ShareResult result = service.revokeShare(PATIENT_USER_ID, 1L);
+
+        assertThat(share.getStatus()).isEqualTo(ConsentGrant.STATUS_REVOKED);
+        assertThat(share.getRevokedAt()).isNotNull();
+        assertThat(result.recipient()).isSameAs(recipient);
+        verify(consentGrantRepository).save(share);
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-068 CR-2: another patient's share is 404 and is left alone")
+    void revoke_otherPatientsShareIsNotFound() {
+        final ConsentGrant share = activeShare();
+        when(consentGrantRepository.findById(1L)).thenReturn(Optional.of(share));
+
+        assertThatThrownBy(() -> service.revokeShare(11L, 1L))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getStatus())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(share.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        verify(consentGrantRepository, never()).save(any(ConsentGrant.class));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-069 CR-2: a caregiver's MEDICARE_VIEW grant can't be revoked as a share")
+    void revoke_caregiverGrantIsNotFound() {
+        final ConsentGrant caregiverGrant = activeShare();
+        caregiverGrant.setGranteeRole("CAREGIVER");
+        when(consentGrantRepository.findById(1L)).thenReturn(Optional.of(caregiverGrant));
+
+        assertThatThrownBy(() -> service.revokeShare(PATIENT_USER_ID, 1L))
+                .isInstanceOf(AppException.class);
+        assertThat(caregiverGrant.getStatus()).isEqualTo(ConsentGrant.STATUS_ACTIVE);
+        verify(consentGrantRepository, never()).save(any(ConsentGrant.class));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-070 CR-2: a share in another scope, a missing id or a null id is 404")
+    void revoke_wrongScopeOrMissingIsNotFound() {
+        final ConsentGrant other = activeShare();
+        other.setScope(ConsentGrant.SCOPE_AI_RETRIEVAL);
+        when(consentGrantRepository.findById(1L)).thenReturn(Optional.of(other));
+        when(consentGrantRepository.findById(2L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.revokeShare(PATIENT_USER_ID, 1L)).isInstanceOf(AppException.class);
+        assertThatThrownBy(() -> service.revokeShare(PATIENT_USER_ID, 2L)).isInstanceOf(AppException.class);
+        assertThatThrownBy(() -> service.revokeShare(PATIENT_USER_ID, null)).isInstanceOf(AppException.class);
+        verify(consentGrantRepository, never()).save(any(ConsentGrant.class));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-071 CR-2: revoking a share that already ended changes nothing")
+    void revoke_alreadyRevokedIsNoOp() {
+        final ConsentGrant share = activeShare();
+        final Instant revokedAt = Instant.parse("2026-10-01T00:00:00Z");
+        share.setStatus(ConsentGrant.STATUS_REVOKED);
+        share.setRevokedAt(revokedAt);
+        when(consentGrantRepository.findById(1L)).thenReturn(Optional.of(share));
+        when(userRepository.findById(RECIPIENT_USER_ID)).thenReturn(Optional.empty());
+
+        final MedicareShareService.ShareResult result = service.revokeShare(PATIENT_USER_ID, 1L);
+
+        assertThat(result.grant().getRevokedAt()).isEqualTo(revokedAt);
+        assertThat(result.recipient()).isNull();
+        verify(consentGrantRepository, never()).save(any(ConsentGrant.class));
+    }
+
     @Test
     @DisplayName("TC-CONSENT-058 CR-2: listing with no patient id is empty and queries nothing")
     void list_nullPatientIsEmpty() {

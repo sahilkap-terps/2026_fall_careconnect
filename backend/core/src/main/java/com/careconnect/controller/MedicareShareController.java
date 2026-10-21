@@ -17,7 +17,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,8 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * CR-2 (#305) patient-facing record sharing: share Medicare records with a registered user by
- * email (read-only, 90 days) and list current shares. Revoking uses the existing
- * {@code DELETE /api/v3/consent/medicare-view} with the recipient's user id.
+ * email (read-only, 90 days), list current shares, and revoke one by its id.
  */
 @RestController
 @RequiredArgsConstructor
@@ -61,6 +62,15 @@ public class MedicareShareController {
         return ResponseEntity.ok(medicareShareService.listActiveShares(patient.getId()).stream()
                 .map(r -> MedicareShareResponse.from(r.grant(), r.recipient(), null))
                 .toList());
+    }
+
+    @DeleteMapping(value = "/{shareId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Revoke one of the patient's Medicare shares")
+    public ResponseEntity<MedicareShareResponse> revoke(@PathVariable final Long shareId) {
+        final User patient = requirePatientCaller();
+        final MedicareShareService.ShareResult result =
+                medicareShareService.revokeShare(patient.getId(), shareId);
+        return ResponseEntity.ok(MedicareShareResponse.from(result.grant(), result.recipient(), null));
     }
 
     private User requirePatientCaller() {

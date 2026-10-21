@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -146,6 +147,34 @@ class MedicareShareControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].recipientEmail").value("friend@example.com"))
                 .andExpect(jsonPath("$[0].expiresAt").exists());
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-072 CR-2: DELETE medicare-share/{id} by the patient returns the revoked share")
+    void revoke_returnsRevokedShare() throws Exception {
+        final User patient = user(10L, Role.PATIENT, "patient@example.com");
+        final ConsentGrant revoked = shareGrant();
+        revoked.setStatus(ConsentGrant.STATUS_REVOKED);
+        revoked.setRevokedAt(Instant.parse("2026-10-21T00:00:00Z"));
+        when(securityUtil.resolveCurrentUser()).thenReturn(patient);
+        when(medicareShareService.revokeShare(10L, 99L)).thenReturn(
+                new MedicareShareService.ShareResult(
+                        revoked, user(30L, Role.FAMILY_MEMBER, "friend@example.com"), false));
+
+        mockMvc.perform(delete(URL + "/99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(99))
+                .andExpect(jsonPath("$.status").value("REVOKED"));
+    }
+
+    @Test
+    @DisplayName("TC-CONSENT-073 CR-2: DELETE medicare-share/{id} by a non-patient is 403 and revokes nothing")
+    void revoke_forbiddenForNonPatient() throws Exception {
+        when(securityUtil.resolveCurrentUser()).thenReturn(user(20L, Role.CAREGIVER, "cg@example.com"));
+
+        mockMvc.perform(delete(URL + "/99")).andExpect(status().isForbidden());
+
+        verify(medicareShareService, never()).revokeShare(any(), any());
     }
 
     @Test

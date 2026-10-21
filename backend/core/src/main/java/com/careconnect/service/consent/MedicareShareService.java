@@ -27,7 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Built on {@code consent_grants} as #305 asks, with no new table: a share is a
  * {@link ConsentGrant#SCOPE_MEDICARE_VIEW} grant whose grantee role is
  * {@link ConsentGrant#GRANTEE_ROLE_SHARE_RECIPIENT} and whose expiry is fixed at 90 days. The
- * patient revokes it through the existing {@code DELETE /api/v3/consent/medicare-view}.
+ * patient revokes it by share id ({@link #revokeShare}).
+ *
+ * <p>The grant row is the record of each share: who shared, with whom, when it started, when it
+ * ends and when it was revoked. Share and revoke are also logged, by user and grant id only.
  */
 @Slf4j
 @Service
@@ -153,6 +156,39 @@ public class MedicareShareService {
             }
         }
         return shares;
+    }
+
+    /**
+     * Revokes one of the patient's shares by its grant id. Only a CR-2 share the patient issued
+     * can be revoked here, so this can never end a caregiver's {@code MEDICARE_VIEW} grant.
+     * Revoking a share that already ended is a no-op that returns it unchanged.
+     *
+     * @param patientUserId the authenticated patient's user id
+     * @param shareId       the share's grant id
+     * @return the share as it now stands
+     * @throws AppException 404 when no share with that id belongs to the patient (another
+     *                      patient's share and a caregiver grant look the same as a missing one)
+     */
+    @Transactional
+    public ShareResult revokeShare(final Long patientUserId, final Long shareId) {
+        final ConsentGrant grant = (shareId == null ? Optional.<ConsentGrant>empty()
+                : consentGrantRepository.findById(shareId))
+                .filter(g -> g.getPatientUserId() != null && g.getPatientUserId().equals(patientUserId))
+                .filter(g -> ConsentGrant.SCOPE_MEDICARE_VIEW.equals(g.getScope()))
+                .filter(g -> ConsentGrant.GRANTEE_ROLE_SHARE_RECIPIENT.equals(g.getGranteeRole()))
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Share not found"));
+        final User recipient = userRepository.findById(grant.getGranteeUserId()).orElse(null);
+        if (!ConsentGrant.STATUS_ACTIVE.equals(grant.getStatus())) {
+            return new ShareResult(grant, recipient, false);
+        }
+        grant.setStatus(ConsentGrant.STATUS_REVOKED);
+        grant.setRevokedAt(Instant.now());
+        final ConsentGrant saved = consentGrantRepository.save(grant);
+        if (log.isInfoEnabled()) {
+            log.info("Revoked Medicare share: patient={} recipient={} grantId={}",
+                    patientUserId, saved.getGranteeUserId(), saved.getId());
+        }
+        return new ShareResult(saved, recipient, false);
     }
 
     private Optional<User> findRegisteredUser(final String email) {
