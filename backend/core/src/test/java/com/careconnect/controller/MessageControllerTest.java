@@ -393,8 +393,39 @@ class MessageControllerTest {
     // ─── sendAttachment ──────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("TC-MSG-SEC-001 sendAttachment refuses a senderId that isn't the signed-in user, and sends nothing")
+    void sendAttachment_senderNotCurrentUser_throwsAndSendsNothing() throws Exception {
+        final MultipartFile file = mock(MultipartFile.class);
+        final User signedIn = makeUser(99L, "Mallory", "mallory@test.com");
+        when(securityUtil.resolveCurrentUser()).thenReturn(signedIn);
+        doThrow(new UnauthorizedException("You can only access your own data unless you are an administrator"))
+                .when(authorizationService).requireSelfOrAdmin(signedIn, SENDER_ID);
+
+        assertThatThrownBy(() -> controller.sendAttachment(file, SENDER_ID, RECEIVER_ID))
+                .isInstanceOf(UnauthorizedException.class);
+
+        verifyNoInteractions(linkService, fileManagementService, messageRepo);
+    }
+
+    @Test
+    @DisplayName("TC-MSG-SEC-002 sendAttachment checks the sender against the signed-in user before anything else")
+    void sendAttachment_checksSenderIsSignedInUser() throws Exception {
+        final MultipartFile file = mock(MultipartFile.class);
+        final User signedIn = makeUser(SENDER_ID, "Alice", "alice@test.com");
+        when(securityUtil.resolveCurrentUser()).thenReturn(signedIn);
+        when(linkService.isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID)).thenReturn(false);
+        when(linkService.isPatientMessagingEnabled(RECEIVER_ID, SENDER_ID)).thenReturn(false);
+
+        controller.sendAttachment(file, SENDER_ID, RECEIVER_ID);
+
+        final org.mockito.InOrder order = inOrder(authorizationService, linkService);
+        order.verify(authorizationService).requireSelfOrAdmin(signedIn, SENDER_ID);
+        order.verify(linkService).isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID);
+    }
+
+    @Test
     @DisplayName("sendAttachment returns 403 when messaging not enabled")
-    void sendAttachment_messagingNotEnabled_returnsForbidden() {
+    void sendAttachment_messagingNotEnabled_returnsForbidden() throws Exception {
         final MultipartFile file = mock(MultipartFile.class);
         when(linkService.isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID)).thenReturn(false);
         when(linkService.isPatientMessagingEnabled(RECEIVER_ID, SENDER_ID)).thenReturn(false);
