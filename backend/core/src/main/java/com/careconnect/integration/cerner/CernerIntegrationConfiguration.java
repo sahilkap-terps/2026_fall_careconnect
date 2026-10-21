@@ -23,4 +23,16 @@ public class CernerIntegrationConfiguration {
         }
         return new CernerAllergyHttpClient(URI.create(base), properties.getHttpTimeout());
     }
+
+    @Bean
+    CernerFhirBundleHttpClient cernerFhirBundleHttpClient(final CernerProperties properties) {
+        String base = properties.getFhirBaseUrl();
+        if (base == null || base.isBlank()) {
+            throw new IllegalStateException("cerner.oauth.fhir-base-url is required");
+        }
+        if (!base.endsWith("/")) {
+            base += "/";
+        }
+        return new CernerFhirBundleHttpClient(URI.create(base), properties.getHttpTimeout());
+    }
 }

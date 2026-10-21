@@ -11,6 +11,12 @@ fixture metadata and authorship are unchanged. See [the review](team-c-docs-fixt
 
 The existing `cerner/expected/allergy-mapper.json` path is a compatibility artifact consumed by the current test. New paired expected outputs should use the standard top-level `expected/<resource>/` layout below. Move or split the compatibility artifact only in the same change that updates its consuming test; do not duplicate two files and allow them to drift.
 
+As of October 21, `expected/condition/bundle-one-condition.expected.json` and
+`expected/encounter/bundle-one-encounter.expected.json` are executable **candidate** outputs, not
+approved contract artifacts. Their sidecars record `approvalStatus: candidate` and no contract
+reference. They make the current mapper/DTO assumptions reviewable and must be revised or promoted
+only after the canonical-model and OpenAPI owners approve those assumptions.
+
 ## Fixture root
 
 Place backend M3 fixtures under the repository's Spring Boot test-resource root:
@@ -68,8 +74,8 @@ Create only the files consumed by an implemented test or prepared for an immedia
 |---|---|---|
 | Patient | complete authorized read; missing optional fields; wrong patient/resource type | Pair mapper inputs after canonical field rules are approved. |
 | AllergyIntolerance | current complete, empty, missing reaction, entered-in-error, text-only, malformed, and paging cases | Current compatibility expectation exists; split into same-base-name pairs when mapper contract is approved. |
-| Condition | complete result; empty Bundle; missing optional onset/encounter; unknown status/category; malformed entry; two-page search | Pending canonical mapping approval. |
-| Encounter | complete result; empty Bundle; missing participant/end; malformed period/linkage; two-page search | Pending canonical mapping approval. |
+| Condition | complete result; empty Bundle; missing optional onset/encounter; unknown status/category; malformed entry; two-page search | Complete-result candidate pair exists; approval and remaining pairs are pending. |
+| Encounter | complete result; empty Bundle; missing participant/end; malformed period/linkage; two-page search | Complete-result candidate pair exists; approval and remaining pairs are pending. |
 | Appointment | complete result; proposed/no-times; empty Bundle; bounded date search; two-page search | Existing compatibility fixture is limited; paired canonical output remains pending. |
 | OAuth | token success with unmistakably fake token; `invalid_token`; `invalid_grant`; insufficient scope; denied/invalid launch | Behavioral assertions rather than normalized clinical output. |
 | Transport | timeout; 429 with `Retry-After`; 5xx then success/failure; malformed JSON; cross-host/looping next link | Behavioral assertions rather than normalized clinical output. |
