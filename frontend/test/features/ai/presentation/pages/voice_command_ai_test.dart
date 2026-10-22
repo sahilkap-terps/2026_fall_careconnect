@@ -3483,6 +3483,58 @@ testWidgets('WBS 5.2.73 opens informed delivery through voice command',
       );
 
       await _tearDown(tester);
+    }); //end of verbal confirm test
+
+  }); //end of group
+
+  group('Voice aliases: virtual check-in, wearables, home monitoring', () {
+    setUp(setupDefaultMocks);
+    tearDown(() {
+      VoiceIntentService.testOverride = null;
+      clearMocks();
     });
+
+    const cases = <(String, String)>[
+      ('virtual check in', '/virtual-checkin'),
+      ('open virtual check-in', '/virtual-checkin'),
+      ('check in', '/virtual-checkin'),
+      ('wearables', '/wearables'),
+      ('show my wearables', '/wearables'),
+      ('home monitoring', '/home-monitoring'),
+      // Regression: previously routed to /dashboard via the bare "home" alias
+      ('take me to home monitoring', '/home-monitoring'),
+    ];
+
+    for (final (utterance, route) in cases) {
+      testWidgets('"$utterance" navigates to $route', (tester) async {
+        String? navigatedTo;
+
+        await tester.pumpWidget(MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: VoiceCommandAI(
+            onNavigateRequested: (destination) => navigatedTo = destination,
+          ),
+        ));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump(const Duration(milliseconds: 200));
+
+        await _sendSpeechResult(tester, utterance);
+        await tester.pump(const Duration(milliseconds: 200));
+
+        expect(find.textContaining('Confirm command'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('voice_confirm_btn')));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(navigatedTo, route);
+
+        await _tearDown(tester);
+      });
+    }
   });
-}
+
+} //end main

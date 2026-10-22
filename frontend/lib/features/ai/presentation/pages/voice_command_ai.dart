@@ -158,6 +158,18 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
         phrase: 'start check in',
         intent: 'navigate',
         entity: 'virtual checkin'),
+    _CommandMatch(
+        phrase: 'virtual check in',
+        intent: 'navigate',
+        entity: 'virtual checkin'),
+    _CommandMatch(
+        phrase: 'virtual check-in',
+        intent: 'navigate',
+        entity: 'virtual checkin'),
+    _CommandMatch(
+        phrase: 'check in', intent: 'navigate', entity: 'virtual checkin'),
+    _CommandMatch(
+        phrase: 'check-in', intent: 'navigate', entity: 'virtual checkin'),
     // Integrations
     _CommandMatch(
         phrase: 'open wearables', intent: 'navigate', entity: 'wearables'),
@@ -185,6 +197,12 @@ class _VoiceCommandAIState extends State<VoiceCommandAI>
         entity: 'smart devices'),
     _CommandMatch(
         phrase: 'open home monitoring',
+        intent: 'navigate',
+        entity: 'home monitoring'),
+    _CommandMatch(phrase: 'wearables', intent: 'navigate', entity: 'wearables'),
+    _CommandMatch(phrase: 'wearable', intent: 'navigate', entity: 'wearables'),
+    _CommandMatch(
+        phrase: 'home monitoring',
         intent: 'navigate',
         entity: 'home monitoring'),
     // Social
