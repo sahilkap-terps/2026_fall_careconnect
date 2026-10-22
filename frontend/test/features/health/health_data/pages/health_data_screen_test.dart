@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:care_connect_app/config/theme/app_theme.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_data_screen.dart';
 import 'package:care_connect_app/services/api_client.dart';
 
@@ -39,7 +40,13 @@ void main() {
 
   Future<void> pump(WidgetTester t, RouteAdapter a) async {
     ApiClient.instance.debugSetHttpClientAdapter(a);
-    await t.pumpWidget(const MaterialApp(home: HealthDataScreen()));
+    await t.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const HealthDataScreen(),
+      ),
+    );
   }
 
   /// Dio and the ApiClient interceptors run outside the fake clock: give them
@@ -184,7 +191,13 @@ void main() {
         '/v1/api/medicare/coverage': 503
       }));
       await t.pumpWidget(
-          MaterialApp(theme: theme.value, home: const HealthDataScreen()));
+          MaterialApp(
+            theme: theme.value,
+            localizationsDelegates:
+                AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const HealthDataScreen(),
+          ));
       await settle(t);
       final low = lowContrastText(t, find.byType(ListView)).toSet();
       expect(low, isEmpty, reason: low.join('\n'));
@@ -296,7 +309,13 @@ void main() {
       addTearDown(() => t.binding.setSurfaceSize(null));
       ApiClient.instance.debugSetHttpClientAdapter(fixtures());
       await t.pumpWidget(
-          MaterialApp(theme: theme.value, home: const HealthDataScreen()));
+          MaterialApp(
+            theme: theme.value,
+            localizationsDelegates:
+                AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const HealthDataScreen(),
+          ));
       await settle(t);
       await t.tap(find.text('View details').first);
       await t.pumpAndSettle();
