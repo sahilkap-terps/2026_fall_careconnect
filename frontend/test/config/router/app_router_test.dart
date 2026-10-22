@@ -7,6 +7,8 @@
 // error handling, and conditional rendering.
 
 import 'package:care_connect_app/l10n/app_localizations.dart';
+import 'package:care_connect_app/services/user_role_storage_service.dart';
+import 'package:care_connect_app/screens/main_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1150,6 +1152,40 @@ void main() {
 
     tearDown(() {
       _tearDownPlatformChannels();
+    });
+
+    testWidgets('tab URL refresh retains the dashboard with cached user data',
+        (tester) async {
+      final dashboard =
+          _findRoute(appRouter.configuration.routes, '/dashboard')!;
+      Widget? result;
+      final router =
+          GoRouter(initialLocation: '/dashboard?tab=messages', routes: [
+        GoRoute(
+            path: '/dashboard',
+            builder: (context, state) {
+              final page = dashboard.builder!(context, state)
+                  as FutureBuilder<UserData?>;
+              // FutureBuilder retains its last data while the replacement storage
+              // future is waiting. That frame must not unmount MainScreen.
+              result = page.builder(
+                  context,
+                  const AsyncSnapshot<UserData?>.withData(
+                    ConnectionState.waiting,
+                    UserData(
+                        role: 'CAREGIVER',
+                        userId: 2,
+                        caregiverId: 2,
+                        isLoggedIn: true),
+                  ));
+              return const SizedBox();
+            }),
+      ]);
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+      expect(result, isA<MainScreen>());
+      expect((result as MainScreen).initialTabIndex, 4);
     });
 
     testWidgets('shows loading indicator initially', (tester) async {
