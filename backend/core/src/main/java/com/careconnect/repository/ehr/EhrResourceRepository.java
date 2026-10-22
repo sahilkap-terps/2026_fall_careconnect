@@ -21,6 +21,13 @@ public interface EhrResourceRepository extends JpaRepository<EhrResource, Long> 
 
     List<EhrResource> findByUserIdAndSource(Long userId, String source);
 
+    /**
+     * All of a user's mirrored rows across every source — the union read backing the
+     * all-sources mode of the Unified Health read surface ({@code ?source=ALL}, WBS 5.2.83).
+     * Each row carries its own {@code source}, so the caller stamps provenance per row.
+     */
+    List<EhrResource> findByUserId(Long userId);
+
     void deleteByUserIdAndSource(Long userId, String source);
 
     /**
@@ -30,6 +37,13 @@ public interface EhrResourceRepository extends JpaRepository<EhrResource, Long> 
     @Query("select max(e.lastSyncedAt) from EhrResource e "
             + "where e.userId = :userId and e.source = :source")
     Instant findMaxLastSyncedAt(@Param("userId") Long userId, @Param("source") String source);
+
+    /**
+     * Newest {@code last_synced_at} across ALL of a user's rows, regardless of source — the
+     * all-sources watermark for {@code ?source=ALL} (WBS 5.2.83). Null when the user has no rows.
+     */
+    @Query("select max(e.lastSyncedAt) from EhrResource e where e.userId = :userId")
+    Instant findMaxLastSyncedAt(@Param("userId") Long userId);
 
     /**
      * Retention purge, step one: who has a mirrored resource this application last synced before
