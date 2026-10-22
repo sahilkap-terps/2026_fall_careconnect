@@ -13,19 +13,19 @@ The October 21 remaining-work plan is the task list for this review. The repo's 
 
 ## PR #391 implementation and ownership update
 
-Current Cerner implementation reference: `feature/team-c-cerner-qa-implementation` at `9ef50e4cc215fa897b3365e5a8075ab33caeda14`. [PR #391][qa-pr] is OPEN and not merged into the shared baseline `21d5a521`. Live branch/PR checks confirmed both references for this update. The two SHAs are separate evidence scopes.
+Current Cerner implementation reference: `feature/team-c-cerner-qa-implementation` at `0c991bb525fefbdbbed478441450f56fe828d4e9`. [PR #391][qa-pr] is OPEN and not merged into the shared baseline `21d5a521`. Live branch/PR checks confirmed both references for this update. The two SHAs are separate evidence scopes.
 
-Tiffany's follow-up, supplied by the user on October 22, confirms:
+Tiffany's earlier follow-up, supplied by the user on October 22, and the newer code inspection establish the following. The newer controller/test findings supersede the earlier missing-endpoint gap:
 
 - Allergy has production service/access-policy wiring and trusted pagination. It is no longer an interface-only or blocked-pagination implementation on this branch.
-- Patient and Appointment have live service foundations with raw and normalized persistence. Their public controller endpoints remain outstanding.
+- Patient and Appointment have live service foundations with raw and normalized persistence. At the newer `0c991bb5` reference, provisional Patient/Appointment endpoints and controller-slice tests now exist; see the dated update below.
 - Condition and Encounter have canonical models, repositories, mapping/retrieval services, persistence and provisional controller endpoints.
-- Donald owns the remaining Patient/Appointment unit tests and controller-slice tests. Production controller implementation is **owner pending Team Lead/backend confirmation**.
+- Donald owns the remaining Patient/Appointment unit tests and controller-slice tests. Controller code is now present; ongoing production ownership remains **owner pending Team Lead/backend confirmation**. Tiffany/Donald must confirm any remaining test gaps.
 - Disconnect currently removes OAuth credentials only. Crosswalk handling, stored-data availability/deletion, consent/audit behavior and retention after disconnect are unresolved. Team B, shared architecture owners and the Team Lead must decide; Team C must not invent a rule.
 - Raw rows use the existing retention framework. Normalized Condition and Encounter rows are not in the shared worker; Team B/shared architecture must approve their rule. Matching raw retention, unlink deletion and source-deletion handling are options for review, not decisions.
 - Tiffany has not started Terence's storage inventory, consent analysis, retention analysis or evidence matrix. Keep those review tasks separate from her implementation and Donald's test work.
 
-**Final testing:** use the resulting `team-c-develop` commit after PR #391 is reviewed and merged. `9ef50e4c` is the current implementation reference, not a final release-testing commit. Do not rebuild code that already exists in that branch.
+**Final testing:** use the resulting `team-c-develop` commit after PR #391 is reviewed and merged. `0c991bb5` is the current implementation reference, not a final release-testing commit. Do not rebuild code that already exists in that branch.
 
 | Added implementation evidence | Code / test source | Result and acceptance limit |
 | --- | --- | --- |
@@ -33,18 +33,24 @@ Tiffany's follow-up, supplied by the user on October 22, confirms:
 | Allergy raw persistence and refresh | [Allergy service][qa-allergy]; [service tests][qa-allergy-test], including `storesValidatedRawAllergyUsingCanonicalSourceId` and `refreshesOnceAfterUpstreamRejectsAnOtherwiseCurrentToken` | Covered by branch test evidence; dedicated normalized allergy storage is not added. |
 | Trusted paging, direct Patient read, bounded Appointment search | [Paged client][qa-http]; [HTTP tests][qa-http-test], including `followsTrustedPaginationAndCombinesEncounterResources`, `rejectsUnsafePaginationHost`, `readsTrustedPatientDirectlyInsteadOfUsingPatientSearch`, `boundedAppointmentSearchIncludesProposedRecordWithoutTimes` | Replaces the shared baseline's blocked-pagination gap. Contract and secure-sandbox validation remain. |
 | Condition/Encounter raw + canonical upserts and controllers | [Service][qa-clinical], [models][qa-condition]/[Encounter][qa-encounter], [controller][qa-controller]; [service tests][qa-clinical-test], including `storesOriginalConditionAndUpsertsCanonicalRecord`, `storesOriginalEncounterAndUpsertsCanonicalRecord`, `olderResourceCannotReplaceNewerNormalizedOrRawData` | Branch implementation exists. Canonical/OpenAPI approval, normalized retention and final workflow tests remain. |
-| Patient/Appointment retrieval and persistence | [Service][qa-patient-appointment], [service tests][qa-patient-test] | Service foundation exists. Donald handles remaining unit/controller-slice tests; production endpoint owner remains pending. |
+| Patient/Appointment retrieval and persistence | [Service][qa-patient-appointment], [service tests][qa-patient-test] | Provisional endpoints and seven controller-slice tests now exist; see [controller][qa-patient-controller], [slice tests][qa-patient-controller-test] and [service contract test][qa-patient-contract-test]. Ownership, approved contract and final-candidate coverage remain pending. |
 | Branch QA documents | [M4 plan][qa-plan], [trace][qa-matrix], [summary][qa-summary] | Use Tiffany's M4 documents for the completion review. Summary remains a template with final execution/sign-off pending. |
-| Branch CI at `9ef50e4c` | [Feature Branch CI][qa-ci], [quality gate][qa-quality] | Both passed. Feature CI log reports 231 backend tests, zero failures/errors/skips. Changed-file coverage is not the full release suite; no local rerun in this update. |
+| Branch CI at `0c991bb5` | [Feature Branch CI][qa-ci], [quality gate][qa-quality] | Both passed. The earlier 231-test result belongs to `9ef50e4c`; it is not reused as a count for this SHA. Current GitHub check conclusions were verified. Changed-file coverage is not the full release suite; no local rerun in this update. |
 
 Remaining reviews: Team C review/merge of #391; Ian/Team B review of #395; Team Lead/QA review of #396; backend controller ownership; retention/disconnect/deletion decisions; unified OpenAPI and canonical-model approval; frontend, E2E, contract and secure-sandbox tests before final sign-off.
+
+### Dated reconciliation of newer controller evidence
+
+Earlier missing-endpoint statements described `9ef50e4c`. At `0c991bb5`, [CernerPatientAppointmentController][qa-patient-controller] provides feature-gated Patient GET and bounded Appointment GET routes under `/v1/api/cerner/patients/{patientId}`. Its views carry external source IDs and omit internal database/raw-row IDs. [Seven controller-slice tests][qa-patient-controller-test] cover `patientSuccess`, `appointmentSuccess`, `appointmentEmptyResultIsSuccessful`, `invalidAppointmentRangeReturnsBadRequestWithoutRetrieval`, `deniedPatientReturnsForbiddenWithoutRetrieval`, `invalidPatientIdReturnsBadRequest` and `expiredAuthorizationUsesStableErrorEnvelope`. The [service contract test][qa-patient-contract-test] adds `patientSynchronizationRetainsSourceRecordAndNormalizedIdentity`; [filter-chain tests][qa-security-test] include the new routes. Code was inspected; no tests were rerun here. OpenAPI approval, deployed/secure-sandbox behavior and final-candidate acceptance remain open.
+
+Branch/CI evidence for WBS4.2.7 is now in [PR #401](https://github.com/umgc/2026_fall_careconnect/pull/401). Protection is reported enabled, detailed settings return404, and the quality policy is report_only. Maintainer settings evidence remains pending. [PR #399](https://github.com/umgc/2026_fall_careconnect/pull/399) contains the shared-policy decisions; [PR #400](https://github.com/umgc/2026_fall_careconnect/pull/400) contains the draft handoff index. These open PRs do not establish acceptance.
 
 ## Current evidence register
 
 | Item | What was verified in this review | Limit |
 | --- | --- | --- |
 | App baseline | Fresh explicit fetch and remote-head check gave the SHA above. | Final testing uses the resulting team-c-develop SHA after #391 review/merge; Jonathan confirms that candidate. |
-| Storage inventory | [PR #395][inventory-pr] is OPEN and DRAFT; [updated inventory][inventory] adds the separate PR #391 branch scope, ownership and unresolved policy decisions; the original baseline had 39 pinned source links. | Team B acceptance is not recorded by this review. |
+| Storage inventory | [PR #395][inventory-pr] is OPEN and ready for review; [updated inventory][inventory] adds the separate PR #391 branch scope, ownership and unresolved policy decisions; the original baseline had 39 pinned source links. | Team B acceptance is not recorded by this review. |
 | Prior contribution PRs | #79, #331, #347, #348, #349, #355 and #387 are merged into Team C. #387 merged at October 21, 8:02 p.m. EDT. | Merge is bounded evidence of inclusion, not current execution or scope-wide acceptance. |
 | Prior CI | [Develop Merge CI run 39492352193][ci] reports success at `29ca58e49ab757595061a94ecfcf8b34af789007`. | It is a different SHA from this review baseline. Do not attach its success to the newer commit. |
 | Shared-baseline SHA checks | GitHub check-runs query returned `total_count: 0` for this review SHA. | This is an API observation, not a claim that all possible CI systems failed or never ran. Request the exact candidate's evidence. |
@@ -67,7 +73,7 @@ Remaining reviews: Team C review/merge of #391; Ian/Team B review of #395; Team 
 | 4.5.4 Deliverable handoff | Agreed package, resolved dependency 2.5, delivery and receipt. | Dated handoff checklist in [WBS review][wbs]; inventory PR and this draft. | Name receiver/channel; settle 2.5; assemble accepted docs, code/test links, setup, known gaps, and review record. Deliver only the agreed package, then capture receipt. | Jonathan/document owner/receiver; record package version, accepted SHA, date, and receipt. |
 | 4.5.6 Final check handoff | Final candidate checks, approved artifacts, named decisions, receipt. | [CI workflow][workflow], review packet and handoff checklist. | Complete current app/regression/integration checks, independent review, package checks, and receiver confirmation. | Tiffany plus Jonathan/receiver; no closure from local docs or green unit tests alone. |
 | 4.5.7 Draft lessons | Existing draft criterion, distinct from final retrospective. | October 21 plan records Done; [dated WBS review][wbs] cites prior lesson files. | Exact cited personal lesson files were not found by a targeted search under current repo docs. Preserve the historical claim; attach their controlled location if needed for handoff. | Terence locates draft; Jonathan confirms scope. Final retrospective is separate. |
-| 4.5.1 Support for Tiffany's task | Cerner HTTP-client contribution within the owner's larger integration task. | Merged #349; [client][http] and [loopback tests][httptest]. | PR #391 adds app service/access wiring, trusted links, refresh and paging. Tiffany still accepts the full task after contract, remaining endpoints, frontend/E2E and final review. | Tiffany owns task closure. Do not change her completion value from this packet. |
+| 4.5.1 Support for Tiffany's task | Cerner HTTP-client contribution within the owner's larger integration task. | Merged #349; [client][http] and [loopback tests][httptest]. | PR #391 adds app service/access wiring, trusted links, refresh and paging. Tiffany still accepts the full task after contract, remaining coverage, frontend/E2E and final review. | Tiffany owns task closure. Do not change her completion value from this packet. |
 
 ## Requirement-to-code-to-test table
 
@@ -86,16 +92,16 @@ Rows T01–T12 are document row labels, not official SRS or WBS IDs. Requirement
 | T09 — Storage history, data minimization, retention | [Retention worker][retention], [Epic][epic], [athena][athena] | `EhrRetentionWorkerTest.purgesAdultPastRetentionPeriod`, `keepsRecordOfMinorUntilAge25`, `unknownDateOfBirthIsKept`; `MedicareRecordCacheTest.patientPhotoStrippedAndIdentityUpdated`; [PostgreSQL purger test][purgetest]. | Code found. Confirm policy/settings, PostgreSQL execution, binary copies, concurrency, and source-specific append/overwrite differences. PR #391 normalized Condition/Encounter rows are not covered by the worker; shared owners must approve their rule. This is policy inspection, not legal validation. |
 | T10 — M3-REQ-10/11: approved API, retrieval-only UI, accessibility | [M3 trace][m3trace] and [review][m1review] | Plan contract validation using one approved checksum; integrated loading/success/empty/denied/expired/reconnect/partial states; keyboard/focus/screen-reader/zoom checks. | Controlled contract and current UI/manual results not established. Named reviewers and accepted platform/resource scope pending. |
 | T11 — i18n regression scope | [Current picker tests][language] | Existing tests: `uses a centered dialog with only supported choices`; `System Default clears an explicit selection`. Reconcile prior visible-text switch test or replacement; then run approved focused suites. | Two named tests found. Earlier visible-text switch test not found in targeted current test search. No current language test run. Preserve old success as history. |
-| T12 — M3-REQ-13/14/15 and final handoff | [Workflow][workflow], [trace][m3trace], final package | Candidate-specific unit/widget/build/coverage, required integration/E2E, approved synthetic sandbox smoke, defect decisions, review and receipt. | Earlier CI is green at a different SHA. Workflow explicitly excludes E2E/integration at that stage. No shared-baseline exact-SHA check runs returned. PR #391 has green feature/quality checks at 9ef50e4c; final testing waits for the merged team-c-develop SHA. Release acceptance and receipt remain pending. |
+| T12 — M3-REQ-13/14/15 and final handoff | [Workflow][workflow], [trace][m3trace], final package | Candidate-specific unit/widget/build/coverage, required integration/E2E, approved synthetic sandbox smoke, defect decisions, review and receipt. | Earlier CI is green at a different SHA. Workflow explicitly excludes E2E/integration at that stage. No shared-baseline exact-SHA check runs returned. PR #391 has green feature/quality checks at 0c991bb5; final testing waits for the merged team-c-develop SHA. Release acceptance and receipt remain pending. |
 
 ## Next work, in order
 
 1. Jonathan/Team C: review and merge #391 when approved; confirm the resulting team-c-develop SHA for final testing. Terence/Jonathan ask Ian to review the updated #395 inventory, including PR #391 storage and policy gaps.
 2. Jonathan/PM: name approved CR-2 scope, app candidate, deadline, owners, and reviewers; resolve dependencies 4.1.5 and 2.5. The plan's October 31 versus November 4 dates remain unconfirmed.
-3. Donald handles remaining Patient/Appointment unit and controller-slice tests. Team Lead/backend confirms the production controller owner. Terence/Tiffany also locate the original 4.1.6 scope, reconcile the missing switch-test evidence, and select the current checks. Do not rebuild a removed test until its intended replacement and behavior are checked.
+3. Patient/Appointment controller and test code now exists. Tiffany/Donald confirm remaining coverage; Team Lead/backend confirms ongoing controller ownership. Avoid duplicating those implementations. Terence/Tiffany also locate the original 4.1.6 scope, reconcile the missing switch-test evidence, and select the current checks. Do not rebuild a removed test until its intended replacement and behavior are checked.
 4. Contract/document owners with Tiffany: attach the controlled SRS, TDD, API version/checksum and accepted criteria. Link each approved requirement to exact code/test methods and immutable result artifacts.
 5. Team B/shared architecture/Team Lead decide disconnect, crosswalk, data accessibility/deletion and normalized retention, including source-deletion handling. Assigned owners then run only the tests needed for the chosen candidate and gaps. Record failures, owner, disposition, and retest evidence. Keep local demo, loopback, PostgreSQL, live integration, and accessibility results separate.
-6. Terence: assemble the handoff index after decisions are in place. Jonathan names the receiver/channel; obtain receipt before closing handoff tasks.
+6. Terence: refresh the existing PR #400 handoff index with accepted versions after decisions are in place. Jonathan names the receiver/channel; obtain receipt before closing handoff tasks.
 
 ## Review and closure record
 
@@ -106,8 +112,8 @@ No reviewer has signed this table. A PR approval should specify which task/requi
 | Team B inventory / T01 | Pending | PR #395 | Pending | Pending | Pending |
 | Scope/dependencies | Jonathan / PM, pending | #305 and selected candidate | Pending | Pending | Pending |
 | Test baseline / T02–T12 | Tiffany, pending | PR #391 M4 docs; post-merge candidate pending | Final sign-off pending | Branch CI linked above | Pending |
-| Patient/Appointment tests | Donald | PR #391 reference; final candidate pending | Remaining unit/controller-slice tests assigned per Tiffany | Results pending | Pending |
-| Production Patient/Appointment controllers | Owner pending Team Lead/backend confirmation | PR #391 reference | Owner/implementation pending | Pending | Pending |
+| Patient/Appointment tests | Donald | PR #391 reference; final candidate pending | Controller-slice and service contract tests now present; Tiffany/Donald confirm remaining coverage | Results pending | Pending |
+| Production Patient/Appointment controllers | Owner pending Team Lead/backend confirmation | PR #391 reference | Code present; ongoing owner and contract acceptance pending | Pending | Pending |
 | Disconnect/retention/deletion policy | Team B/shared architecture/Team Lead | PR #391 stores and inventory | Decision pending | Pending | Pending |
 | Security/privacy/accessibility | Assigned reviewers pending | Selected candidate/platform | Pending | Pending | Pending |
 | 4.5.4 / 4.5.6 | Named receiver pending | Final package pending | Pending | Pending | Pending |
@@ -152,29 +158,34 @@ Validation for this documentation change: checked each pinned repo source path; 
 [athena]: https://github.com/umgc/2026_fall_careconnect/blob/21d5a521e87f70eb9c304bd5d993d24cdad9adad/backend/core/src/main/java/com/careconnect/service/ehr/athena/AthenaSyncService.java
 [cr]: https://github.com/umgc/2026_fall_careconnect/issues/305
 [inventory-pr]: https://github.com/umgc/2026_fall_careconnect/pull/395
-[inventory]: https://github.com/umgc/2026_fall_careconnect/blob/76a4c53a1aa0b573b63d79acb7acceec9686aab9/docs/team-c/FHIR_STORAGE_INVENTORY_2026-10-22.md
+[inventory]: https://github.com/umgc/2026_fall_careconnect/blob/350dc7b40d5030d046b4a1424b6ca6cc27ede044/docs/team-c/FHIR_STORAGE_INVENTORY_2026-10-22.md
 [ci]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39492352193
 
-[qa-oauth]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/CernerOAuthService.java
-[qa-oauth-controller]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/controller/CernerOAuthController.java
-[qa-link]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/CernerPatientLinkService.java
-[qa-policy]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAccessPolicy.java
-[qa-config]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerIntegrationConfiguration.java
-[qa-allergy]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAllergyService.java
-[qa-http]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClient.java
-[qa-clinical]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterService.java
-[qa-patient-appointment]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentService.java
-[qa-controller]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerClinicalController.java
-[qa-condition]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/model/ehr/EhrConditionRecord.java
-[qa-encounter]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/model/ehr/EhrEncounterRecord.java
-[qa-retention]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/EhrRetentionWorker.java
-[qa-http-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClientIntegrationTest.java
-[qa-allergy-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerAllergyServiceTest.java
-[qa-clinical-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterServiceTest.java
-[qa-patient-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentServiceTest.java
-[qa-matrix]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-traceability-matrix.md
-[qa-summary]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-test-summary.md
-[qa-plan]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-test-plan.md
+[qa-oauth]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/service/ehr/CernerOAuthService.java
+[qa-oauth-controller]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/controller/CernerOAuthController.java
+[qa-link]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/service/ehr/CernerPatientLinkService.java
+[qa-policy]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAccessPolicy.java
+[qa-config]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerIntegrationConfiguration.java
+[qa-allergy]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAllergyService.java
+[qa-http]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClient.java
+[qa-clinical]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterService.java
+[qa-patient-appointment]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentService.java
+[qa-controller]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerClinicalController.java
+[qa-condition]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/model/ehr/EhrConditionRecord.java
+[qa-encounter]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/model/ehr/EhrEncounterRecord.java
+[qa-retention]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/service/ehr/EhrRetentionWorker.java
+[qa-http-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClientIntegrationTest.java
+[qa-allergy-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerAllergyServiceTest.java
+[qa-clinical-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterServiceTest.java
+[qa-patient-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentServiceTest.java
+[qa-matrix]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/docs/testing/m4-traceability-matrix.md
+[qa-summary]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/docs/testing/m4-test-summary.md
+[qa-plan]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/docs/testing/m4-test-plan.md
 [qa-pr]: https://github.com/umgc/2026_fall_careconnect/pull/391
-[qa-ci]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39714965167
-[qa-quality]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39714965211
+[qa-ci]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39815432431
+[qa-quality]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39815432440
+
+[qa-patient-controller]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerPatientAppointmentController.java
+[qa-patient-controller-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/CernerPatientAppointmentControllerTest.java
+[qa-patient-contract-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/CernerPatientAppointmentServiceTest.java
+[qa-security-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/config/SecurityConfigFilterChainTest.java
