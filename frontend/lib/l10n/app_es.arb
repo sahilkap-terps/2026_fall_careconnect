@@ -1305,6 +1305,16 @@
       "patient": {"type": "String"}
     }
   },
+  "healthEventDetailsTitle": "Detalles del evento de salud",
+  "healthDataDate": "Fecha",
+  "healthEventDetailsSource": "De dónde proviene",
+  "healthDataRecordTypeMedication": "Medicamento",
+  "healthDataRecordTypeCondition": "Afección",
+  "healthDataRecordTypeAllergy": "Alergia",
+  "healthDataRecordTypeVisit": "Visita",
+  "healthDataRecordTypeClinicalRecord": "Registro clínico",
+  "healthDataRecordTypeClaimService": "Reclamación / Servicio",
+  "healthDataRecordTypeRecord": "Registro",
   "analyticsPatientAnalytics": "Análisis del paciente",
   "analyticsRetry": "Reintentar",
   "analyticsAskAiTooltip": "Preguntar a la IA sobre los análisis",

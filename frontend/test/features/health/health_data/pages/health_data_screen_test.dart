@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:care_connect_app/config/theme/app_theme.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/features/health/health_data/pages/health_data_screen.dart';
 import 'package:care_connect_app/services/api_client.dart';
 
@@ -39,7 +40,13 @@ void main() {
 
   Future<void> pump(WidgetTester t, RouteAdapter a) async {
     ApiClient.instance.debugSetHttpClientAdapter(a);
-    await t.pumpWidget(const MaterialApp(home: HealthDataScreen()));
+    await t.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const HealthDataScreen(),
+      ),
+    );
   }
 
   /// Dio and the ApiClient interceptors run outside the fake clock: give them
@@ -184,7 +191,13 @@ void main() {
         '/v1/api/medicare/coverage': 503
       }));
       await t.pumpWidget(
-          MaterialApp(theme: theme.value, home: const HealthDataScreen()));
+          MaterialApp(
+            theme: theme.value,
+            localizationsDelegates:
+                AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const HealthDataScreen(),
+          ));
       await settle(t);
       final low = lowContrastText(t, find.byType(ListView)).toSet();
       expect(low, isEmpty, reason: low.join('\n'));
@@ -296,7 +309,13 @@ void main() {
       addTearDown(() => t.binding.setSurfaceSize(null));
       ApiClient.instance.debugSetHttpClientAdapter(fixtures());
       await t.pumpWidget(
-          MaterialApp(theme: theme.value, home: const HealthDataScreen()));
+          MaterialApp(
+            theme: theme.value,
+            localizationsDelegates:
+                AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const HealthDataScreen(),
+          ));
       await settle(t);
       await t.tap(find.text('View details').first);
       await t.pumpAndSettle();
@@ -372,6 +391,54 @@ void main() {
     expect(find.text('Female'), findsOneWidget);
   });
 
+  testWidgets('TC-HDATA-040: a Cerner allergy appears in the shared history, '
+      'uses the Allergies filter, and preserves Cerner provenance',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage':
+              envelope(fixtureResources('coverage-bundle.json')),
+          '/api/ehr/resources':
+              '[{"resourceId":"cerner-allergy-1","source":"CERNER",'
+                  '"category":"Allergies","title":"Penicillin",'
+                  '"occurredAt":"2026-09-10T00:00:00Z","status":"active"},'
+                  '{"resourceId":"epic-medication-1","source":"EPIC",'
+                  '"category":"Medications","title":"Lisinopril 10 mg",'
+                  '"occurredAt":"2026-09-01T00:00:00Z","status":"active"}]',
+          '/api/ehr/patient':
+              '{"name":"Test Patient","birthDate":"1980-05-14",'
+                  '"gender":"female"}',
+        }));
+
+    await settle(t);
+
+    // Cerner, Epic, and Medicare use the same health-history list.
+    expect(find.text('Penicillin'), findsOneWidget);
+    expect(find.text('Lisinopril 10 mg'), findsOneWidget);
+    expect(find.text('Medicare Part A (Hospital Insurance)'), findsOneWidget);
+
+    // The shared record-type filter recognizes the Cerner allergy.
+    await t.tap(find.widgetWithText(FilterChip, 'Allergies'));
+    await t.pumpAndSettle();
+
+    expect(find.text('Penicillin'), findsOneWidget);
+    expect(find.text('Lisinopril 10 mg'), findsNothing);
+    expect(find.text('Medicare Part A (Hospital Insurance)'), findsNothing);
+
+    // The existing details screen preserves the record's source.
+    final details = find.text('View details');
+    expect(details, findsOneWidget);
+    await t.tap(details);
+    await t.pumpAndSettle();
+
+    expect(find.text('Where this came from'), findsOneWidget);
+    expect(find.text('Cerner'), findsOneWidget);
+  });
   // Testing Lead (PR #364 review): the new forbidden problem must not change
   // what a patient sees on their own screen.
   testWidgets(
