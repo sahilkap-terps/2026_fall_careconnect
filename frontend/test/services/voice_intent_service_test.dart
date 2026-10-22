@@ -109,7 +109,7 @@ void main() {
     expect(result, isNull);
   }); //end test returns null after the request timeout so keyword fallback can run
 
-  // ─── Tests for Ambiguous / Conversational Voice Intents ─────────────────
+// ─── Tests for Ambiguous / Conversational Voice Intents ─────────────────
 
   test('returns successful navigation for ambiguous medication phrase', () async {
     final client = MockClient((request) async {
@@ -199,7 +199,6 @@ void main() {
     // Because success is false, extractIntent returns null so UI falls back
     expect(result, isNull);
   });
-
 
 } //end main
 
