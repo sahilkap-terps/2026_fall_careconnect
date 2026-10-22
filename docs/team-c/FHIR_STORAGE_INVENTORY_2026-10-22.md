@@ -5,13 +5,55 @@ Status: review draft. Related work: CR-2 / issue #305 and WBS 4.2.9, 4.2.10, 4.2
 
 ## What this review establishes
 
-This is a code-based map of FHIR storage on `team-c-develop`, at commit `21d5a521e87f70eb9c304bd5d993d24cdad9adad`. It covers the Epic, Medicare, athenahealth, and Cerner paths found in this branch. A configured fetch path is not proof that a vendor has granted access or that a live record has been fetched. Team owners must confirm enabled settings, granted scopes, and actual resource use in the target environment.
+This review has two explicit code references: the shared-branch baseline and the unmerged PR #391 implementation described below. The baseline is a code-based map of FHIR storage on `team-c-develop`, at commit `21d5a521e87f70eb9c304bd5d993d24cdad9adad`. It covers the Epic, Medicare, athenahealth, and Cerner paths found in this branch. A configured fetch path is not proof that a vendor has granted access or that a live record has been fetched. Team owners must confirm enabled settings, granted scopes, and actual resource use in the target environment.
 
 No schema, service, consent, or source data was changed. No live patient data was read. This draft does not approve CR-2, establish a release candidate, or close Team B's prerequisite. It gives Team B a concrete inventory to check.
 
 The older October 21 plan used a different commit. This review uses a fresh remote-head check and a clean worktree. The original local Docker checkout is preserved.
 
-## Resource coverage
+## PR #391 implementation branch — October 22 follow-up
+
+This section adds Tiffany's implementation from `feature/team-c-cerner-qa-implementation` at `9ef50e4cc215fa897b3365e5a8075ab33caeda14`. [PR #391][qa-pr] remains open. It is not part of the `21d5a521` shared-branch baseline below. Both branch refs and PR status were checked again for this update. The sections headed **Shared-branch baseline** keep their original scope; their inactive-client and blocked-pagination findings must not be applied to PR #391.
+
+Tiffany's follow-up, supplied by the user October 22, confirms the ownership and pending policy decisions recorded here. That follow-up is a coordination source, not approval of a deletion policy or final QA sign-off.
+
+### Added resource and storage paths
+
+| Resource or boundary | PR #391 implementation | Persistence and limits | Pinned evidence |
+| --- | --- | --- | --- |
+| SMART connection and access | Discovery, Authorization Code/S256 PKCE, patient context, encrypted access/refresh tokens, expiry/refresh and reauthorization; real access policy uses CareConnect patient-access rules. | Uses `ORACLE_HEALTH`, `ehr_credentials`, `ehr_patient_crosswalk`, and audit events. Feature-gated wiring exists; deployment and secure-sandbox use still need proof. | [OAuth][qa-oauth], [link service][qa-link], [policy][qa-policy], [bean configuration][qa-config] |
+| AllergyIntolerance | Production service/access-policy wiring replaces the interface-only gap. Trusted pagination is implemented; it is no longer simply blocked. | Validated original allergy JSON is upserted in `ehr_raw_payload`; normalized response fields are returned. No dedicated normalized allergy table is added. | [Allergy service][qa-allergy], [paged client][qa-http] |
+| Patient | Live service foundation performs direct Patient retrieval with trusted crosswalk/SMART context, raw storage and demographic mapping. | Upserts `ehr_source_identity`; rejects unsafe/missing source recency and avoids direct local Patient overwrite. Public Patient controller is outstanding. | [Patient/Appointment service][qa-patient-appointment] |
+| Appointment | Live service foundation adds bounded date-window search, trusted pagination, patient-participant checks and stale-data protection. | Upserts raw data and `ehr_appointment_record`, with a raw-row link. Public Appointment controller and final date-window policy are outstanding. | [Patient/Appointment service][qa-patient-appointment], [HTTP client][qa-http] |
+| Condition | Canonical model, repository, mapper, retrieval service and provisional controller endpoint. | `ehr_condition_record`: patient/source/external condition ID, raw row ID, source version/update time, clinical/verification status, codes/categories/severity/body sites, onset/abatement/date precision and references. | [Clinical service][qa-clinical], [Condition model][qa-condition], [controller][qa-controller] |
+| Encounter | Canonical model, repository, mapper, retrieval service and provisional controller endpoint. | `ehr_encounter_record`: patient/source/external encounter ID, raw row ID, source version/update time, status/class/types, period/precision, participants, provider/location and reason/diagnosis/appointment references. | [Clinical service][qa-clinical], [Encounter model][qa-encounter], [controller][qa-controller] |
+
+The branch's clinical/raw writers look up matching source/patient/type/external-ID rows and upsert them; this is not immutable append-only history. The raw save helpers set `photo_stripped=false` and serialize resource JSON. Do not transfer another source's binary-removal guarantees to these writers without review. See [allergy][qa-allergy], [clinical][qa-clinical], and [Patient/Appointment][qa-patient-appointment] services.
+
+### Disconnect and retention decisions remain open
+
+Current Cerner disconnect removes stored OAuth credentials only. It does **not** remove the crosswalk, raw payloads, or normalized records. Document this as current behavior; do not infer that it is the approved final policy. See [disconnect controller][qa-oauth-controller] and [OAuth service][qa-oauth].
+
+Team B, shared architecture owners, and the Team Lead must decide:
+
+- Whether disconnect deletes or deactivates the crosswalk.
+- Whether stored clinical records are deleted, retained, or made inaccessible.
+- How consent, auditing and retention apply after disconnect.
+- How to handle records Cerner no longer returns.
+
+Raw FHIR rows use `EhrRawPayload`, already in the shared retention framework. The new normalized Condition and Encounter tables are **not** included in [the branch's retention worker][qa-retention]. Their retention/purge rule requires Team B/shared-architecture approval. Options to review include matching raw-payload retention, removing records during source unlinking, and handling source deletions. These are options, not selected policies; Team C must not choose a new rule alone.
+
+### Ownership, test evidence, and review gates
+
+- Donald handles the remaining Patient and Appointment unit tests and controller-slice tests, per Tiffany's follow-up. Existing service tests are in [the branch][qa-patient-test].
+- Production Patient and Appointment controller implementation: **owner pending Team Lead/backend confirmation**. Do not assign it to Donald from his test work.
+- [Feature Branch CI][qa-ci] and [quality gate][qa-quality] passed for `9ef50e4c`. The feature CI log reports **231 backend tests, zero failures/errors/skips**. It runs changed-file checks; this is not a full release test result. No tests were rerun locally for this documentation update.
+- Final testing must use the resulting `team-c-develop` commit **after PR #391 is reviewed and merged**. The implementation SHA is a reference, not the final release-testing commit.
+- Remaining gates: Team C review/merge of #391; Ian/Team B review of #395; Team Lead/QA review of #396; controller ownership; approved retention/disconnect/deletion rules; unified OpenAPI and canonical-model approval; frontend, E2E, contract and secure-sandbox testing before sign-off. [M4 QA summary][qa-summary] remains a pending execution/sign-off record.
+
+Tiffany confirms she has not taken on Terence's storage inventory, consent analysis, retention analysis, or evidence matrix. Keep those documentation/review tasks with Terence and coordinate policy decisions with the shared owners; avoid duplicating her implementation work.
+
+## Shared-branch baseline: resource coverage
 
 The lists below come from fetch and sync code, not from UI category labels. All source owners should report any additional deployed paths absent from this branch.
 
@@ -27,7 +69,7 @@ The lists below come from fetch and sync code, not from UI category labels. All 
 
 Bundle is a transport envelope in these flows, not proof of a separate stored clinical record. Resource names used only in interface comments or category mappings are not added to this inventory as consumed types.
 
-## Shared stores, identity, and provenance
+## Shared-branch baseline: stores, identity, and provenance
 
 | Store | Key and content | Time/history rules | Evidence |
 | --- | --- | --- | --- |
@@ -44,7 +86,7 @@ Bundle is a transport envelope in these flows, not proof of a separate stored cl
 | `ehr_credentials` | User/source, FHIR patient ID/base URL, encrypted token fields, scopes, expiry/state. Record field names only; never copy token values into a review. | Epic disconnect deletes its credential rows. | [EhrCredential][credentials], [EpicOAuthService][epicoauth] |
 | Search/index copies | Epic creates transactional index events and retrieval chunks for supported clinical types. These are extra copies to include in lifecycle review. | Epic disconnect removes indexed sources before mirror rows. Outbox/in-flight behavior still needs a live check. | [EpicSyncService][epic], [EpicResourceChunker][chunker] |
 
-## How each source writes data
+## Shared-branch baseline: how each source writes data
 
 **Medicare.** The cache reads stored raw rows newest-first, then selects one per external ID. It appends a raw row only if parsed JSON changed. Patient photos are removed before serialization. It also maps Patient to identity, Coverage to coverage, and ExplanationOfBenefit to visits. Source metadata is retained in raw JSON. Refresh uses the last successful/empty retrieval audit event; a newly emptied cache forces a full fetch. This is cache freshness, not a retention period. See [cache][cache] and [EhrService][ehrservice].
 
@@ -56,7 +98,7 @@ Bundle is a transport envelope in these flows, not proof of a separate stored cl
 
 **Cerner allergy fields.** The mapper returns source, source record ID, substance text/code, clinical and verification status, severity, recorded date, and reaction text. It rejects another patient's reference and excludes entered-in-error records. The HTTP client rejects a next-page link instead of returning a partial list. No persistent allergy store was found in this path. See [allergy mapper][allergymapper] and [client][allergyclient].
 
-## Retention, delete, unlink, and relink
+## Shared-branch baseline: retention, delete, unlink, and relink
 
 These are code findings, not legal advice or proof that a job ran in deployment.
 
@@ -69,7 +111,7 @@ These are code findings, not legal advice or proof that a job ran in deployment.
 | Source record removed/invalidated | athena prunes mirror rows only after a complete fetch. Epic skips disallowed resources; its sync path does not establish a full missing-record purge. Medicare incremental cache keeps prior records not replaced by new results. | Define and test vendor deletion/status handling for every source, including raw history and search copies. [Status gate][status], [sync][epic], [cache][cache], [athena][athena] |
 | Record-scoped CR-2 grants | Existing consent model has patient/grantee scope and lifecycle fields; this branch has AI_RETRIEVAL, MEDICARE_VIEW, EHR_IMPORT. | No source/type/record key in this model. Settle one shared model before adding sharing. Grant expiry must be checked on reads; a cleanup schedule alone is not authorization. [ConsentGrant][consent] |
 
-## Schema and environment limits
+## Shared-branch baseline: schema and environment limits
 
 Entities and `SchemaPatchRunner` are the main schema evidence. The canonical SQL file says it is a reference, not an executed migration. Flyway is disabled in the main properties. The main properties also set `ddl-auto=none`, despite nearby comments describing update-based deployment; profile settings and deployment must be checked before claiming tables or constraints exist. No PostgreSQL catalog or deployed profile was inspected here. See [properties][properties], [schema reference][schema], and [runner][patches].
 
@@ -80,11 +122,11 @@ The canonical schema explicitly leaves organization/tenant scoping unresolved. S
 | Priority | Proposed contact | Decision or evidence requested |
 | --- | --- | --- |
 | 1 | Ian Ard / Team B (`@ianscottard`) | Check this inventory against Team B's prerequisite. Name missing stores/types and the owner of each gap. Confirm retention and unlink rules. |
-| 1 | Jonathan Barreto / Team C (`@jonathanbarreto37`) | Confirm this baseline for review and the Cerner wiring owner. Route prototype, duplicate-interface, and appointment storage questions. |
+| 1 | Jonathan Barreto / Team C (`@jonathanbarreto37`) | Confirm the post-#391 integration baseline and production Patient/Appointment controller owner. Wiring exists in #391; route storage and policy questions to shared owners. |
 | 1 | Epic and athena owners, routed by their leads | Confirm actual granted types and enabled settings; resolve Epic canonical cleanup, binary handling, and deletion/status behavior. |
 | 1 | Medicare / shared-schema owner | Confirm append-history policy, cache behavior, source identity rules, and all required indexes/FKs in PostgreSQL. |
 | 2 | Crystal Schelmety / PM (`@cschel`) and affected leads | Record CR-2 scope/deadline and shared consent decisions. This inventory does not approve the pilot. |
-| 2 | Tiffany / Test Lead, plus security/privacy reviewers | Assign current PostgreSQL and lifecycle checks, defect owners, and acceptance criteria. |
+| 2 | Tiffany / Test Lead, plus security/privacy reviewers | Coordinate Donald's remaining Patient/Appointment tests, current PostgreSQL/lifecycle checks, independent reviewers and acceptance criteria. |
 
 Names/handles for PM, Team B lead, and Team C lead are supported by `.github/CODEOWNERS` and issue #305. Other owner assignments need lead confirmation.
 
@@ -144,3 +186,27 @@ Relevant test targets: `MedicareRecordCacheTest`, `MedicareRecordCachePostgresTe
 [schema]: https://github.com/umgc/2026_fall_careconnect/blob/21d5a521e87f70eb9c304bd5d993d24cdad9adad/backend/core/src/main/resources/db/migration/V2609261500__create_ehr_canonical_schema.sql
 
 Review request: https://github.com/umgc/2026_fall_careconnect/issues/305
+
+[qa-oauth]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/CernerOAuthService.java
+[qa-oauth-controller]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/controller/CernerOAuthController.java
+[qa-link]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/CernerPatientLinkService.java
+[qa-policy]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAccessPolicy.java
+[qa-config]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerIntegrationConfiguration.java
+[qa-allergy]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAllergyService.java
+[qa-http]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClient.java
+[qa-clinical]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterService.java
+[qa-patient-appointment]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentService.java
+[qa-controller]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerClinicalController.java
+[qa-condition]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/model/ehr/EhrConditionRecord.java
+[qa-encounter]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/model/ehr/EhrEncounterRecord.java
+[qa-retention]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/EhrRetentionWorker.java
+[qa-http-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClientIntegrationTest.java
+[qa-allergy-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerAllergyServiceTest.java
+[qa-clinical-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterServiceTest.java
+[qa-patient-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentServiceTest.java
+[qa-matrix]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-traceability-matrix.md
+[qa-summary]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-test-summary.md
+[qa-plan]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-test-plan.md
+[qa-pr]: https://github.com/umgc/2026_fall_careconnect/pull/391
+[qa-ci]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39714965167
+[qa-quality]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39714965211
