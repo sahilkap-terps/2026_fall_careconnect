@@ -13,7 +13,7 @@ The older October 21 plan used a different commit. This review uses a fresh remo
 
 ## PR #391 implementation branch — October 22 follow-up
 
-This section adds Tiffany's implementation from `feature/team-c-cerner-qa-implementation` at `9ef50e4cc215fa897b3365e5a8075ab33caeda14`. [PR #391][qa-pr] remains open. It is not part of the `21d5a521` shared-branch baseline below. Both branch refs and PR status were checked again for this update. The sections headed **Shared-branch baseline** keep their original scope; their inactive-client and blocked-pagination findings must not be applied to PR #391.
+This section adds Tiffany's implementation from `feature/team-c-cerner-qa-implementation` at `0c991bb525fefbdbbed478441450f56fe828d4e9`. [PR #391][qa-pr] remains open. It is not part of the `21d5a521` shared-branch baseline below. Both branch refs and PR status were checked again for this update. The sections headed **Shared-branch baseline** keep their original scope; their inactive-client and blocked-pagination findings must not be applied to PR #391.
 
 Tiffany's follow-up, supplied by the user October 22, confirms the ownership and pending policy decisions recorded here. That follow-up is a coordination source, not approval of a deletion policy or final QA sign-off.
 
@@ -23,12 +23,20 @@ Tiffany's follow-up, supplied by the user October 22, confirms the ownership and
 | --- | --- | --- | --- |
 | SMART connection and access | Discovery, Authorization Code/S256 PKCE, patient context, encrypted access/refresh tokens, expiry/refresh and reauthorization; real access policy uses CareConnect patient-access rules. | Uses `ORACLE_HEALTH`, `ehr_credentials`, `ehr_patient_crosswalk`, and audit events. Feature-gated wiring exists; deployment and secure-sandbox use still need proof. | [OAuth][qa-oauth], [link service][qa-link], [policy][qa-policy], [bean configuration][qa-config] |
 | AllergyIntolerance | Production service/access-policy wiring replaces the interface-only gap. Trusted pagination is implemented; it is no longer simply blocked. | Validated original allergy JSON is upserted in `ehr_raw_payload`; normalized response fields are returned. No dedicated normalized allergy table is added. | [Allergy service][qa-allergy], [paged client][qa-http] |
-| Patient | Live service foundation performs direct Patient retrieval with trusted crosswalk/SMART context, raw storage and demographic mapping. | Upserts `ehr_source_identity`; rejects unsafe/missing source recency and avoids direct local Patient overwrite. Public Patient controller is outstanding. | [Patient/Appointment service][qa-patient-appointment] |
-| Appointment | Live service foundation adds bounded date-window search, trusted pagination, patient-participant checks and stale-data protection. | Upserts raw data and `ehr_appointment_record`, with a raw-row link. Public Appointment controller and final date-window policy are outstanding. | [Patient/Appointment service][qa-patient-appointment], [HTTP client][qa-http] |
+| Patient | Live service foundation performs direct Patient retrieval with trusted crosswalk/SMART context, raw storage and demographic mapping. | Upserts `ehr_source_identity`; rejects unsafe/missing source recency and avoids direct local Patient overwrite. A feature-gated provisional Patient GET endpoint now exists; its response carries source record ID and source update time. Identity rows have no direct raw-row FK; provenance uses the raw patient/source/type/external-ID tuple. | [Patient/Appointment service][qa-patient-appointment], [controller][qa-patient-controller] |
+| Appointment | Live service foundation adds bounded date-window search, trusted pagination, patient-participant checks and stale-data protection. | Upserts raw data and `ehr_appointment_record`, with a raw-row link. A feature-gated provisional Appointment GET endpoint now exists and requires start/end instants with start before end. Final contract/date-window policy remains pending. | [Patient/Appointment service][qa-patient-appointment], [HTTP client][qa-http], [controller][qa-patient-controller] |
 | Condition | Canonical model, repository, mapper, retrieval service and provisional controller endpoint. | `ehr_condition_record`: patient/source/external condition ID, raw row ID, source version/update time, clinical/verification status, codes/categories/severity/body sites, onset/abatement/date precision and references. | [Clinical service][qa-clinical], [Condition model][qa-condition], [controller][qa-controller] |
 | Encounter | Canonical model, repository, mapper, retrieval service and provisional controller endpoint. | `ehr_encounter_record`: patient/source/external encounter ID, raw row ID, source version/update time, status/class/types, period/precision, participants, provider/location and reason/diagnosis/appointment references. | [Clinical service][qa-clinical], [Encounter model][qa-encounter], [controller][qa-controller] |
 
 The branch's clinical/raw writers look up matching source/patient/type/external-ID rows and upsert them; this is not immutable append-only history. The raw save helpers set `photo_stripped=false` and serialize resource JSON. Do not transfer another source's binary-removal guarantees to these writers without review. See [allergy][qa-allergy], [clinical][qa-clinical], and [Patient/Appointment][qa-patient-appointment] services.
+
+### New controller and test evidence at `0c991bb5`
+
+The [Patient/Appointment controller][qa-patient-controller] uses `careconnect.cerner.patient-appointment.enabled=true`. It provides GET `/v1/api/cerner/patients/{patientId}` and GET `/v1/api/cerner/patients/{patientId}/appointments?start=...&end=...`. It checks the principal and patient-access policy before retrieval. Returned views exclude internal database/raw-payload IDs. This is provisional API code, not proof of a deployed endpoint or accepted OpenAPI contract.
+
+The [seven controller-slice tests][qa-patient-controller-test] cover Patient success, Appointment success/empty results, invalid range, denied access, invalid patient ID and expired authorization. The [service contract test][qa-patient-contract-test] checks preservation of external source ID and normalized identity. [Security filter-chain tests][qa-security-test] add Patient/Appointment route coverage. These files were inspected, not rerun for this document update.
+
+Earlier missing-controller statements described `9ef50e4c`; the current findings above supersede that gap. The shared-branch baseline below remains unchanged.
 
 ### Disconnect and retention decisions remain open
 
@@ -45,9 +53,9 @@ Raw FHIR rows use `EhrRawPayload`, already in the shared retention framework. Th
 
 ### Ownership, test evidence, and review gates
 
-- Donald handles the remaining Patient and Appointment unit tests and controller-slice tests, per Tiffany's follow-up. Existing service tests are in [the branch][qa-patient-test].
-- Production Patient and Appointment controller implementation: **owner pending Team Lead/backend confirmation**. Do not assign it to Donald from his test work.
-- [Feature Branch CI][qa-ci] and [quality gate][qa-quality] passed for `9ef50e4c`. The feature CI log reports **231 backend tests, zero failures/errors/skips**. It runs changed-file checks; this is not a full release test result. No tests were rerun locally for this documentation update.
+- Tiffany's earlier follow-up assigned remaining Patient/Appointment tests to Donald. The newer branch now contains [controller-slice tests][qa-patient-controller-test], [service tests][qa-patient-test] and a [service contract test][qa-patient-contract-test]. Tiffany/Donald should confirm remaining coverage; do not assign duplicate implementation work.
+- Production Patient/Appointment controller code is present. Ongoing implementation ownership remains **owner pending Team Lead/backend confirmation**. Test assignment alone does not establish that owner.
+- [Feature Branch CI][qa-ci] and [quality gate][qa-quality] passed for `0c991bb5`. The earlier 231-test result belongs to `9ef50e4c`, not this newer SHA. Current check conclusions were read from GitHub; no new test count is asserted. The workflow runs changed-file checks; this is not a full release test result. No tests were rerun locally for this documentation update.
 - Final testing must use the resulting `team-c-develop` commit **after PR #391 is reviewed and merged**. The implementation SHA is a reference, not the final release-testing commit.
 - Remaining gates: Team C review/merge of #391; Ian/Team B review of #395; Team Lead/QA review of #396; controller ownership; approved retention/disconnect/deletion rules; unified OpenAPI and canonical-model approval; frontend, E2E, contract and secure-sandbox testing before sign-off. [M4 QA summary][qa-summary] remains a pending execution/sign-off record.
 
@@ -187,26 +195,31 @@ Relevant test targets: `MedicareRecordCacheTest`, `MedicareRecordCachePostgresTe
 
 Review request: https://github.com/umgc/2026_fall_careconnect/issues/305
 
-[qa-oauth]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/CernerOAuthService.java
-[qa-oauth-controller]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/controller/CernerOAuthController.java
-[qa-link]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/CernerPatientLinkService.java
-[qa-policy]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAccessPolicy.java
-[qa-config]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerIntegrationConfiguration.java
-[qa-allergy]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAllergyService.java
-[qa-http]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClient.java
-[qa-clinical]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterService.java
-[qa-patient-appointment]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentService.java
-[qa-controller]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/integration/cerner/CernerClinicalController.java
-[qa-condition]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/model/ehr/EhrConditionRecord.java
-[qa-encounter]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/model/ehr/EhrEncounterRecord.java
-[qa-retention]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/main/java/com/careconnect/service/ehr/EhrRetentionWorker.java
-[qa-http-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClientIntegrationTest.java
-[qa-allergy-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerAllergyServiceTest.java
-[qa-clinical-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterServiceTest.java
-[qa-patient-test]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentServiceTest.java
-[qa-matrix]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-traceability-matrix.md
-[qa-summary]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-test-summary.md
-[qa-plan]: https://github.com/umgc/2026_fall_careconnect/blob/9ef50e4cc215fa897b3365e5a8075ab33caeda14/docs/testing/m4-test-plan.md
+[qa-oauth]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/service/ehr/CernerOAuthService.java
+[qa-oauth-controller]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/controller/CernerOAuthController.java
+[qa-link]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/service/ehr/CernerPatientLinkService.java
+[qa-policy]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAccessPolicy.java
+[qa-config]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerIntegrationConfiguration.java
+[qa-allergy]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerAllergyService.java
+[qa-http]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClient.java
+[qa-clinical]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterService.java
+[qa-patient-appointment]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentService.java
+[qa-controller]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerClinicalController.java
+[qa-condition]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/model/ehr/EhrConditionRecord.java
+[qa-encounter]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/model/ehr/EhrEncounterRecord.java
+[qa-retention]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/service/ehr/EhrRetentionWorker.java
+[qa-http-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/CernerFhirBundleHttpClientIntegrationTest.java
+[qa-allergy-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerAllergyServiceTest.java
+[qa-clinical-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerConditionEncounterServiceTest.java
+[qa-patient-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/DefaultCernerPatientAppointmentServiceTest.java
+[qa-matrix]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/docs/testing/m4-traceability-matrix.md
+[qa-summary]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/docs/testing/m4-test-summary.md
+[qa-plan]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/docs/testing/m4-test-plan.md
 [qa-pr]: https://github.com/umgc/2026_fall_careconnect/pull/391
-[qa-ci]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39714965167
-[qa-quality]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39714965211
+[qa-ci]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39815432431
+[qa-quality]: https://github.com/umgc/2026_fall_careconnect/actions/runs/39815432440
+
+[qa-patient-controller]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/main/java/com/careconnect/integration/cerner/CernerPatientAppointmentController.java
+[qa-patient-controller-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/CernerPatientAppointmentControllerTest.java
+[qa-patient-contract-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/integration/cerner/CernerPatientAppointmentServiceTest.java
+[qa-security-test]: https://github.com/umgc/2026_fall_careconnect/blob/0c991bb525fefbdbbed478441450f56fe828d4e9/backend/core/src/test/java/com/careconnect/config/SecurityConfigFilterChainTest.java
