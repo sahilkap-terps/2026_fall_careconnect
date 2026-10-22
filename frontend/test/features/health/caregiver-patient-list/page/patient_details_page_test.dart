@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:care_connect_app/features/health/caregiver-patient-list/page/patient_details_page.dart';
+import 'package:care_connect_app/features/health/medication-tracker/models/medication-model.dart';
 import 'package:care_connect_app/features/health/medication-tracker/widgets/medication-add-input-form.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 import 'package:care_connect_app/services/api_service.dart';
@@ -392,6 +393,16 @@ void main() {
         find.byType(AddMedicationModal),
       );
       expect(modal.targetPatientId, 42);
+
+      modal.onMedicationAdded(const Medication(
+        patientId: 42,
+        medicationName: 'Metformin',
+        dosage: '500 mg',
+        frequency: 'Twice daily',
+        route: 'oral',
+        isActive: true,
+      ));
+      await tester.pump();
     });
 
     testWidgets('builds with isCaregiver false', (WidgetTester tester) async {

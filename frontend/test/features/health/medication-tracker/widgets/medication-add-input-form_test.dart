@@ -242,4 +242,40 @@ void main() {
     expect(medicationRequest?.path, endsWith('/42/medications'));
     expect(addedMedication?.patientId, 42);
   });
+
+  testWidgets('patient saves medication using their own patient ID',
+      (tester) async {
+    Uri? medicationRequest;
+    ApiService.debugSetHttpClient(MockClient((request) async {
+      if (request.method == 'POST' &&
+          request.url.path.endsWith('/5/medications')) {
+        medicationRequest = request.url;
+        return http.Response(
+          jsonEncode({
+            'id': 9,
+            'patientId': 5,
+            'medicationName': 'Metformin',
+            'dosage': '500 mg',
+            'frequency': 'Twice daily',
+            'route': 'oral',
+            'medicationType': 'PRESCRIPTION',
+            'isActive': true,
+          }),
+          200,
+        );
+      }
+      return http.Response('{}', 200);
+    }));
+    addTearDown(ApiService.debugResetHttpClient);
+
+    await _pump(tester, result: _prefilled);
+    await _scan(tester);
+
+    final saveButton = find.byKey(const Key('medication-save-button'));
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(medicationRequest?.path, endsWith('/5/medications'));
+  });
 }
