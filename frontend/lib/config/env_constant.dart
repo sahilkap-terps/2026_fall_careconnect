@@ -19,7 +19,15 @@ const String _oracleHealthFhirIssuer = String.fromEnvironment(
 ///
 /// Must match the FHIR base URL configured in the CareConnect backend.
 String getOracleHealthFhirIssuer() {
-  final issuer = _oracleHealthFhirIssuer.trim();
+  return normalizeOracleHealthFhirIssuer(_oracleHealthFhirIssuer);
+}
+
+/// Validates and normalizes an Oracle Health FHIR issuer.
+///
+/// Kept separate from the compile-time environment lookup so every validation
+/// rule can be exercised without changing the application's build defines.
+String normalizeOracleHealthFhirIssuer(String configuredIssuer) {
+  final issuer = configuredIssuer.trim();
 
   if (issuer.isEmpty) {
     throw StateError(

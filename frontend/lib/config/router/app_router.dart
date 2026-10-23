@@ -230,6 +230,65 @@ Future<void> navigateToDashboard(
 Future<String?> _requireSignIn(BuildContext _, GoRouterState __) async =>
     await UserRoleStorageService.instance.isLoggedIn() ? null : '/login';
 
+/// Whether a URI contains Oracle Health SMART launch parameters, including
+/// parameters carried by a hash-based Flutter Web route.
+bool hasOracleHealthLaunchParameters(Uri uri) {
+  if (uri.queryParametersAll.containsKey('iss') ||
+      uri.queryParametersAll.containsKey('launch')) {
+    return true;
+  }
+
+  final fragmentUri =
+      uri.fragment.startsWith('/') ? Uri.tryParse(uri.fragment) : null;
+  final fragmentParameters = fragmentUri?.queryParametersAll;
+
+  return fragmentParameters?.containsKey('iss') == true ||
+      fragmentParameters?.containsKey('launch') == true;
+}
+
+/// Resolves an Oracle Health launch into the page state shown by the router.
+/// [expectedIssuer] is injectable so the trust rule can be unit tested while
+/// production continues to read its compile-time configuration.
+OracleHealthLaunchPage buildOracleHealthLaunchPage({
+  required Uri browserUri,
+  required Uri routeUri,
+  String? expectedIssuer,
+}) {
+  final browserHasLaunch = hasOracleHealthLaunchParameters(browserUri);
+  final routeHasLaunch = hasOracleHealthLaunchParameters(routeUri);
+  final launchUri = parseOracleHealthLaunchUri(
+    browserHasLaunch ? browserUri : routeUri,
+  );
+
+  if (launchUri == null) {
+    if (!browserHasLaunch &&
+        !routeHasLaunch &&
+        PendingOracleHealthLaunch.hasPending) {
+      return const OracleHealthLaunchPage();
+    }
+
+    return const OracleHealthLaunchPage(
+      errorMessage: 'Missing or invalid Oracle Health launch parameters.',
+    );
+  }
+
+  final trustedIssuer = expectedIssuer ?? getOracleHealthFhirIssuer();
+  if (!isTrustedOracleHealthIssuer(
+    launchUri.issuer,
+    expectedIssuer: trustedIssuer,
+  )) {
+    return const OracleHealthLaunchPage(
+      errorMessage: 'The Oracle Health issuer is not trusted.',
+    );
+  }
+
+  PendingOracleHealthLaunch.set(
+    issuer: launchUri.issuer,
+    launch: launchUri.launch,
+  );
+  return const OracleHealthLaunchPage();
+}
+
 final GoRouter appRouter = _appRouterRef = GoRouter(
   initialLocation: '/',
   observers: [_telemetryGoRouterObserver],
@@ -240,10 +299,7 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       // (https://app/?medicare=connected). With HashUrlStrategy the router
       // can't see that query, so forward it to the connect page once.
       redirect: (_, __) {
-        final browserParameters = Uri.base.queryParametersAll;
-
-        if (browserParameters.containsKey('iss') ||
-            browserParameters.containsKey('launch')) {
+        if (hasOracleHealthLaunchParameters(Uri.base)) {
           return '/oracle-health-launch';
         }
         if (MedicareConnectPage.returnHandled) return null;
@@ -896,70 +952,10 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
 
     GoRoute(
       path: '/oracle-health-launch',
-      builder: (context, state) {
-        final browserUri = Uri.base;
-
-        final hasBrowserLaunchParameters =
-            browserUri.queryParametersAll.containsKey('iss') ||
-                browserUri.queryParametersAll.containsKey('launch');
-
-        // Validate the browser URL when it contains launch parameters.
-        // Do not fall back if those parameters are invalid.
-
-        final fragmentUri = browserUri.fragment.startsWith('/')
-            ? Uri.tryParse(browserUri.fragment)
-            : null;
-
-        final fragmentParameters =
-            fragmentUri?.queryParametersAll ?? const <String, List<String>>{};
-
-        final hasBrowserFragmentLaunchParameters =
-            fragmentParameters.containsKey('iss') ||
-                fragmentParameters.containsKey('launch');
-
-// Parse the complete browser URL whenever it contains launch
-// parameters, including those inside the hash-based route.
-        final launchUri =
-            hasBrowserLaunchParameters || hasBrowserFragmentLaunchParameters
-                ? parseOracleHealthLaunchUri(browserUri)
-                : parseOracleHealthLaunchUri(state.uri);
-
-        if (launchUri == null) {
-          // Allow a previously validated launch to resume after login,
-          // but only when this URL contains no new launch parameters.
-          final hasRouteLaunchParameters =
-              state.uri.queryParametersAll.containsKey('iss') ||
-                  state.uri.queryParametersAll.containsKey('launch');
-
-          if (!hasBrowserLaunchParameters &&
-              !hasRouteLaunchParameters &&
-              PendingOracleHealthLaunch.hasPending) {
-            return const OracleHealthLaunchPage();
-          }
-
-          return const OracleHealthLaunchPage(
-            errorMessage: 'Missing or invalid Oracle Health launch parameters.',
-          );
-        }
-
-        final expectedIssuer = getOracleHealthFhirIssuer();
-
-        if (!isTrustedOracleHealthIssuer(
-          launchUri.issuer,
-          expectedIssuer: expectedIssuer,
-        )) {
-          return const OracleHealthLaunchPage(
-            errorMessage: 'The Oracle Health issuer is not trusted.',
-          );
-        }
-
-        PendingOracleHealthLaunch.set(
-          issuer: launchUri.issuer,
-          launch: launchUri.launch,
-        );
-
-        return const OracleHealthLaunchPage();
-      },
+      builder: (_, state) => buildOracleHealthLaunchPage(
+        browserUri: Uri.base,
+        routeUri: state.uri,
+      ),
     ),
 
     // Oracle Health SMART-on-FHIR web authorization return.

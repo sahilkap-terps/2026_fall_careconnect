@@ -5,14 +5,21 @@ import '../services/auth_token_manager.dart';
 import '../services/oracle_health_service.dart';
 import '../services/pending_oracle_health_launch.dart';
 
+typedef OracleHealthAuthHeadersLoader = Future<Map<String, String>> Function();
+typedef OracleHealthConnector = Future<void> Function({String? launch});
+
 /// Entry point for an Oracle Health EHR-initiated SMART launch.
 class OracleHealthLaunchPage extends StatefulWidget {
   const OracleHealthLaunchPage({
     super.key,
     this.errorMessage,
+    this.authHeadersLoader = AuthTokenManager.getAuthHeaders,
+    this.connector = OracleHealthService.connect,
   });
 
   final String? errorMessage;
+  final OracleHealthAuthHeadersLoader authHeadersLoader;
+  final OracleHealthConnector connector;
 
   @override
   State<OracleHealthLaunchPage> createState() => _OracleHealthLaunchPageState();
@@ -40,7 +47,7 @@ class _OracleHealthLaunchPageState extends State<OracleHealthLaunchPage> {
     _started = true;
 
     try {
-      final headers = await AuthTokenManager.getAuthHeaders();
+      final headers = await widget.authHeadersLoader();
       final hasAuthorization =
           (headers['Authorization'] ?? '').trim().isNotEmpty;
 
@@ -60,7 +67,7 @@ class _OracleHealthLaunchPageState extends State<OracleHealthLaunchPage> {
         return;
       }
 
-      await OracleHealthService.connect(
+      await widget.connector(
         launch: pending.launch,
       );
     } catch (_) {

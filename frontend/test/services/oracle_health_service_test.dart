@@ -51,6 +51,13 @@ void main() {
   });
 
   group('OracleHealthService HTTP contract', () {
+    test('rejects an empty launch token before making a request', () {
+      expect(
+        () => OracleHealthService.authorizeUrl(launch: '   '),
+        throwsArgumentError,
+      );
+    });
+
     test('requests authorization URL with web return mode', () async {
       final client = MockClient((request) async {
         expect(request.method, 'GET');
