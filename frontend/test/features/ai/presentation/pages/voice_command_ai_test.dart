@@ -3346,6 +3346,60 @@ testWidgets('WBS 5.2.73 opens informed delivery through voice command',
       clearMocks();
     });
 
+    // Verifies the Cancel button dismisses the SOS dialog and aborts.
+    testWidgets('SOS dialog aborts when Cancel button is tapped', (tester) async {
+      await tester.pumpWidget(_buildVoiceRouterApp());
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await _sendSpeechResult(tester, 'emergency', isFinal: true);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+
+      final btn = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(TextButton, 'Cancel'),
+      );
+      expect(btn, findsOneWidget);
+      await tester.tap(btn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.textContaining('Emergency alert cancelled.'), findsOneWidget);
+
+      await _tearDown(tester);
+    });
+
+    // Verifies the Send Alert button confirms and completes the SOS flow.
+    testWidgets('SOS dialog completes when Send Alert button is tapped', (tester) async {
+      await tester.pumpWidget(_buildVoiceRouterApp());
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await _sendSpeechResult(tester, 'emergency', isFinal: true);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+
+      final btn = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(ElevatedButton, 'Send Alert'),
+      );
+      expect(btn, findsOneWidget);
+      await tester.tap(btn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.textContaining('Alert not currently implemented; please call 911 instead.'), findsOneWidget);
+
+      await _tearDown(tester);
+    });
+
     // Verifies SOS modal dismisses and cancels execution
     // when receiving spoken verbal cancellation ('cancel') without physical touch.
     testWidgets(
