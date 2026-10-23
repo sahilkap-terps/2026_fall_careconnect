@@ -42,6 +42,12 @@ import 'package:care_connect_app/pages/ai_configuration_page.dart';
 import 'package:care_connect_app/pages/file_management_page.dart';
 import 'package:care_connect_app/pages/epic_resource_detail_page.dart';
 import 'package:care_connect_app/pages/epic_linked_return_page.dart';
+import 'package:care_connect_app/pages/oracle_health_linked_return_page.dart';
+import 'package:care_connect_app/pages/oracle_health_launch_page.dart';
+import 'package:care_connect_app/config/env_constant.dart'
+    show getOracleHealthFhirIssuer;
+import 'package:care_connect_app/services/oracle_health_issuer.dart';
+import 'package:care_connect_app/services/pending_oracle_health_launch.dart';
 import 'package:care_connect_app/widgets/hybrid_video_call_widget.dart';
 import 'package:care_connect_app/widgets/menu/menu_page.dart';
 import 'package:care_connect_app/widgets/post_call_telemetry_summary_screen.dart';
@@ -94,6 +100,7 @@ import '../../services/daily_brief_gate_service.dart';
 import 'package:care_connect_app/features/invoices/screens/invoice_detail_page.dart';
 import 'package:care_connect_app/features/invoices/models/invoice_models.dart';
 import 'package:care_connect_app/features/auth/presentation/pages/AlexaLoginPage.dart';
+import 'package:care_connect_app/services/oracle_health_launch_uri.dart';
 import '../../features/usps/presentation/usps_test_screen.dart';
 import '../../features/telemetry/telemetry.dart';
 import 'package:care_connect_app/features/ui_preview/ui_preview_screen.dart';
@@ -185,6 +192,15 @@ Future<void> navigateToDashboard(
     }
   }
 
+  // Resume an Oracle Health EHR-initiated launch after CareConnect login.
+  // Keep the temporary launch context until the authorization flow handles it.
+  if (PendingOracleHealthLaunch.hasPending) {
+    if (context.mounted) {
+      context.go('/oracle-health-launch');
+      return;
+    }
+  }
+
   // STML-2 / WBS 3.13.2: care recipients see the Daily Memory Brief on their
   // first login of the day, no earlier than 7am (SRS §6, "surfaces ... when
   // the app is opened"). Caregivers, other roles, and logins after the brief
@@ -224,6 +240,12 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       // (https://app/?medicare=connected). With HashUrlStrategy the router
       // can't see that query, so forward it to the connect page once.
       redirect: (_, __) {
+        final browserParameters = Uri.base.queryParametersAll;
+
+        if (browserParameters.containsKey('iss') ||
+            browserParameters.containsKey('launch')) {
+          return '/oracle-health-launch';
+        }
         if (MedicareConnectPage.returnHandled) return null;
         MedicareConnectPage.returnHandled = true;
         final result =
@@ -239,7 +261,16 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     GoRoute(
       path: '/health-data',
       redirect: _requireSignIn,
-      builder: (_, __) => const HealthDataScreen(),
+      builder: (context, _) {
+        final userProvider = Provider.of<UserProvider>(
+          context,
+          listen: false,
+        );
+
+        return HealthDataScreen(
+          patientId: userProvider.user?.patientId,
+        );
+      },
     ),
     GoRoute(
       path: '/dob-confirm',
@@ -857,6 +888,84 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     GoRoute(
       path: '/epic-linked',
       builder: (context, state) => EpicLinkedReturnPage(
+        status: state.uri.queryParameters['status'],
+      ),
+    ),
+    // Oracle Health EHR-initiated SMART launch entry point.
+    // Parameter validation and authorization will be added separately.
+
+    GoRoute(
+      path: '/oracle-health-launch',
+      builder: (context, state) {
+        final browserUri = Uri.base;
+
+        final hasBrowserLaunchParameters =
+            browserUri.queryParametersAll.containsKey('iss') ||
+                browserUri.queryParametersAll.containsKey('launch');
+
+        // Validate the browser URL when it contains launch parameters.
+        // Do not fall back if those parameters are invalid.
+
+        final fragmentUri = browserUri.fragment.startsWith('/')
+            ? Uri.tryParse(browserUri.fragment)
+            : null;
+
+        final fragmentParameters =
+            fragmentUri?.queryParametersAll ?? const <String, List<String>>{};
+
+        final hasBrowserFragmentLaunchParameters =
+            fragmentParameters.containsKey('iss') ||
+                fragmentParameters.containsKey('launch');
+
+// Parse the complete browser URL whenever it contains launch
+// parameters, including those inside the hash-based route.
+        final launchUri =
+            hasBrowserLaunchParameters || hasBrowserFragmentLaunchParameters
+                ? parseOracleHealthLaunchUri(browserUri)
+                : parseOracleHealthLaunchUri(state.uri);
+
+        if (launchUri == null) {
+          // Allow a previously validated launch to resume after login,
+          // but only when this URL contains no new launch parameters.
+          final hasRouteLaunchParameters =
+              state.uri.queryParametersAll.containsKey('iss') ||
+                  state.uri.queryParametersAll.containsKey('launch');
+
+          if (!hasBrowserLaunchParameters &&
+              !hasRouteLaunchParameters &&
+              PendingOracleHealthLaunch.hasPending) {
+            return const OracleHealthLaunchPage();
+          }
+
+          return const OracleHealthLaunchPage(
+            errorMessage: 'Missing or invalid Oracle Health launch parameters.',
+          );
+        }
+
+        final expectedIssuer = getOracleHealthFhirIssuer();
+
+        if (!isTrustedOracleHealthIssuer(
+          launchUri.issuer,
+          expectedIssuer: expectedIssuer,
+        )) {
+          return const OracleHealthLaunchPage(
+            errorMessage: 'The Oracle Health issuer is not trusted.',
+          );
+        }
+
+        PendingOracleHealthLaunch.set(
+          issuer: launchUri.issuer,
+          launch: launchUri.launch,
+        );
+
+        return const OracleHealthLaunchPage();
+      },
+    ),
+
+    // Oracle Health SMART-on-FHIR web authorization return.
+    GoRoute(
+      path: '/oracle-health-linked',
+      builder: (context, state) => OracleHealthLinkedReturnPage(
         status: state.uri.queryParameters['status'],
       ),
     ),

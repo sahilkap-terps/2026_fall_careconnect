@@ -24,22 +24,27 @@ Future<void> _show(
     );
 
 void main() {
-  testWidgets('TC-HDATA-034: shows the type, title, status, date, source and every detail', (t) async {
-    await _show(t, HealthRecord.single(
-      id: 'claim-1',
-      source: RecordSource.medicare,
-      type: RecordType.appointment,
-      title: 'Office visit',
-      date: DateTime(2026, 9, 15),
-      status: 'Paid',
-      details: const [
-        RecordDetail('Provider', 'Dr. Sarah Mitchell'),
-        RecordDetail('Amount', '\$120.00'),
-      ],
-    ));
+  testWidgets(
+      'TC-HDATA-034: shows the type, title, status, date, source and every detail',
+      (t) async {
+    await _show(
+        t,
+        HealthRecord.single(
+          id: 'claim-1',
+          source: RecordSource.medicare,
+          type: RecordType.appointment,
+          title: 'Office visit',
+          date: DateTime(2026, 9, 15),
+          status: 'Paid',
+          details: const [
+            RecordDetail('Provider', 'Dr. Sarah Mitchell'),
+            RecordDetail('Amount', '\$120.00'),
+          ],
+        ));
 
     expect(find.text('Health Event Details'), findsOneWidget);
-    expect(find.text(RecordType.appointment.label.toUpperCase()), findsOneWidget);
+    expect(
+        find.text(RecordType.appointment.label.toUpperCase()), findsOneWidget);
     expect(find.text('Office visit'), findsOneWidget);
     expect(find.text('Paid'), findsOneWidget);
     expect(find.text('September 15, 2026'), findsOneWidget);
@@ -49,27 +54,34 @@ void main() {
     expect(find.text('\$120.00'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-035: a record without a date or status leaves those rows out instead of showing blanks', (t) async {
-    await _show(t, HealthRecord.single(
-      id: 'r-2',
-      source: RecordSource.epic,
-      type: RecordType.condition,
-      title: 'Hypertension',
-    ));
+  testWidgets(
+      'TC-HDATA-035: a record without a date or status leaves those rows out instead of showing blanks',
+      (t) async {
+    await _show(
+        t,
+        HealthRecord.single(
+          id: 'r-2',
+          source: RecordSource.epic,
+          type: RecordType.condition,
+          title: 'Hypertension',
+        ));
 
     expect(find.text('Hypertension'), findsOneWidget);
     expect(find.text('Date'), findsNothing);
     expect(find.text('Epic'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-036: every month is spelled out in the date', (t) async {
-    await _show(t, HealthRecord.single(
-      id: 'r-3',
-      source: RecordSource.cerner,
-      type: RecordType.appointment,
-      title: 'Check-up',
-      date: DateTime(2026, 1, 3),
-    ));
+  testWidgets('TC-HDATA-036: every month is spelled out in the date',
+      (t) async {
+    await _show(
+        t,
+        HealthRecord.single(
+          id: 'r-3',
+          source: RecordSource.cerner,
+          type: RecordType.appointment,
+          title: 'Check-up',
+          date: DateTime(2026, 1, 3),
+        ));
 
     expect(find.text('January 3, 2026'), findsOneWidget);
   });
@@ -97,7 +109,7 @@ void main() {
     expect(find.text('De dónde proviene'), findsOneWidget);
 
     // Provider names are proper names and are not translated.
-    expect(find.text('Cerner'), findsOneWidget);
+    expect(find.text('Oracle Health'), findsOneWidget);
     expect(find.text('Health Event Details'), findsNothing);
   });
 }

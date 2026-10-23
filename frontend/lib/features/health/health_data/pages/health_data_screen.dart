@@ -8,7 +8,12 @@ import '../services/ehr_data_service.dart';
 import 'health_event_details_screen.dart';
 
 class HealthDataScreen extends StatefulWidget {
-  const HealthDataScreen({super.key});
+  final int? patientId;
+
+  const HealthDataScreen({
+    super.key,
+    this.patientId,
+  });
 
   @override
   State<HealthDataScreen> createState() => _HealthDataScreenState();
@@ -109,7 +114,9 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     final ehrService = EhrDataService();
     List<HealthRecord>? ehrRecords;
     try {
-      ehrRecords = await ehrService.tryFetchRecords();
+      ehrRecords = await ehrService.tryFetchRecords(
+        patientId: widget.patientId,
+      );
     } catch (_) {}
     PatientDemographics? demographics;
     try {
@@ -252,7 +259,12 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                 if (_ehrUnavailable)
                   _noticeBanner(
                     Icons.cloud_off_outlined,
-                    'We couldn\'t load records from your other providers. Showing what we could.',
+                    'We couldn\'t load records from Oracle Health. Showing what we could.',
+                  )
+                else
+                  _noticeBanner(
+                    Icons.check_circle_outline,
+                    'Connected to Oracle Health. Your Oracle Health records are included in your health history.',
                   ),
                 if (_medicareEmpty)
                   _noticeBanner(

@@ -33,18 +33,23 @@ void main() {
   tearDown(() => ApiClient.instance.debugSetHttpClientAdapter(original));
 
   RouteAdapter fixtures({Completer<void>? gate}) => RouteAdapter({
-        '/v1/api/medicare/visits': envelope(fixtureResources('eob-bundle.json')),
+        '/v1/api/medicare/visits':
+            envelope(fixtureResources('eob-bundle.json')),
         '/v1/api/medicare/coverage':
             envelope(fixtureResources('coverage-bundle.json')),
       }, gate: gate);
 
-  Future<void> pump(WidgetTester t, RouteAdapter a) async {
+  Future<void> pump(
+    WidgetTester t,
+    RouteAdapter a, {
+    int? patientId,
+  }) async {
     ApiClient.instance.debugSetHttpClientAdapter(a);
     await t.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const HealthDataScreen(),
+        home: HealthDataScreen(patientId: patientId),
       ),
     );
   }
@@ -62,7 +67,8 @@ void main() {
     await t.pumpAndSettle();
   }
 
-  testWidgets('TC-HDATA-009: a loading state shows until Medicare answers '
+  testWidgets(
+      'TC-HDATA-009: a loading state shows until Medicare answers '
       '(FR-MCR-27)', (t) async {
     final gate = Completer<void>();
     await pump(t, fixtures(gate: gate));
@@ -74,7 +80,8 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('TC-HDATA-010: loaded mock data shows the demo-data banner and '
+  testWidgets(
+      'TC-HDATA-010: loaded mock data shows the demo-data banner and '
       'each Medicare record, and the details screen says where it came from',
       (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
@@ -92,7 +99,8 @@ void main() {
     ]) {
       await t.scrollUntilVisible(find.text(title), 200,
           scrollable: find
-              .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
+              .descendant(
+                  of: find.byType(ListView), matching: find.byType(Scrollable))
               .first);
       expect(find.text(title), findsOneWidget);
     }
@@ -103,16 +111,18 @@ void main() {
     final details = find.text('View details', skipOffstage: false);
     expect(details, findsWidgets);
     await t.scrollUntilVisible(details.first, 200,
-          scrollable: find
-              .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
-              .first);
+        scrollable: find
+            .descendant(
+                of: find.byType(ListView), matching: find.byType(Scrollable))
+            .first);
     await t.tap(details.first);
     await t.pumpAndSettle();
     expect(find.text('Where this came from'), findsOneWidget);
     expect(find.text('Medicare'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-011: when Medicare cannot be reached the screen says '
+  testWidgets(
+      'TC-HDATA-011: when Medicare cannot be reached the screen says '
       'so with ERR-MCR-03 (FR-MCR-24, AC-MCR-24-2)', (t) async {
     await pump(
         t,
@@ -124,7 +134,8 @@ void main() {
     expect(find.text(_errMcr03), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-012: a linked account with no Medicare records shows '
+  testWidgets(
+      'TC-HDATA-012: a linked account with no Medicare records shows '
       '"No Medicare records found" (FR-MCR-28, AC-MCR-28-1)', (t) async {
     await pump(
         t,
@@ -136,7 +147,8 @@ void main() {
     expect(find.textContaining(_noRecords), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-013: no built-in sample records are shown as the '
+  testWidgets(
+      'TC-HDATA-013: no built-in sample records are shown as the '
       'patient\'s own (#256 removed them; #263 review)', (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
@@ -152,7 +164,8 @@ void main() {
     }
   });
 
-  testWidgets('TC-HDATA-014: leaving the screen before Medicare answers '
+  testWidgets(
+      'TC-HDATA-014: leaving the screen before Medicare answers '
       'raises no error', (t) async {
     final gate = Completer<void>();
     await pump(t, fixtures(gate: gate));
@@ -180,24 +193,24 @@ void main() {
     'light': AppTheme.lightTheme,
     'dark': AppTheme.darkTheme,
   }.entries) {
-    testWidgets('TC-HDATA-015: every text on the loaded screen has at least '
+    testWidgets(
+        'TC-HDATA-015: every text on the loaded screen has at least '
         '4.5:1 contrast against what is behind it, in the app\'s ${theme.key} '
         'theme (WCAG 2.1 SC 1.4.3)', (t) async {
       await t.binding.setSurfaceSize(const Size(800, 3000));
       addTearDown(() => t.binding.setSurfaceSize(null));
       ApiClient.instance.debugSetHttpClientAdapter(RouteAdapter({
-        '/v1/api/medicare/visits': envelope(fixtureResources('eob-bundle.json')),
+        '/v1/api/medicare/visits':
+            envelope(fixtureResources('eob-bundle.json')),
       }, status: {
         '/v1/api/medicare/coverage': 503
       }));
-      await t.pumpWidget(
-          MaterialApp(
-            theme: theme.value,
-            localizationsDelegates:
-                AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: const HealthDataScreen(),
-          ));
+      await t.pumpWidget(MaterialApp(
+        theme: theme.value,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const HealthDataScreen(),
+      ));
       await settle(t);
       final low = lowContrastText(t, find.byType(ListView)).toSet();
       expect(low, isEmpty, reason: low.join('\n'));
@@ -206,7 +219,8 @@ void main() {
 
   // ---- PR #263 re-review, 2026-10-06 ----
 
-  testWidgets('TC-HDATA-020: when Medicare rejects the stored link (409 '
+  testWidgets(
+      'TC-HDATA-020: when Medicare rejects the stored link (409 '
       'ERR-MCR-05) the screen says so and offers to connect again, not '
       'ERR-MCR-03 (FR-MCR-09, AC-MCR-09-1)', (t) async {
     const body = '{"error":"ERR-MCR-05","message":"Your Medicare connection '
@@ -229,7 +243,8 @@ void main() {
     expect(find.text('Connect Medicare Account'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-021: a patient with no Medicare link (404) is offered '
+  testWidgets(
+      'TC-HDATA-021: a patient with no Medicare link (404) is offered '
       'Connect Medicare Account, not told Medicare could not be reached '
       '(AC-MCR-11-2)', (t) async {
     await pump(
@@ -246,7 +261,8 @@ void main() {
     expect(find.text('Connect Medicare Account'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-023: when the other providers cannot be read the '
+  testWidgets(
+      'TC-HDATA-023: when the other providers cannot be read the '
       'screen says so and still shows Medicare', (t) async {
     await pump(
         t,
@@ -260,15 +276,16 @@ void main() {
         }));
     await settle(t);
     expect(
-        find.textContaining(RegExp('couldn.t .*(other providers|health records)',
-            caseSensitive: false)),
+        find.textContaining(
+            RegExp('couldn.t .*Oracle Health', caseSensitive: false)),
         findsOneWidget);
     expect(
         find.text('Simple pneumonia and pleurisy with CC', skipOffstage: false),
         findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-024: View details shows the claim type, title, '
+  testWidgets(
+      'TC-HDATA-024: View details shows the claim type, title, '
       'status, date, source and every detail', (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
@@ -302,20 +319,19 @@ void main() {
     'light': AppTheme.lightTheme,
     'dark': AppTheme.darkTheme,
   }.entries) {
-    testWidgets('TC-HDATA-025: every text on the details screen has at least '
+    testWidgets(
+        'TC-HDATA-025: every text on the details screen has at least '
         '4.5:1 contrast, in the app\'s ${theme.key} theme (WCAG 2.1 SC 1.4.3)',
         (t) async {
       await t.binding.setSurfaceSize(const Size(800, 3000));
       addTearDown(() => t.binding.setSurfaceSize(null));
       ApiClient.instance.debugSetHttpClientAdapter(fixtures());
-      await t.pumpWidget(
-          MaterialApp(
-            theme: theme.value,
-            localizationsDelegates:
-                AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: const HealthDataScreen(),
-          ));
+      await t.pumpWidget(MaterialApp(
+        theme: theme.value,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const HealthDataScreen(),
+      ));
       await settle(t);
       await t.tap(find.text('View details').first);
       await t.pumpAndSettle();
@@ -329,7 +345,8 @@ void main() {
     });
   }
 
-  testWidgets('TC-HDATA-026: search narrows the history to matching records, '
+  testWidgets(
+      'TC-HDATA-026: search narrows the history to matching records, '
       'and Clear filters restores it and empties the field', (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
@@ -344,13 +361,15 @@ void main() {
     await t.tap(find.text('Clear filters'));
     await t.pumpAndSettle();
     expect(find.text('5 events'), findsOneWidget);
-    expect(t.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+    expect(
+        t.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
     await t.enterText(find.byType(TextField), 'no such record');
     await t.pumpAndSettle();
     expect(find.text('No health records found'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-027: the Claims filter shows only claims, and All '
+  testWidgets(
+      'TC-HDATA-027: the Claims filter shows only claims, and All '
       'brings back every record', (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
@@ -365,7 +384,8 @@ void main() {
     expect(find.text('5 events'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-029: records and patient details from the other '
+  testWidgets(
+      'TC-HDATA-029: records and patient details from the other '
       'providers show beside Medicare', (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
@@ -391,9 +411,9 @@ void main() {
     expect(find.text('Female'), findsOneWidget);
   });
 
-  testWidgets('TC-HDATA-040: a Cerner allergy appears in the shared history, '
-      'uses the Allergies filter, and preserves Cerner provenance',
-      (t) async {
+  testWidgets(
+      'TC-HDATA-040: a Cerner allergy appears in the shared history, '
+      'uses the Allergies filter, and preserves Cerner provenance', (t) async {
     await t.binding.setSurfaceSize(const Size(800, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
 
@@ -410,9 +430,8 @@ void main() {
                   '{"resourceId":"epic-medication-1","source":"EPIC",'
                   '"category":"Medications","title":"Lisinopril 10 mg",'
                   '"occurredAt":"2026-09-01T00:00:00Z","status":"active"}]',
-          '/api/ehr/patient':
-              '{"name":"Test Patient","birthDate":"1980-05-14",'
-                  '"gender":"female"}',
+          '/api/ehr/patient': '{"name":"Test Patient","birthDate":"1980-05-14",'
+              '"gender":"female"}',
         }));
 
     await settle(t);
@@ -437,8 +456,39 @@ void main() {
     await t.pumpAndSettle();
 
     expect(find.text('Where this came from'), findsOneWidget);
-    expect(find.text('Cerner'), findsOneWidget);
+    expect(find.text('Oracle Health'), findsOneWidget);
   });
+  testWidgets(
+      'TC-HDATA-044: the patient ID loads Cerner backend records into '
+      'the unified health history', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final adapter = RouteAdapter({
+      '/api/ehr/resources': '[]',
+      '/api/ehr/patient': '{}',
+      '/v1/api/cerner/patients/7/allergies':
+          '{"allergies":[{"source":"ORACLE_HEALTH",'
+              '"sourceRecordId":"cerner-allergy-2",'
+              '"substanceText":"Penicillin",'
+              '"clinicalStatus":"active",'
+              '"recordedDate":"2026-09-10"}]}',
+      '/v1/api/cerner/patients/7/conditions': '{"conditions":[]}',
+      '/v1/api/cerner/patients/7/encounters': '{"encounters":[]}',
+      '/v1/api/medicare/visits': envelope(const []),
+      '/v1/api/medicare/coverage': envelope(const []),
+    });
+
+    await pump(t, adapter, patientId: 7);
+    await settle(t);
+
+    expect(
+      adapter.paths,
+      contains('/v1/api/cerner/patients/7/allergies'),
+    );
+    expect(find.text('Penicillin'), findsOneWidget);
+  });
+
   // Testing Lead (PR #364 review): the new forbidden problem must not change
   // what a patient sees on their own screen.
   testWidgets(
