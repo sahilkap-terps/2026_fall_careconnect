@@ -17,16 +17,25 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:care_connect_app/features/gamification/presentation/pages/gamification_screen.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 
 import '../../../../mock_user_provider.dart';
 
-Widget _wrap({MockUserProvider? provider}) {
+Widget _wrap({
+  MockUserProvider? provider,
+  Locale locale = const Locale('en'),
+}) {
   final p =
       provider ?? MockUserProvider(mockUser: MockUser(id: 1, role: 'PATIENT'));
   return ChangeNotifierProvider<UserProvider>.value(
     value: p,
-    child: const MaterialApp(home: GamificationScreen()),
+    child: MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const GamificationScreen(),
+    ),
   );
 }
 
@@ -123,6 +132,12 @@ void main() {
   // Loading state (no mock HTTP -- HTTP fails, isLoading stays true)
   // ───────────────────────────────────────────────────────────────────────────
   group('GamificationScreen - initial loading state', () {
+    testWidgets('shows Spanish title when Spanish is selected', (tester) async {
+      await tester.pumpWidget(_wrap(locale: const Locale('es')));
+      await tester.pump();
+      expect(find.text('Logros'), findsOneWidget);
+    });
+
     testWidgets('renders GamificationScreen widget', (tester) async {
       await tester.pumpWidget(_wrap());
       await tester.pump();
