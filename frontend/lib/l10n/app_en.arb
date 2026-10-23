@@ -1356,6 +1356,53 @@
   "medicarehelp_errMcr04": "You need an internet connection to connect your Medicare account.",
   "@medicarehelp_errMcr04": {"description": "ERR-MCR-04. Exact SRS text (section 8.6); do not reword."},
   "medicarehelp_errMcr05": "Your Medicare connection has expired. Connect again to see current records.",
-  "@medicarehelp_errMcr05": {"description": "ERR-MCR-05. Exact SRS text (section 8.6); do not reword."}
-
+  "@medicarehelp_errMcr05": {"description": "ERR-MCR-05. Exact SRS text (section 8.6); do not reword."},
+  "healthEventDetailsTitle": "Health Event Details",
+  "@healthEventDetailsTitle": {
+    "description": "Title of the Unified Health event details screen."
+  },
+  "healthDataDate": "Date",
+  "@healthDataDate": {
+    "description": "Label shown above a health record date."
+  },
+  "healthEventDetailsSource": "Where this came from",
+  "@healthEventDetailsSource": {
+    "description": "Heading identifying the healthcare source of a record."
+  },
+  "healthDataRecordTypeMedication": "Medication",
+  "healthDataRecordTypeCondition": "Condition",
+  "healthDataRecordTypeAllergy": "Allergy",
+  "healthDataRecordTypeVisit": "Visit",
+  "healthDataRecordTypeClinicalRecord": "Clinical Record",
+  "healthDataRecordTypeClaimService": "Claim / Service",
+  "healthDataRecordTypeRecord": "Record",
+  "analyticsPatientAnalytics": "Patient Analytics",
+  "analyticsRetry": "Retry",
+  "analyticsAskAiTooltip": "Ask AI about analytics",
+  "analyticsDownloadCsv": "Download CSV",
+  "analyticsDownloadPdf": "Download PDF",
+  "analyticsOverview": "Analytics Overview",
+  "analyticsMetricsAndTrends": "Patient health metrics and trends",
+  "analyticsTimeRange": "Time Range:",
+  "analyticsHealthSummary": "Health Summary",
+  "analyticsLastDaysShort": "Last {days}d",
+  "@analyticsLastDaysShort": {
+    "description": "Compact Analytics summary period shown on narrow screens.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsLastDaysOverview": "Last {days} days overview",
+  "@analyticsLastDaysOverview": {
+    "description": "Analytics summary period shown on regular-width screens.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "analyticsDetailedCharts": "Detailed Charts",
+  "analyticsLoadingData": "Loading analytics data..."
 }
