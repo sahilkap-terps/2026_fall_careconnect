@@ -39,6 +39,23 @@ public class Message {
     @Column(name = "attachment_size")
     private Long attachmentSize;
 
+    /**
+     * Set on a share card: what the card opens. A card holds only these two ids, never the data
+     * itself, and grants nothing: the data's own access rule is checked when it is opened.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "share_kind", length = 32)
+    private ShareKind shareKind;
+
+    /** The {@code patient.id} whose data a share card opens. */
+    @Column(name = "share_patient_id")
+    private Long sharePatientId;
+
+    /** What a share card opens: one tab of the patient's page. */
+    public enum ShareKind {
+        MEDICARE
+    }
+
     // Constructors
     public Message() {
     }
@@ -126,5 +143,21 @@ public class Message {
 
     public void setAttachmentSize(Long attachmentSize) {
         this.attachmentSize = attachmentSize;
+    }
+
+    public ShareKind getShareKind() {
+        return shareKind;
+    }
+
+    public void setShareKind(ShareKind shareKind) {
+        this.shareKind = shareKind;
+    }
+
+    public Long getSharePatientId() {
+        return sharePatientId;
+    }
+
+    public void setSharePatientId(Long sharePatientId) {
+        this.sharePatientId = sharePatientId;
     }
 }
