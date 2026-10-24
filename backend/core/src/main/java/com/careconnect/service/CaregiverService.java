@@ -435,9 +435,8 @@ public class CaregiverService {
                         .map(User::getId)
                         .orElse(null);
                 return patientUserId != null
-                        && familyMemberLinkRepository.existsActiveNonExpiredLinkToPatient(
+                        && familyMemberLinkRepository.existsActiveNonExpiredLinkByUserIds(
                                 userId,
-                                patientId,
                                 patientUserId,
                                 LocalDateTime.now()
                         );

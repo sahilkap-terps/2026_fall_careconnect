@@ -875,8 +875,8 @@ class CaregiverServiceTest {
 
             when(users.findById(3L)).thenReturn(Optional.of(fmUser));
             when(patientRepository.findById(20L)).thenReturn(Optional.of(patient));
-            when(familyMemberLinkRepository.existsActiveNonExpiredLinkToPatient(
-                    eq(3L), eq(20L), eq(77L), any(LocalDateTime.class))).thenReturn(true);
+            when(familyMemberLinkRepository.existsActiveNonExpiredLinkByUserIds(
+                    eq(3L), eq(77L), any(LocalDateTime.class))).thenReturn(true);
 
             assertTrue(caregiverService.hasAccessToPatient(3L, 20L));
         }

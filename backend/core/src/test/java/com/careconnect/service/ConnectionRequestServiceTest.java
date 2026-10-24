@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -208,8 +209,8 @@ class ConnectionRequestServiceTest {
     void createRequest_alreadyConnected_throwsIllegalStateException() throws Exception {
         when(userRepo.findById(1L)).thenReturn(Optional.of(caregiver));
         when(userRepo.findByEmailAndRole("john@example.com", Role.PATIENT)).thenReturn(Optional.of(patient));
-        when(linkRepo.existsByCaregiverUserAndPatientUserAndStatus(
-                caregiver, patient, CaregiverPatientLink.LinkStatus.ACTIVE)).thenReturn(true);
+        when(linkRepo.existsActiveNonExpiredLink(eq(caregiver), eq(patient), any(LocalDateTime.class)))
+                .thenReturn(true);
 
         final IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> connectionRequestService.createRequest(1L, "john@example.com", "Family", "msg"));
@@ -361,8 +362,8 @@ class ConnectionRequestServiceTest {
     @DisplayName("respond - accepted when already linked - does not create a second link")
     void respond_acceptedWhenAlreadyLinked_doesNotDuplicateLink() throws Exception {
         when(connectionRequestRepo.findById(100L)).thenReturn(Optional.of(pendingRequest));
-        when(linkRepo.existsByCaregiverUserAndPatientUserAndStatus(
-                caregiver, patient, CaregiverPatientLink.LinkStatus.ACTIVE)).thenReturn(true);
+        when(linkRepo.existsActiveNonExpiredLink(eq(caregiver), eq(patient), any(LocalDateTime.class)))
+                .thenReturn(true);
 
         connectionRequestService.respond(100L, patient, true);
 

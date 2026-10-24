@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,8 +54,7 @@ public class ConnectionRequestService {
         User patient = userRepo.findByEmailAndRole(patientEmail, Role.PATIENT)
                 .orElseThrow(() -> new IllegalArgumentException("Patient not found with email: " + patientEmail));
 
-        if (linkRepo.existsByCaregiverUserAndPatientUserAndStatus(
-                caregiver, patient, CaregiverPatientLink.LinkStatus.ACTIVE)) {
+        if (linkRepo.existsActiveNonExpiredLink(caregiver, patient, LocalDateTime.now())) {
             throw new IllegalStateException("You are already connected to this patient");
         }
 
@@ -162,8 +162,9 @@ public class ConnectionRequestService {
      * Create caregiver-patient link
      */
     private void createCaregiverPatientLink(ConnectionRequest request) {
-        if (linkRepo.existsByCaregiverUserAndPatientUserAndStatus(
-                request.getCaregiver(), request.getPatient(), CaregiverPatientLink.LinkStatus.ACTIVE)) {
+        // An expired temporary link still marked ACTIVE grants nothing, so accepting replaces it.
+        if (linkRepo.existsActiveNonExpiredLink(
+                request.getCaregiver(), request.getPatient(), LocalDateTime.now())) {
             return;
         }
         CaregiverPatientLink link = new CaregiverPatientLink(

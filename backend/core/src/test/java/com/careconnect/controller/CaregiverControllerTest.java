@@ -369,9 +369,11 @@ class CaregiverControllerTest {
             when(connectionRequestService.createRequest(CG_USER_ID, PATIENT_EMAIL, "Caregiver", null))
                     .thenThrow(new IllegalStateException("There's already a pending connection request to this patient"));
 
-            assertThatThrownBy(() -> controller.addPatient(CAREGIVER_ID, emailBody(PATIENT_EMAIL)))
-                    .isInstanceOf(AppException.class)
-                    .hasMessage("There's already a pending connection request to this patient");
+            final ResponseEntity<?> response = controller.addPatient(CAREGIVER_ID, emailBody(PATIENT_EMAIL));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(bodyMap(response).get("message"))
+                    .isEqualTo("There's already a pending connection request to this patient");
         }
     }
 

@@ -201,7 +201,11 @@ public class CaregiverController {
                 connectionRequestService.createRequest(
                         currentUser.getId(), patientEmail, "Caregiver", null);
             } catch (IllegalStateException e) {
-                throw new AppException(HttpStatus.BAD_REQUEST, e.getMessage());
+                // The add-patient screen shows "message"; "error" matches the other error bodies.
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", e.getMessage(),
+                        "error", e.getMessage()
+                ));
             }
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of(
                     "message", "Connection request sent to " + patientEmail
