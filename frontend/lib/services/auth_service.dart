@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../config/env_constant.dart';
 import '../features/emergency_passport/services/qr_code_store.dart';
+import '../features/health/health_data/services/identity_conflict_service.dart';
 import 'api_service.dart';
 import 'oauth_service.dart';
 import '../providers/user_provider.dart';
@@ -486,6 +487,9 @@ class AuthService {
         headers: headers,
       );
     } finally {
+      // First, so no failing step below can leave this patient's
+      // date-of-birth conflicts for the next account signed in.
+      IdentityConflictService.clearFound();
       try {
         await EncryptedTranscriptOutbox.purgeDefault();
       } catch (_) {
@@ -579,6 +583,7 @@ class AuthService {
         await AuthTokenManager.clearAuthData();
         await UserRoleStorageService.instance.clearUserData();
         await QrCodeStore.clearAll(); // DEF-EMG-29
+        IdentityConflictService.clearFound();
         return null;
       }
     } catch (e) {
@@ -587,6 +592,7 @@ class AuthService {
       await AuthTokenManager.clearAuthData();
       await UserRoleStorageService.instance.clearUserData();
       await QrCodeStore.clearAll(); // DEF-EMG-29
+      IdentityConflictService.clearFound();
       return null;
     }
   }

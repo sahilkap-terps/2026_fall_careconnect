@@ -24,16 +24,32 @@ public interface ConditionDetectionRunRepository
 
     Optional<ConditionDetectionRun> findByIdAndClaimToken(Long id, UUID claimToken);
 
+    /** The models that have due work, so each model's due runs are fetched on their own. */
+    @Query(value = """
+            SELECT DISTINCT model_id FROM condition_detection_runs
+             WHERE state IN ('READY', 'RETRYABLE', 'CLAIMED', 'RUNNING')
+               AND next_attempt_at <= CURRENT_TIMESTAMP
+               AND (claimed_until IS NULL OR claimed_until <= CURRENT_TIMESTAMP)
+             ORDER BY model_id
+            """, nativeQuery = true)
+    List<String> findDueModelIds();
+
+    /**
+     * The oldest due runs of one model. The limit applies per model: a global limit let ten
+     * queued voice-analysis runs, which stay due until their lane claims them, fill every result
+     * and keep newer transcript runs from ever reaching their idle lane.
+     */
     // "modelId" is quoted so PostgreSQL keeps its case and it matches the projection getter.
     @Query(value = """
             SELECT id AS id, model_id AS "modelId" FROM condition_detection_runs
-             WHERE state IN ('READY', 'RETRYABLE', 'CLAIMED', 'RUNNING')
+             WHERE model_id = :modelId
+               AND state IN ('READY', 'RETRYABLE', 'CLAIMED', 'RUNNING')
                AND next_attempt_at <= CURRENT_TIMESTAMP
                AND (claimed_until IS NULL OR claimed_until <= CURRENT_TIMESTAMP)
              ORDER BY next_attempt_at, id
              LIMIT 10
             """, nativeQuery = true)
-    List<ConditionDueRunProjection> findDueRuns();
+    List<ConditionDueRunProjection> findDueRuns(@Param("modelId") String modelId);
 
     @Modifying
     @Transactional

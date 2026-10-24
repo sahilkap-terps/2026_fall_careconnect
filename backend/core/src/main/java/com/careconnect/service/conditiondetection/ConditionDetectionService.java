@@ -163,7 +163,8 @@ public class ConditionDetectionService {
 
     /**
      * Hands due runs to their model's lane and returns at once. The analysis itself never runs
-     * on the shared scheduler thread (see {@link ConditionRunLanes}).
+     * on the shared scheduler thread (see {@link ConditionRunLanes}). Due runs are fetched per
+     * model, so a backlog in one model's lane never keeps another model's runs from being queued.
      */
     @Scheduled(fixedDelayString = "${careconnect.condition-detection.worker.interval-ms:30000}")
     public void runDueRuns() {
@@ -171,9 +172,11 @@ public class ConditionDetectionService {
             return;
         }
         final ConditionDetectionService worker = self == null ? this : self;
-        for (final ConditionDueRunProjection due : runRepository.findDueRuns()) {
-            final Long id = due.getId().longValue();
-            lanes.submit(due.getModelId(), id, () -> worker.processRun(id));
+        for (final String modelId : runRepository.findDueModelIds()) {
+            for (final ConditionDueRunProjection due : runRepository.findDueRuns(modelId)) {
+                final Long id = due.getId().longValue();
+                lanes.submit(due.getModelId(), id, () -> worker.processRun(id));
+            }
         }
     }
 
