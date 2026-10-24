@@ -166,6 +166,13 @@ void main() {
         return null;
       },
     );
+    // ...and listens for connection changes; without a stream handler that
+    // listen throws MissingPluginException against whichever test is running.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(
+      const EventChannel('dev.fluttercommunity.plus/connectivity_status'),
+      MockStreamHandler.inline(onListen: (_, __) {}),
+    );
     _setSarahHttpMocks();
   });
 
@@ -179,6 +186,11 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
       const MethodChannel('dev.fluttercommunity.plus/connectivity'),
+      null,
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(
+      const EventChannel('dev.fluttercommunity.plus/connectivity_status'),
       null,
     );
   });
