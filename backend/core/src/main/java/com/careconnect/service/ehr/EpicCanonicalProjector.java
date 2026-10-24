@@ -161,6 +161,12 @@ public class EpicCanonicalProjector {
         if (valueQuantity != null && valueQuantity.hasNonNull("value")) {
             row.setValueQuantity(valueQuantity.get("value").asDouble());
             row.setValueUnit(text(valueQuantity, "unit"));
+        } else {
+            // Clear a previously-projected numeric value on re-sync; otherwise an
+            // observation that changes from numeric to text-only would keep a stale
+            // valueQuantity/valueUnit alongside the new valueString (upsert reuses the row).
+            row.setValueQuantity(null);
+            row.setValueUnit(null);
         }
         row.setValueString(text(r, "valueString"));
         row.setReferenceRange(referenceRange(firstOf(r, "referenceRange")));
