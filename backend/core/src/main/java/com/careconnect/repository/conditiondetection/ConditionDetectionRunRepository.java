@@ -2,6 +2,7 @@ package com.careconnect.repository.conditiondetection;
 
 import com.careconnect.model.conditiondetection.ConditionDetectionRun;
 import com.careconnect.repository.projection.ConditionDueRunProjection;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,16 +25,48 @@ public interface ConditionDetectionRunRepository
 
     Optional<ConditionDetectionRun> findByIdAndClaimToken(Long id, UUID claimToken);
 
+    /**
+     * Due runs, oldest first, at most ten <em>per model</em>. A run queued in its model's lane
+     * stays due until the lane claims it, so a global limit let one model's backlog (slow voice
+     * analysis) fill every tick and starve the other models' idle lanes.
+     */
     // "modelId" is quoted so PostgreSQL keeps its case and it matches the projection getter.
     @Query(value = """
-            SELECT id AS id, model_id AS "modelId" FROM condition_detection_runs
-             WHERE state IN ('READY', 'RETRYABLE', 'CLAIMED', 'RUNNING')
-               AND next_attempt_at <= CURRENT_TIMESTAMP
-               AND (claimed_until IS NULL OR claimed_until <= CURRENT_TIMESTAMP)
+            SELECT id AS id, model_id AS "modelId" FROM (
+                SELECT id, model_id, next_attempt_at,
+                       ROW_NUMBER() OVER (PARTITION BY model_id ORDER BY next_attempt_at, id) AS rn
+                  FROM condition_detection_runs
+                 WHERE state IN ('READY', 'RETRYABLE', 'CLAIMED', 'RUNNING')
+                   AND next_attempt_at <= CURRENT_TIMESTAMP
+                   AND (claimed_until IS NULL OR claimed_until <= CURRENT_TIMESTAMP)
+            ) due
+             WHERE rn <= 10
              ORDER BY next_attempt_at, id
-             LIMIT 10
             """, nativeQuery = true)
     List<ConditionDueRunProjection> findDueRuns();
+
+    /**
+     * Call ids of calls that ended (termination complete) within the last {@code lookbackHours}
+     * by the database clock ({@code ended_at} is written by it; see {@link #markDueNow}) and are
+     * missing a run for at least one of {@code modelIds}, oldest first.
+     *
+     * @param lookbackHours how far back to look
+     * @param modelIds enabled model ids
+     * @param modelCount number of {@code modelIds}
+     */
+    @Query(value = """
+            SELECT s.call_id FROM call_sessions s
+             WHERE s.status = 'ENDED'
+               AND s.ended_at >= CURRENT_TIMESTAMP - (CAST(:lookbackHours AS INTEGER) * INTERVAL '1' HOUR)
+               AND (SELECT COUNT(*) FROM condition_detection_runs r
+                     WHERE r.call_id = s.call_id AND r.model_id IN (:modelIds)) < :modelCount
+             ORDER BY s.ended_at, s.id
+             LIMIT 50
+            """, nativeQuery = true)
+    List<String> findEndedCallsMissingRuns(
+            @Param("lookbackHours") long lookbackHours,
+            @Param("modelIds") Collection<String> modelIds,
+            @Param("modelCount") long modelCount);
 
     @Modifying
     @Transactional
