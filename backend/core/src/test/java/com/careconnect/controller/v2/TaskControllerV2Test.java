@@ -276,4 +276,60 @@ class TaskControllerV2Test {
         assertThatThrownBy(() -> controller.deleteTask(7L, false)).isInstanceOf(UnauthorizedException.class);
         verify(taskService, never()).deleteTask(anyLong(), anyBoolean());
     }
+
+    private User familyMember() {
+        final User user = new User();
+        user.setId(20L);
+        user.setRole(Role.FAMILY_MEMBER);
+        return user;
+    }
+
+    @Test
+    void createTask_refusedForReadOnlyFamilyMember() throws Exception {
+        // Arrange: a linked family member passes the patient check but is read-only
+        final User user = familyMember();
+        when(securityUtil.resolveCurrentUser()).thenReturn(user);
+        doThrow(new UnauthorizedException("read-only")).when(authorizationService).requireWriteAccess(user);
+
+        // Act / Assert
+        assertThatThrownBy(() -> controller.createTask(5L, TaskDtoV2.builder().name("x").build()))
+                .isInstanceOf(UnauthorizedException.class);
+        verify(authorizationService).requirePatientRecordAccess(user, 5L);
+        verify(taskService, never()).createTask(anyLong(), any());
+    }
+
+    @Test
+    void updateTask_refusedForReadOnlyFamilyMember() throws Exception {
+        final User user = familyMember();
+        when(securityUtil.resolveCurrentUser()).thenReturn(user);
+        when(taskService.getTaskById(7L)).thenReturn(taskOfPatient(7L, 5L));
+        doThrow(new UnauthorizedException("read-only")).when(authorizationService).requireWriteAccess(user);
+
+        assertThatThrownBy(() -> controller.updateTask(7L, TaskDtoV2.builder().name("x").build()))
+                .isInstanceOf(UnauthorizedException.class);
+        verify(taskService, never()).updateTask(anyLong(), any());
+    }
+
+    @Test
+    void updateTaskCompletion_refusedForReadOnlyFamilyMember() throws Exception {
+        final User user = familyMember();
+        when(securityUtil.resolveCurrentUser()).thenReturn(user);
+        when(taskService.getTaskById(7L)).thenReturn(taskOfPatient(7L, 5L));
+        doThrow(new UnauthorizedException("read-only")).when(authorizationService).requireWriteAccess(user);
+
+        assertThatThrownBy(() -> controller.updateTaskCompletion(7L, Map.of("isComplete", true)))
+                .isInstanceOf(UnauthorizedException.class);
+        verify(taskService, never()).updateCompletionStatus(anyLong(), anyBoolean());
+    }
+
+    @Test
+    void deleteTask_refusedForReadOnlyFamilyMember() throws Exception {
+        final User user = familyMember();
+        when(securityUtil.resolveCurrentUser()).thenReturn(user);
+        when(taskService.getTaskById(7L)).thenReturn(taskOfPatient(7L, 5L));
+        doThrow(new UnauthorizedException("read-only")).when(authorizationService).requireWriteAccess(user);
+
+        assertThatThrownBy(() -> controller.deleteTask(7L, false)).isInstanceOf(UnauthorizedException.class);
+        verify(taskService, never()).deleteTask(anyLong(), anyBoolean());
+    }
 }

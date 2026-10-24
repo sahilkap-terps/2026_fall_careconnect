@@ -295,4 +295,50 @@ class TaskControllerTest {
             verify(taskService, never()).deleteTask(anyLong());
         }
     }
+
+    @Nested
+    @DisplayName("Family members are read-only")
+    class ReadOnlyFamilyMember {
+
+        @Test
+        @WithMockUser(username = "family@test.com")
+        @DisplayName("POST returns 403 and creates nothing")
+        void createReturns403() throws Exception {
+            // Arrange: the patient check passes, the write check refuses
+            doThrow(new UnauthorizedException("read-only")).when(authorizationService).requireWriteAccess(any());
+
+            // Act + Assert
+            mockMvc.perform(post("/v3/api/tasks/patient/10").with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(sampleTaskDto)))
+                    .andExpect(status().isForbidden());
+            verify(taskService, never()).createTask(anyLong(), any(TaskDto.class));
+        }
+
+        @Test
+        @WithMockUser(username = "family@test.com")
+        @DisplayName("PUT returns 403 and changes nothing")
+        void updateReturns403() throws Exception {
+            when(taskService.getTaskById(1L)).thenReturn(sampleTask);
+            doThrow(new UnauthorizedException("read-only")).when(authorizationService).requireWriteAccess(any());
+
+            mockMvc.perform(put("/v3/api/tasks/1").with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(sampleTaskDto)))
+                    .andExpect(status().isForbidden());
+            verify(taskService, never()).updateTask(anyLong(), any(TaskDto.class));
+        }
+
+        @Test
+        @WithMockUser(username = "family@test.com")
+        @DisplayName("DELETE returns 403 and deletes nothing")
+        void deleteReturns403() throws Exception {
+            when(taskService.getTaskById(1L)).thenReturn(sampleTask);
+            doThrow(new UnauthorizedException("read-only")).when(authorizationService).requireWriteAccess(any());
+
+            mockMvc.perform(delete("/v3/api/tasks/1").with(csrf()))
+                    .andExpect(status().isForbidden());
+            verify(taskService, never()).deleteTask(anyLong());
+        }
+    }
 }

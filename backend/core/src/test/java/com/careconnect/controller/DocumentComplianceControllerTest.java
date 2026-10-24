@@ -179,7 +179,7 @@ class DocumentComplianceControllerTest {
         mockMvc.perform(get("/v1/api/document-compliance/checklist/EMPLOYEE/5"))
                 .andExpect(status().isOk());
         // Self-access must not require patient-level authorization
-        verify(authorizationService, never()).requirePatientAccess(any(), anyLong());
+        verify(authorizationService, never()).requirePatientRecordAccess(any(), anyLong());
     }
 
     @Test
@@ -190,7 +190,7 @@ class DocumentComplianceControllerTest {
         mockMvc.perform(get("/v1/api/document-compliance/checklist/EMPLOYEE/2"))
                 .andExpect(status().isForbidden());
         // Must be rejected outright — an employee user id is not a patient id.
-        verify(authorizationService, never()).requirePatientAccess(any(), anyLong());
+        verify(authorizationService, never()).requirePatientRecordAccess(any(), anyLong());
         verifyNoInteractions(complianceService);
     }
 
@@ -199,7 +199,7 @@ class DocumentComplianceControllerTest {
     void checklist_careCircleUnauthorized_forbidden() throws Exception {
         when(securityUtil.resolveCurrentUser()).thenReturn(patientUser);
         doThrow(new UnauthorizedException("No access to this patient"))
-                .when(authorizationService).requirePatientAccess(patientUser, 9L);
+                .when(authorizationService).requirePatientRecordAccess(patientUser, 9L);
 
         mockMvc.perform(get("/v1/api/document-compliance/checklist/CARE_CIRCLE/9"))
                 .andExpect(status().isForbidden());

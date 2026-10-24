@@ -41,6 +41,20 @@ public interface FamilyMemberLinkRepository extends JpaRepository<FamilyMemberLi
     boolean existsByFamilyUserAndPatientUserAndStatus(
             User familyUser, User patientUser, FamilyMemberLink.LinkStatus status);
 
+    // Matches the patient by user ID only. patientUser is set on every link (the
+    // denormalized patientId column is not), and comparing a user ID against the
+    // patientId column could match an unrelated patient whose entity ID is equal.
+    // NULL expiresAt means a permanent link (see FamilyMemberLink#isActive). :now uses JVM default TZ.
+    @Query("SELECT CASE WHEN COUNT(f) > 0 THEN true ELSE false END FROM FamilyMemberLink f " +
+            "WHERE f.familyUser.id = :familyMemberUserId " +
+            "AND f.patientUser.id = :patientUserId " +
+            "AND f.status = 'ACTIVE' " +
+            "AND (f.expiresAt IS NULL OR f.expiresAt > :now)")
+    boolean existsActiveNonExpiredLinkByUserIds(
+            @Param("familyMemberUserId") Long familyMemberUserId,
+            @Param("patientUserId") Long patientUserId,
+            @Param("now") LocalDateTime now);
+
     // Both IDs must belong to the same patient. The denormalized patientId column is
     // unset on some rows (seeded links carry only patientUser), so either may match,
     // but never one ID compared against the other column: a patient's entity ID can

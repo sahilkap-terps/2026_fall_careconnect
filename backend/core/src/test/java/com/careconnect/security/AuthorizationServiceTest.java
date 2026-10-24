@@ -270,7 +270,7 @@ public class AuthorizationServiceTest {
         }
     }
 
-    // ========== requirePatientAccess / requirePatientUserAccess Tests ==========
+    // ========== requirePatientAccess / requirePatientRecordAccess Tests ==========
 
     // patient.id and users.id are separate sequences; these values mirror a real
     // patient whose two IDs differ (entity 6, user 9).
@@ -293,8 +293,8 @@ public class AuthorizationServiceTest {
     }
 
     @Nested
-    @DisplayName("requirePatientAccess (patient entity ID)")
-    class RequirePatientAccessTests {
+    @DisplayName("requirePatientRecordAccess (patient entity ID)")
+    class RequirePatientRecordAccessTests {
 
         @BeforeEach
         void knownPatient() {
@@ -305,21 +305,21 @@ public class AuthorizationServiceTest {
         @Test
         void whenUserIsNull_throwsUnauthorized() {
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(null, PATIENT_ID));
+                    () -> authorizationService.requirePatientRecordAccess(null, PATIENT_ID));
             assertEquals("User is not authenticated", ex.getMessage());
         }
 
         @Test
         void whenPatientIdIsNull_throwsIllegalArgument() {
             assertThrows(IllegalArgumentException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, null));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, null));
         }
 
         @Test
         void whenUserIsAdmin_allowsAnyPatientWithoutLookup() {
             actAs(Role.ADMIN, 1L);
 
-            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, 99L));
+            assertDoesNotThrow(() -> authorizationService.requirePatientRecordAccess(mockUser, 99L));
             verifyNoInteractions(patientRepository);
         }
 
@@ -327,7 +327,7 @@ public class AuthorizationServiceTest {
         void whenPatientAccessesOwnRecordWithDifferentUserId_allowsAccess() {
             actAs(Role.PATIENT, PATIENT_USER_ID);
 
-            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+            assertDoesNotThrow(() -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
         }
 
         @Test
@@ -339,7 +339,7 @@ public class AuthorizationServiceTest {
 
             // Act / Assert
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_USER_ID));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_USER_ID));
             assertTrue(ex.getMessage().contains("Patients can only access their own data"));
         }
 
@@ -349,7 +349,7 @@ public class AuthorizationServiceTest {
             when(patientRepository.findById(404L)).thenReturn(Optional.empty());
 
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, 404L));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, 404L));
             assertTrue(ex.getMessage().contains("is not authorized to access patient 404"));
             verifyNoInteractions(caregiverPatientLinkRepository);
         }
@@ -360,7 +360,7 @@ public class AuthorizationServiceTest {
             when(patientRepository.findById(7L)).thenReturn(Optional.of(patient(7L, null)));
 
             assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, 7L));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, 7L));
         }
 
         @Test
@@ -369,7 +369,7 @@ public class AuthorizationServiceTest {
             when(mockUser.hasPermission(Permission.VIEW_ASSIGNED_PATIENTS)).thenReturn(false);
 
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
             assertTrue(ex.getMessage().contains("does not have permission to view patient data"));
         }
 
@@ -380,7 +380,7 @@ public class AuthorizationServiceTest {
             when(caregiverPatientLinkRepository.existsActiveNonExpiredLinkByUserIds(
                     eq(10L), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(true);
 
-            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+            assertDoesNotThrow(() -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
         }
 
         @Test
@@ -392,7 +392,7 @@ public class AuthorizationServiceTest {
                     eq(10L), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(false);
 
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
             assertTrue(ex.getMessage().contains("not assigned to patient 6"));
         }
 
@@ -402,29 +402,29 @@ public class AuthorizationServiceTest {
             when(mockUser.hasPermission(Permission.VIEW_HEALTH_DATA)).thenReturn(false);
 
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
             assertTrue(ex.getMessage().contains("does not have permission to view patient data"));
         }
 
         @Test
-        void whenFamilyMemberIsLinked_checksLinkByBothIdsOfThatPatient() {
+        void whenFamilyMemberIsLinked_checksLinkByPatientUserId() {
             actAs(Role.FAMILY_MEMBER, 20L);
             when(mockUser.hasPermission(Permission.VIEW_HEALTH_DATA)).thenReturn(true);
-            when(familyMemberLinkRepository.existsActiveNonExpiredLinkToPatient(
-                    eq(20L), eq(PATIENT_ID), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(true);
+            when(familyMemberLinkRepository.existsActiveNonExpiredLinkByUserIds(
+                    eq(20L), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(true);
 
-            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+            assertDoesNotThrow(() -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
         }
 
         @Test
         void whenFamilyMemberHasNoActiveLink_throwsUnauthorized() {
             actAs(Role.FAMILY_MEMBER, 20L);
             when(mockUser.hasPermission(Permission.VIEW_HEALTH_DATA)).thenReturn(true);
-            when(familyMemberLinkRepository.existsActiveNonExpiredLinkToPatient(
-                    eq(20L), eq(PATIENT_ID), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(false);
+            when(familyMemberLinkRepository.existsActiveNonExpiredLinkByUserIds(
+                    eq(20L), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(false);
 
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
             assertTrue(ex.getMessage().contains("not linked to patient"));
         }
 
@@ -434,7 +434,7 @@ public class AuthorizationServiceTest {
             when(mockUser.isPatient()).thenReturn(false);
 
             UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
+                    () -> authorizationService.requirePatientRecordAccess(mockUser, PATIENT_ID));
             assertTrue(ex.getMessage().contains("is not authorized to access patient"));
         }
     }
@@ -487,26 +487,27 @@ public class AuthorizationServiceTest {
     }
 
     @Nested
-    @DisplayName("requirePatientUserAccess (patient user ID)")
-    class RequirePatientUserAccessTests {
+    @DisplayName("requirePatientAccess (patient user ID)")
+    class RequirePatientAccessTests {
 
-        @BeforeEach
-        void knownPatient() {
-            lenient().when(patientRepository.findByUserId(PATIENT_USER_ID))
-                    .thenReturn(Optional.of(patient(PATIENT_ID, PATIENT_USER_ID)));
+        @Test
+        void whenUserIsNull_throwsUnauthorized() {
+            UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                    () -> authorizationService.requirePatientAccess(null, PATIENT_USER_ID));
+            assertEquals("User is not authenticated", ex.getMessage());
         }
 
         @Test
         void whenPatientUserIdIsNull_throwsIllegalArgument() {
             assertThrows(IllegalArgumentException.class,
-                    () -> authorizationService.requirePatientUserAccess(mockUser, null));
+                    () -> authorizationService.requirePatientAccess(mockUser, null));
         }
 
         @Test
         void whenUserIsAdmin_allowsWithoutLookup() {
             actAs(Role.ADMIN, 1L);
 
-            assertDoesNotThrow(() -> authorizationService.requirePatientUserAccess(mockUser, 99L));
+            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, 99L));
             verifyNoInteractions(patientRepository);
         }
 
@@ -514,7 +515,7 @@ public class AuthorizationServiceTest {
         void whenPatientAccessesOwnUserId_allowsAccess() {
             actAs(Role.PATIENT, PATIENT_USER_ID);
 
-            assertDoesNotThrow(() -> authorizationService.requirePatientUserAccess(mockUser, PATIENT_USER_ID));
+            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, PATIENT_USER_ID));
         }
 
         @Test
@@ -522,7 +523,7 @@ public class AuthorizationServiceTest {
             actAs(Role.PATIENT, PATIENT_USER_ID);
 
             assertThrows(UnauthorizedException.class,
-                    () -> authorizationService.requirePatientUserAccess(mockUser, PATIENT_ID));
+                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_ID));
         }
 
         @Test
@@ -532,30 +533,63 @@ public class AuthorizationServiceTest {
             when(caregiverPatientLinkRepository.existsActiveNonExpiredLinkByUserIds(
                     eq(10L), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(true);
 
-            assertDoesNotThrow(() -> authorizationService.requirePatientUserAccess(mockUser, PATIENT_USER_ID));
+            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, PATIENT_USER_ID));
         }
 
         @Test
-        void whenFamilyMemberIsLinked_checksLinkByBothIdsOfThatPatient() {
+        void whenFamilyMemberIsLinked_matchesByUserIdWithoutPatientLookup() {
+            // Arrange: seeded links carry only patientUser, so the check must not need a patient row
             actAs(Role.FAMILY_MEMBER, 20L);
             when(mockUser.hasPermission(Permission.VIEW_HEALTH_DATA)).thenReturn(true);
-            when(familyMemberLinkRepository.existsActiveNonExpiredLinkToPatient(
-                    eq(20L), eq(PATIENT_ID), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(true);
-
-            assertDoesNotThrow(() -> authorizationService.requirePatientUserAccess(mockUser, PATIENT_USER_ID));
-        }
-
-        @Test
-        void whenUserHasNoPatientRecord_familyLinkStillMatchesByUserId() {
-            // Arrange: seeded links carry only patientUser, so a missing patient row must not block them
-            actAs(Role.FAMILY_MEMBER, 20L);
-            when(mockUser.hasPermission(Permission.VIEW_HEALTH_DATA)).thenReturn(true);
-            when(patientRepository.findByUserId(55L)).thenReturn(Optional.empty());
-            when(familyMemberLinkRepository.existsActiveNonExpiredLinkToPatient(
-                    eq(20L), isNull(), eq(55L), any(LocalDateTime.class))).thenReturn(true);
+            when(familyMemberLinkRepository.existsActiveNonExpiredLinkByUserIds(
+                    eq(20L), eq(55L), any(LocalDateTime.class))).thenReturn(true);
 
             // Act / Assert
-            assertDoesNotThrow(() -> authorizationService.requirePatientUserAccess(mockUser, 55L));
+            assertDoesNotThrow(() -> authorizationService.requirePatientAccess(mockUser, 55L));
+            verifyNoInteractions(patientRepository);
+        }
+
+        @Test
+        void whenFamilyMemberHasNoActiveLink_throwsUnauthorized() {
+            actAs(Role.FAMILY_MEMBER, 20L);
+            when(mockUser.hasPermission(Permission.VIEW_HEALTH_DATA)).thenReturn(true);
+            when(familyMemberLinkRepository.existsActiveNonExpiredLinkByUserIds(
+                    eq(20L), eq(PATIENT_USER_ID), any(LocalDateTime.class))).thenReturn(false);
+
+            UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                    () -> authorizationService.requirePatientAccess(mockUser, PATIENT_USER_ID));
+            assertTrue(ex.getMessage().contains("not linked to patient 9"));
+        }
+    }
+
+    @Nested
+    @DisplayName("requireWriteAccess")
+    class RequireWriteAccessTests {
+
+        @Test
+        void whenUserIsNull_throwsUnauthorized() {
+            UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                    () -> authorizationService.requireWriteAccess(null));
+            assertEquals("User is not authenticated", ex.getMessage());
+        }
+
+        @Test
+        void whenUserIsReadOnly_throwsUnauthorized() {
+            // Arrange: family members are the read-only role
+            when(mockUser.canModifyData()).thenReturn(false);
+            when(mockUser.getEmail()).thenReturn("family@test.invalid");
+
+            // Act / Assert
+            UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                    () -> authorizationService.requireWriteAccess(mockUser));
+            assertEquals("User 'family@test.invalid' has read-only access", ex.getMessage());
+        }
+
+        @Test
+        void whenUserCanModifyData_allows() {
+            when(mockUser.canModifyData()).thenReturn(true);
+
+            assertDoesNotThrow(() -> authorizationService.requireWriteAccess(mockUser));
         }
     }
 

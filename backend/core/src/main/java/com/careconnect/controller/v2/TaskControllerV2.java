@@ -115,7 +115,7 @@ public class TaskControllerV2 {
     @GetMapping("/patient/{patientId}")
     public ResponseEntity<List<TaskDtoV2>> getTasksByPatient(@PathVariable Long patientId) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        authorizationService.requirePatientRecordAccess(currentUser, patientId);
         return ResponseEntity.ok(taskService.getTasksByPatient(patientId));
     }
 
@@ -135,7 +135,8 @@ public class TaskControllerV2 {
             @PathVariable Long patientId,
             @RequestBody TaskDtoV2 task) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
-        authorizationService.requirePatientAccess(currentUser, patientId);
+        authorizationService.requirePatientRecordAccess(currentUser, patientId);
+        authorizationService.requireWriteAccess(currentUser);
         return ResponseEntity.ok(taskService.createTask(patientId, task));
     }
 
@@ -156,6 +157,7 @@ public class TaskControllerV2 {
             @RequestBody TaskDtoV2 task) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
         authorizationService.requireTaskAccess(currentUser, taskService.getTaskById(id));
+        authorizationService.requireWriteAccess(currentUser);
         return ResponseEntity.ok(taskService.updateTask(id, task));
     }
 
@@ -199,6 +201,7 @@ public class TaskControllerV2 {
             @RequestBody Map<String, Boolean> body) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
         authorizationService.requireTaskAccess(currentUser, taskService.getTaskById(id));
+        authorizationService.requireWriteAccess(currentUser);
 
         boolean isComplete = body.getOrDefault("isComplete", false);
         TaskDtoV2 updated = taskService.updateCompletionStatus(id, isComplete);
@@ -227,6 +230,7 @@ public class TaskControllerV2 {
             @RequestParam(name = "deleteSeries", defaultValue = "false") boolean deleteSeries) throws UnauthorizedException {
         User currentUser = securityUtil.resolveCurrentUser();
         authorizationService.requireTaskAccess(currentUser, taskService.getTaskById(id));
+        authorizationService.requireWriteAccess(currentUser);
         taskService.deleteTask(id, deleteSeries);
         return ResponseEntity.noContent().build();
     }
