@@ -265,6 +265,32 @@ class EpicCanonicalProjectorTest {
         assertThat(row.getEffectiveDate()).isEqualTo(LocalDate.of(2026, 6, 1));
     }
 
+    @Test
+    void project_observation_clearsStaleQuantityWhenResyncedAsTextOnly() {
+        // Existing row carries a numeric value/unit from a prior numeric sync.
+        final EhrObservationRecord existing = new EhrObservationRecord();
+        existing.setId(42L);
+        existing.setValueQuantity(9.1);
+        existing.setValueUnit("mg/dL");
+        when(obsRepo.findByPatientIdAndSourceIdAndExternalObservationId(7L, 3L, "obs-rs"))
+                .thenReturn(Optional.of(existing));
+
+        // Source re-issues the same observation as text-only: no valueQuantity.
+        projector.project(7L, 3L, "Observation", json("{"
+                + "\"resourceType\":\"Observation\",\"id\":\"obs-rs\","
+                + "\"meta\":{\"lastUpdated\":\"2026-07-01T00:00:00Z\"},"
+                + "\"code\":{\"coding\":[{\"system\":\"loinc\",\"code\":\"X\",\"display\":\"Note\"}]},"
+                + "\"valueString\":\"see comment\"}"));
+
+        final ArgumentCaptor<EhrObservationRecord> saved = ArgumentCaptor.forClass(EhrObservationRecord.class);
+        verify(obsRepo).save(saved.capture());
+        final EhrObservationRecord row = saved.getValue();
+        assertThat(row.getId()).isEqualTo(42L);            // upsert, same row
+        assertThat(row.getValueString()).isEqualTo("see comment");
+        assertThat(row.getValueQuantity()).isNull();       // stale numeric cleared
+        assertThat(row.getValueUnit()).isNull();           // stale unit cleared
+    }
+
     // --- disconnect cleanup ---------------------------------------------
 
     @Test
