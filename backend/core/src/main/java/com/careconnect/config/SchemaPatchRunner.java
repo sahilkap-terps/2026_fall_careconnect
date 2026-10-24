@@ -327,6 +327,7 @@ public class SchemaPatchRunner implements CommandLineRunner {
             applyH2VisitSummariesAndAskConfirmationTables();
             applyH2ConsentGrantsTable();
             applyH2AiAskConversationShareTable();
+            applyH2ConditionDetectionTables();
         }
         // Confirmation items use only plain types, so they apply unconditionally on H2 and Postgres.
         applyPatch(
@@ -393,6 +394,7 @@ public class SchemaPatchRunner implements CommandLineRunner {
         applyEhrIdentityReconciliationPatches();
         applyPatientAuditTimestampBackfill();
         applyEhrAuditTimestampZonePatches();
+        applyEmergencyPassportPatches();
         seedDemoScheduledVisits();
     }
 
@@ -730,6 +732,94 @@ public class SchemaPatchRunner implements CommandLineRunner {
     }
 
     /**
+     * CC-12 Emergency Care Passport storage: {@code emergency_passport_profile} and
+     * {@code emergency_passport_field_visibility} (Increment 1, mirrors db/migration
+     * V2610131200__create_emergency_passport_tables.sql) and {@code emergency_passport_token}
+     * (Increment 2, mirrors V2610131300__create_emergency_passport_token.sql).
+     * <p>
+     * The token table's partial unique index allows one ACTIVE code per patient, so making a new
+     * code without revoking the old one fails instead of leaving two live codes.
+     * <p>
+     * Hibernate {@code ddl-auto=update} creates both tables from their entities; this supplies what
+     * it will not. The foreign keys are applied here because the entities store bare {@code Long}
+     * ids, and cascade so a deleted patient leaves no passport data behind. The unique indexes are a
+     * safety net, as for the EHR tables.
+     * <p>
+     * {@code is_public} gets a database default of {@code FALSE} so a row inserted outside JPA is
+     * hidden, matching the entity default. The timestamps are made {@code TIMESTAMPTZ} for the
+     * reason {@link #applyEhrAuditTimestampZonePatches()} gives.
+     * <p>
+     * Package-private so {@code SchemaPatchRunnerEmergencyPassportTest} can run it against a mocked
+     * PostgreSQL connection: on H2 it returns early, so no other unit test reaches these lines.
+     */
+    void applyEmergencyPassportPatches() {
+        if (!isPostgreSql()) {
+            log.info("Skipping PostgreSQL emergency passport patches for non-PostgreSQL datasource");
+            return;
+        }
+
+        applyRequiredPatch(
+                "V2610131200a - unique emergency_passport_profile(patient_id)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_profile_patient "
+                        + "ON emergency_passport_profile (patient_id)"
+        );
+        applyRequiredPatch(
+                "V2610131200b - unique emergency_passport_field_visibility(patient_id, field_key)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_visibility_patient_field "
+                        + "ON emergency_passport_field_visibility (patient_id, field_key)"
+        );
+        applyRequiredPatch(
+                "V2610131200c - FK emergency_passport_profile.patient_id -> patient.id",
+                foreignKeyIfMissing("fk_emergency_passport_profile_patient", "emergency_passport_profile",
+                        "patient_id", "patient", "id", " ON DELETE CASCADE")
+        );
+        applyRequiredPatch(
+                "V2610131200d - FK emergency_passport_field_visibility.patient_id -> patient.id",
+                foreignKeyIfMissing("fk_emergency_passport_visibility_patient", "emergency_passport_field_visibility",
+                        "patient_id", "patient", "id", " ON DELETE CASCADE")
+        );
+        applyRequiredPatch(
+                "V2610131200e - emergency_passport_field_visibility.is_public defaults to FALSE",
+                "ALTER TABLE emergency_passport_field_visibility ALTER COLUMN is_public SET DEFAULT FALSE"
+        );
+
+        for (final String table : new String[]{
+                "emergency_passport_profile",
+                "emergency_passport_field_visibility"}) {
+            for (final String column : new String[]{"created_at", "updated_at"}) {
+                applyRequiredPatch(
+                        "V2610131200f - " + table + "." + column + " is TIMESTAMPTZ",
+                        timestamptzIfZoneless(table, column)
+                );
+            }
+        }
+
+        // CC-12 Increment 2 — the QR code. Mirrors V2610131300__create_emergency_passport_token.sql.
+        // Runs after every Increment 1 patch so their order stays as TC-EMG-041 pins it.
+        applyRequiredPatch(
+                "V2610131300a - unique emergency_passport_token(token_lookup)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_token_lookup "
+                        + "ON emergency_passport_token (token_lookup)"
+        );
+        applyRequiredPatch(
+                "V2610131300b - at most one ACTIVE emergency_passport_token per patient",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_emergency_passport_token_one_active "
+                        + "ON emergency_passport_token (patient_id) WHERE status = 'ACTIVE'"
+        );
+        applyRequiredPatch(
+                "V2610131300c - FK emergency_passport_token.patient_id -> patient.id",
+                foreignKeyIfMissing("fk_emergency_passport_token_patient", "emergency_passport_token",
+                        "patient_id", "patient", "id", " ON DELETE CASCADE")
+        );
+        for (final String column : new String[]{"created_at", "updated_at"}) {
+            applyRequiredPatch(
+                    "V2610131300d - emergency_passport_token." + column + " is TIMESTAMPTZ",
+                    timestamptzIfZoneless("emergency_passport_token", column)
+            );
+        }
+    }
+
+    /**
      * H2/integration-test parity for Tier-2 HITL hold tables (production applies via catalog).
      */
     private void applyH2AiHeldItemTables() {
@@ -997,6 +1087,59 @@ public class SchemaPatchRunner implements CommandLineRunner {
                 "H2 – ask_ai_ocr_outbox pending index",
                 "CREATE INDEX IF NOT EXISTS idx_ask_ai_ocr_outbox_pending "
                         + "ON ask_ai_ocr_outbox (status, updated_at)");
+    }
+
+    /**
+     * H2/integration-test parity for condition detection runs and flags. Keep definitions
+     * aligned with V2610071700 without PostgreSQL-only partial indexes.
+     */
+    private void applyH2ConditionDetectionTables() {
+        applyRequiredPatch(
+                "H2 – condition_detection_runs",
+                "CREATE TABLE IF NOT EXISTS condition_detection_runs ("
+                        + "  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,"
+                        + "  call_id VARCHAR(120) NOT NULL,"
+                        + "  patient_id BIGINT NOT NULL,"
+                        + "  patient_user_id BIGINT NOT NULL,"
+                        + "  model_id VARCHAR(100) NOT NULL,"
+                        + "  input_kind VARCHAR(30) NOT NULL,"
+                        + "  config_version VARCHAR(160),"
+                        + "  state VARCHAR(20) NOT NULL,"
+                        + "  skip_reason VARCHAR(60),"
+                        + "  claim_token UUID,"
+                        + "  claimed_until TIMESTAMP,"
+                        + "  attempt_count INTEGER NOT NULL DEFAULT 0,"
+                        + "  next_attempt_at TIMESTAMP NOT NULL,"
+                        + "  last_error CLOB,"
+                        + "  speech_seconds DOUBLE PRECISION,"
+                        + "  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                        + "  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                        + "  completed_at TIMESTAMP,"
+                        + "  CONSTRAINT uq_condition_detection_runs_call_model UNIQUE (call_id, model_id)"
+                        + ")");
+        applyRequiredPatch(
+                "H2 – condition_detection_runs claim index",
+                "CREATE INDEX IF NOT EXISTS idx_condition_detection_runs_claim "
+                        + "ON condition_detection_runs (next_attempt_at, claimed_until, id)");
+        applyRequiredPatch(
+                "H2 – condition_flags",
+                "CREATE TABLE IF NOT EXISTS condition_flags ("
+                        + "  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,"
+                        + "  run_id BIGINT NOT NULL,"
+                        + "  call_id VARCHAR(120) NOT NULL,"
+                        + "  patient_id BIGINT NOT NULL,"
+                        + "  model_id VARCHAR(100) NOT NULL,"
+                        + "  condition_name VARCHAR(40) NOT NULL,"
+                        + "  severity_level INTEGER NOT NULL,"
+                        + "  severity_label VARCHAR(30) NOT NULL,"
+                        + "  raw_score DOUBLE PRECISION,"
+                        + "  evidence_summary VARCHAR(500),"
+                        + "  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                        + ")");
+        applyRequiredPatch(
+                "H2 – condition_flags call index",
+                "CREATE INDEX IF NOT EXISTS idx_condition_flags_call "
+                        + "ON condition_flags (call_id)");
     }
 
     /**

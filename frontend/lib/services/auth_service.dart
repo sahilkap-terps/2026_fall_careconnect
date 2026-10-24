@@ -12,6 +12,7 @@ import 'package:app_links/app_links.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../config/env_constant.dart';
+import '../features/emergency_passport/services/qr_code_store.dart';
 import 'api_service.dart';
 import 'oauth_service.dart';
 import '../providers/user_provider.dart';
@@ -177,6 +178,13 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final userSession = UserSession.fromJson(data);
+
+      // Email not verified yet: keep nothing in storage. Web storage is shared
+      // across tabs, so a stored session would let another tab open the app.
+      // The caller shows the verify-email prompt instead.
+      if (!userSession.emailVerified) {
+        return userSession;
+      }
 
       // Force update JWT token and session using the new token manager
       // This ensures fresh tokens are always used after login
@@ -485,6 +493,7 @@ class AuthService {
       } finally {
         await AuthTokenManager.clearAuthData();
         await UserRoleStorageService.instance.clearUserData();
+        await QrCodeStore.clearAll(); // DEF-EMG-11
       }
     }
 
@@ -569,6 +578,7 @@ class AuthService {
         // If refresh fails, clear auth data to force re-login
         await AuthTokenManager.clearAuthData();
         await UserRoleStorageService.instance.clearUserData();
+        await QrCodeStore.clearAll(); // DEF-EMG-29
         return null;
       }
     } catch (e) {
@@ -576,6 +586,7 @@ class AuthService {
       // Clear auth data on error to force re-login
       await AuthTokenManager.clearAuthData();
       await UserRoleStorageService.instance.clearUserData();
+      await QrCodeStore.clearAll(); // DEF-EMG-29
       return null;
     }
   }

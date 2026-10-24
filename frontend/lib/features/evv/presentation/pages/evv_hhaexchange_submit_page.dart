@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../services/evv_service.dart';
 import '../../../../widgets/app_bar_helper.dart';
 import '../../../../widgets/common_drawer.dart';
@@ -56,7 +57,10 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading records: $e')),
+        SnackBar(
+          content:
+              Text(AppLocalizations.of(context)!.hhaErrorLoading(e.toString())),
+        ),
       );
     }
   }
@@ -75,7 +79,7 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       debugPrint(
           '[HHAExchange] Starting payload fetch for ${ids.length} records');
       setState(() {
-        _resultMessage = 'Fetching payload for download...';
+        _resultMessage = AppLocalizations.of(context)!.hhaFetchingPayload;
         _resultSuccess = true; // Show as success while fetching
       });
       final payloadJson = await _evvService.getHhaExchangePayload(ids);
@@ -83,15 +87,16 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
           '[HHAExchange] Payload fetched successfully, length: ${payloadJson.length}');
       await _downloadPayloadFile(payloadJson, ids);
       setState(() {
-        _resultMessage = 'Payload downloaded. Submitting to HHAExchange...';
+        _resultMessage =
+            AppLocalizations.of(context)!.hhaPayloadDownloadedSubmitting;
         _resultSuccess = true;
       });
     } catch (e) {
       // Non-fatal – log the issue but proceed with submission attempt.
       debugPrint('[HHAExchange] Could not fetch payload for download: $e');
       setState(() {
-        _resultMessage =
-            'Warning: Could not download payload ($e). Continuing with submission...';
+        _resultMessage = AppLocalizations.of(context)!
+            .hhaPayloadDownloadWarning(e.toString());
         _resultSuccess = false;
       });
       // Wait a moment to show the warning
@@ -106,8 +111,7 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       setState(() {
         _isSubmitting = false;
         _resultSuccess = true;
-        _resultMessage =
-            '$count visit(s) successfully submitted to HHAExchange.';
+        _resultMessage = AppLocalizations.of(context)!.hhaSubmittedCount(count);
         _selected.clear();
       });
       // Refresh the list so submitted records no longer appear as APPROVED-pending
@@ -117,7 +121,8 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       setState(() {
         _isSubmitting = false;
         _resultSuccess = false;
-        _resultMessage = 'Submission failed: $e';
+        _resultMessage =
+            AppLocalizations.of(context)!.hhaSubmissionFailed(e.toString());
       });
     }
   }
@@ -131,7 +136,9 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       // Show download started notification
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Downloading HHAExchange payload...')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.hhaDownloading),
+          ),
         );
       }
 
@@ -159,7 +166,10 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       // Show download completed notification
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payload downloaded as $filename')),
+          SnackBar(
+            content:
+                Text(AppLocalizations.of(context)!.hhaDownloadedAs(filename)),
+          ),
         );
       }
     } catch (e) {
@@ -167,7 +177,11 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       // Show error to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to download payload: $e')),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.hhaDownloadFailed(e.toString()),
+            ),
+          ),
         );
       }
     }
@@ -185,6 +199,7 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final allSelected =
         _eligible.isNotEmpty && _selected.length == _eligible.length;
@@ -193,12 +208,12 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
       drawer: const CommonDrawer(currentRoute: '/evv/hhaexchange-submit'),
       appBar: AppBarHelper.createAppBar(
         context,
-        title: 'Submit to HHAExchange',
+        title: l10n.hhaTitle,
         additionalActions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _loadEligible,
-            tooltip: 'Refresh',
+            tooltip: l10n.hhaRefresh,
           ),
         ],
       ),
@@ -216,9 +231,7 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Select APPROVED visits to send to the Virginia HHAExchange '
-                    'aggregator (https://implementation.hhaexchange.com/api/v2/visits). '
-                    'Only VA-state records are forwarded.',
+                    l10n.hhaInfo,
                     style: TextStyle(
                         color: scheme.onPrimaryContainer, fontSize: 12),
                   ),
@@ -277,14 +290,14 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
                   ),
                   Text(
                     allSelected
-                        ? 'Deselect all'
-                        : 'Select all (${_eligible.length})',
+                        ? l10n.hhaDeselectAll
+                        : l10n.hhaSelectAll(_eligible.length),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
                   if (_selected.isNotEmpty)
                     Text(
-                      '${_selected.length} selected',
+                      l10n.hhaSelectedCount(_selected.length),
                       style: TextStyle(color: scheme.primary),
                     ),
                 ],
@@ -343,8 +356,8 @@ class _EvvHhaExchangeSubmitPageState extends State<EvvHhaExchangeSubmitPage> {
                   : const Icon(Icons.upload_rounded),
               label: Text(
                 _isSubmitting
-                    ? 'Submitting…'
-                    : 'Submit ${_selected.length} Visit(s)',
+                    ? l10n.hhaSubmitting
+                    : l10n.hhaSubmitVisits(_selected.length),
               ),
             ),
     );
@@ -368,6 +381,7 @@ class _RecordTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final patientName = record.patient != null
         ? '${record.patient!.firstName} ${record.patient!.lastName}'
@@ -380,6 +394,9 @@ class _RecordTile extends StatelessWidget {
         '${record.timeIn.hour.toString().padLeft(2, '0')}:${record.timeIn.minute.toString().padLeft(2, '0')}';
     final timeOut =
         '${record.timeOut.hour.toString().padLeft(2, '0')}:${record.timeOut.minute.toString().padLeft(2, '0')}';
+    final statusLabel = record.status.toUpperCase() == 'APPROVED'
+        ? l10n.hhaStatusApproved
+        : record.status;
 
     return Card(
       color: checked ? scheme.primaryContainer.withValues(alpha: 0.25) : null,
@@ -403,13 +420,13 @@ class _RecordTile extends StatelessWidget {
           children: [
             Text('${record.serviceType}  •  $dateStr'),
             Text(
-              'Check-in: $timeIn  →  Check-out: $timeOut  |  State: ${record.stateCode}',
+              '${l10n.hhaCheckIn(timeIn)}  →  ${l10n.hhaCheckOut(timeOut)}  |  ${l10n.hhaState(record.stateCode)}',
               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
           ],
         ),
         secondary: Chip(
-          label: Text(record.status,
+          label: Text(statusLabel,
               style: const TextStyle(fontSize: 11, color: Colors.white)),
           backgroundColor: Colors.green.shade600,
           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -429,6 +446,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -438,13 +456,13 @@ class _EmptyState extends StatelessWidget {
             const Icon(Icons.check_circle_outline,
                 size: 64, color: Colors.green),
             const SizedBox(height: 16),
-            const Text(
-              'No eligible visits',
+            Text(
+              l10n.hhaNoEligibleVisits,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'All approved visits have already been submitted,\nor there are no approved visits yet.',
+            Text(
+              l10n.hhaNoEligibleDescription,
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -452,7 +470,7 @@ class _EmptyState extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onRefresh,
               icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
+              label: Text(l10n.hhaRefresh),
             ),
           ],
         ),
