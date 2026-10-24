@@ -1,6 +1,6 @@
-
 import 'package:care_connect_app/features/tasks/presentation/widgets/legend.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _wrapWithProvider(Widget child, TaskTypeManager manager) {
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<TaskTypeManager>.value(
       value: manager,
       child: Scaffold(body: child),
@@ -20,6 +22,8 @@ Widget _wrapWithProvider(Widget child, TaskTypeManager manager) {
 Widget _wrap(Widget child) {
   final manager = TaskTypeManager();
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<TaskTypeManager>.value(
       value: manager,
       child: Scaffold(body: child),
@@ -198,7 +202,8 @@ void main() {
         expect(called, isTrue);
       });
 
-      testWidgets('manage button tooltip is "Manage Task Types"', (tester) async {
+      testWidgets('manage button tooltip is "Manage Task Types"',
+          (tester) async {
         // The IconButton tooltip must match the expected string.
         await tester.pumpWidget(_wrap(const Legend()));
         await tester.pump();
@@ -216,8 +221,7 @@ void main() {
       testWidgets('wraps items in InkWell when onTypeTap provided',
           (tester) async {
         // When onTypeTap is supplied, each type item is wrapped in InkWell.
-        await tester
-            .pumpWidget(_wrap(Legend(onTypeTap: (type) {})));
+        await tester.pumpWidget(_wrap(Legend(onTypeTap: (type) {})));
         await tester.pump();
         expect(find.byType(InkWell), findsWidgets);
       });

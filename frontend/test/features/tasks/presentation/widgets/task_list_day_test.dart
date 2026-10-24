@@ -1,8 +1,8 @@
-
 import 'package:calendar_view/calendar_view.dart';
 import 'package:care_connect_app/features/tasks/models/task_model.dart';
 import 'package:care_connect_app/features/tasks/presentation/widgets/task_list_day.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +13,11 @@ Widget _wrapWithProviders(Widget child) {
     create: (_) => TaskTypeManager()
       ..addTaskType("general", Colors.blue)
       ..addTaskType("exercise", Colors.green),
-    child: MaterialApp(home: Scaffold(body: child)),
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    ),
   );
 }
 
@@ -56,6 +60,8 @@ CalendarEventData<Task> _toEvent(Task task) => CalendarEventData<Task>(
 Widget _wrap(Widget child) {
   final manager = TaskTypeManager();
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<TaskTypeManager>.value(
       value: manager,
       child: Scaffold(body: child),
@@ -297,7 +303,8 @@ void main() {
         expect(find.text('No tasks for this day'), findsOneWidget);
       });
 
-      testWidgets('does NOT show ListView when events is empty', (tester) async {
+      testWidgets('does NOT show ListView when events is empty',
+          (tester) async {
         // No ListView should be built for empty events.
         await tester.pumpWidget(_wrap(TaskListDay(
           events: [],

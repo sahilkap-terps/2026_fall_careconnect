@@ -138,7 +138,10 @@ public class EpicCanonicalProjector {
         row.setClinicalStatus(firstCode(r.get("clinicalStatus")));
         row.setVerificationStatus(firstCode(r.get("verificationStatus")));
         row.setOnsetDate(toLocalDate(text(r, "onsetDateTime")));
-        row.setRecordedDate(toLocalDate(text(r, "recordedDate")));
+        final CanonicalFhirMappingSupport.TemporalValue recorded =
+                CanonicalFhirMappingSupport.dateTime("recordedDate", r.get("recordedDate"));
+        row.setRecordedDate(recorded == null ? null : recorded.value());
+        row.setRecordedDatePrecision(recorded == null ? null : recorded.precision());
         conditionRepo.save(row);
     }
 
