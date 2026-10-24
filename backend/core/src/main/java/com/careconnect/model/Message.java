@@ -53,7 +53,10 @@ public class Message {
 
     /** What a share card opens: one tab of the patient's page. */
     public enum ShareKind {
-        MEDICARE
+        /** The Medicare tab. Needs the patient's MEDICARE_VIEW consent as well as the link. */
+        MEDICARE,
+        /** The Health tab: known risks, pain, recent symptoms and medications. The link is enough. */
+        HEALTH
     }
 
     // Constructors

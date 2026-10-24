@@ -122,6 +122,29 @@ class MessageShareServiceTest {
     }
 
     @Test
+    @DisplayName("a HEALTH card opens the Health tab, which the link alone admits, so the caregiver can always view it")
+    void share_health_receiverCanViewWithoutConsentCheck() {
+        final MessageShareService.ShareResult result = service.share(patientUser, CAREGIVER_USER, "HEALTH");
+
+        final Message card = result.message();
+        assertThat(card.getShareKind()).isEqualTo(ShareKind.HEALTH);
+        assertThat(card.getSharePatientId()).isEqualTo(PATIENT_RECORD);
+        assertThat(card.getContent()).isEqualTo("Shared my health information");
+        assertThat(result.receiverCanView()).isTrue();
+        verifyNoInteractions(medicareAccess);
+        verify(chatSocket).deliver(card);
+    }
+
+    @Test
+    @DisplayName("a HEALTH card is refused like any other for a caregiver who is not linked (403)")
+    void share_health_notLinkedCaregiver_forbidden() {
+        when(linkService.hasAccessToPatient(CAREGIVER_USER, PATIENT_USER)).thenReturn(false);
+
+        assertRefused(() -> service.share(patientUser, CAREGIVER_USER, "HEALTH"),
+                HttpStatus.FORBIDDEN, MessagingPolicy.NOT_ALLOWED);
+    }
+
+    @Test
     @DisplayName("accepts the kind in any case")
     void share_kindIsCaseInsensitive() {
         assertThat(service.share(patientUser, CAREGIVER_USER, " medicare ").message().getShareKind())

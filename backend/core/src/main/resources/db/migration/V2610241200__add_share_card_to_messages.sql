@@ -1,4 +1,4 @@
--- A chat message can be a share card: a patient shares one kind of their data (MEDICARE) with a
+-- A chat message can be a share card: a patient shares one kind of their data (MEDICARE, HEALTH) with a
 -- linked caregiver. The card holds only what it opens, never the data; who may see the data is
 -- checked when the card is opened.
 --

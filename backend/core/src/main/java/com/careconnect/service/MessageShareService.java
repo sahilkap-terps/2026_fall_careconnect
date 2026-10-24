@@ -23,8 +23,8 @@ import java.util.Locale;
  * <p>The card is a message that holds only what it opens ({@link ShareKind} and the
  * {@code patient.id}), never the data, and it grants nothing. When the caregiver opens it, the
  * data's own access rule decides, as for any other read: for Medicare, {@link MedicareAccessPolicy}
- * (an active link and the patient's {@code MEDICARE_VIEW} consent). So revoking consent also stops
- * every card already sent.
+ * (an active link and the patient's {@code MEDICARE_VIEW} consent), so revoking consent also stops
+ * every card already sent; for Health, the active caregiver link the Health tab's endpoints check.
  *
  * <p>Only a patient shares, only their own data, and only with a caregiver linked to them with
  * messaging on. The patient record comes from the signed-in user, never from the request.
@@ -106,6 +106,9 @@ public class MessageShareService {
     private boolean canView(final User receiver, final ShareKind kind, final Long patientId) {
         return switch (kind) {
             case MEDICARE -> medicareAccess.canAccess(receiver, patientId);
+            // The Health tab's reads (risks, symptoms, medications) admit any caregiver with an active
+            // link, which share() has already required of the receiver
+            case HEALTH -> true;
         };
     }
 
@@ -116,6 +119,7 @@ public class MessageShareService {
     static String fallbackText(final ShareKind kind) {
         return switch (kind) {
             case MEDICARE -> "Shared my Medicare records";
+            case HEALTH -> "Shared my health information";
         };
     }
 }
