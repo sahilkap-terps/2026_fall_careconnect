@@ -195,6 +195,19 @@ class DocumentComplianceControllerTest {
     }
 
     @Test
+    @DisplayName("GET /checklist - care-circle access checked by patient record -> 200")
+    void checklist_careCircleAuthorized_ok() throws Exception {
+        // Arrange: a non-coordinator whose patient access check passes for record 9
+        when(securityUtil.resolveCurrentUser()).thenReturn(patientUser);
+        when(complianceService.getChecklist(SubjectType.CARE_CIRCLE, 9L)).thenReturn(sampleChecklist());
+
+        // Act / Assert
+        mockMvc.perform(get("/v1/api/document-compliance/checklist/CARE_CIRCLE/9"))
+                .andExpect(status().isOk());
+        verify(authorizationService).requirePatientRecordAccess(patientUser, 9L);
+    }
+
+    @Test
     @DisplayName("GET /checklist - care-circle access denied for unrelated user -> 403")
     void checklist_careCircleUnauthorized_forbidden() throws Exception {
         when(securityUtil.resolveCurrentUser()).thenReturn(patientUser);
