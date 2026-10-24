@@ -7,6 +7,7 @@ import 'package:care_connect_app/shared/widgets/user_avatar.dart';
 import 'package:care_connect_app/widgets/app_bar_helper.dart';
 import 'package:care_connect_app/widgets/common_drawer.dart';
 import 'package:care_connect_app/config/theme/app_theme.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -38,15 +39,17 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     if (widget.userId == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid user ID. Please re-login.')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.socialFeedInvalidUser),
+          ),
         );
       });
       setState(() => isLoading = false);
     } else {
       fetchFeed();
       _pollingTimer = Timer.periodic(
-        const Duration(seconds: 10),
-        (_) => fetchFeed(silent: true),
+          const Duration(seconds: 10),
+              (_) => fetchFeed(silent: true),
       );
     }
   }
@@ -69,8 +72,9 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final newPosts =
-            data.map((json) => PostWithCommentCountDto.fromJson(json)).toList();
+        final newPosts = data
+            .map((json) => PostWithCommentCountDto.fromJson(json))
+            .toList();
 
         // Update only if different to prevent unnecessary rebuilds
         if (!listEquals(posts, newPosts)) {
@@ -88,7 +92,11 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
       if (!silent) {
         setState(() => isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.socialFeedLoadError(e.toString()),
+            ),
+          ),
         );
       }
     }
@@ -103,13 +111,13 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
 
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CommentScreen(postId: post.id),
-          ),
-        );
-      },
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CommentScreen(postId: post.id),
+            ),
+          );
+          },
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         elevation: 2,
@@ -155,15 +163,18 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
               const Divider(height: 1),
               TextButton.icon(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CommentScreen(postId: post.id),
-                    ),
-                  );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CommentScreen(postId: post.id),
+                      ),
+                    );
                 },
                 icon: const Icon(Icons.comment, size: 18),
-                label: Text('${post.commentCount} comments'),
+                label: Text(
+                  AppLocalizations.of(context)!
+                      .socialFeedComments(post.commentCount),
+                ),
               ),
             ],
           ),
@@ -174,27 +185,28 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       drawer: CommonDrawer(currentRoute: '/social-feed'),
       appBar: AppBarHelper.createAppBar(
         context,
-        title: 'My Feed',
+        title: l10n.socialFeedTitle,
         centerTitle: true,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: fetchFeed,
-              child: posts.isEmpty
-                  ? const Center(child: Text('No posts yet. Pull to refresh.'))
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: posts.length,
-                      itemBuilder: (context, index) {
-                        return buildPostCard(posts[index]);
-                      },
-                    ),
+            onRefresh: fetchFeed,
+            child: posts.isEmpty
+                ? Center(child: Text(l10n.socialFeedEmpty))
+                : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: posts.length,
+              itemBuilder: (context, index) {
+                return buildPostCard(posts[index]);
+              },
             ),
+          ),
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
@@ -210,30 +222,37 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     IconButton(
-                      icon:
-                          const Icon(Icons.person_search, color: Colors.white),
-                      tooltip: 'Add Friend',
+                      icon: const Icon(
+                          Icons.person_search,
+                          color: Colors.white
+                      ),
+                      tooltip: l10n.socialFeedAddFriend,
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => SearchUserScreen()),
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  SearchUserScreen()
+                          ),
                         );
                       },
                     ),
                     IconButton(
                       icon: const Icon(Icons.person_add, color: Colors.white),
-                      tooltip: 'Friend Requests',
+                      tooltip: l10n.socialFeedFriendRequests,
                       onPressed: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => FriendRequestsScreen()),
+                              builder: (_) =>
+                                  FriendRequestsScreen()
+                          ),
                         );
                       },
                     ),
                     IconButton(
                       icon: const Icon(Icons.chat, color: Colors.white),
-                      tooltip: 'Messages',
+                      tooltip: l10n.socialFeedMessages,
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -247,11 +266,14 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                         color: Colors.white,
                         size: 28,
                       ),
-                      tooltip: 'Create Post',
+                      tooltip: l10n.socialFeedCreatePost,
                       onPressed: () async {
                         final result = await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => NewPostScreen()),
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  NewPostScreen()
+                          ),
                         );
                         if (result is PostWithCommentCountDto) {
                           setState(() {

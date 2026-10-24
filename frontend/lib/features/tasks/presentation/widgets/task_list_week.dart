@@ -1,6 +1,7 @@
 import 'package:calendar_view/calendar_view.dart';
 import 'package:care_connect_app/features/tasks/models/task_model.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,12 +45,13 @@ class TaskListWeek extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final manager = context.watch<TaskTypeManager>();
 
     if (events.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Text("No tasks this week"),
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(t.calendarNoTasksWeek),
       );
     }
 
@@ -76,8 +78,8 @@ class TaskListWeek extends StatelessWidget {
       itemBuilder: (context, index) {
         final task = tasks[index];
         final assignedName = task.assignedPatientId != null
-            ? patientNames[task.assignedPatientId] ?? "Unknown Patient"
-            : "Unassigned";
+            ? patientNames[task.assignedPatientId] ?? t.calendarUnknownPatient
+            : t.calendarUnassigned;
         final color = manager.getColor(task.taskType);
         final icon = manager.getIcon(task.taskType);
 
@@ -103,7 +105,7 @@ class TaskListWeek extends StatelessWidget {
                     children: [
                       Text(
                         "${task.date.month}/${task.date.day} • "
-                        "${task.timeOfDay != null ? task.timeOfDay!.format(context) : "All day"}",
+                        "${task.timeOfDay != null ? task.timeOfDay!.format(context) : t.calendarAllDay}",
                       ),
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
@@ -130,7 +132,9 @@ class TaskListWeek extends StatelessWidget {
                             ? const Icon(Icons.check, size: 14)
                             : const SizedBox.shrink(),
                         label: Text(
-                          task.isComplete ? "Completed" : "Mark as Complete",
+                            task.isComplete
+                              ? t.calendarCompleted
+                              : t.calendarMarkComplete,
                           style: TextStyle(
                             color:
                                 task.isComplete ? Colors.white : Colors.green,
@@ -146,8 +150,8 @@ class TaskListWeek extends StatelessWidget {
                           } catch (e) {
                             setState(() => task.isComplete = !newStatus);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Failed to update task"),
+                              SnackBar(
+                                content: Text(t.calendarUpdateTaskFailed),
                               ),
                             );
                           }
@@ -155,7 +159,8 @@ class TaskListWeek extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (assignedName.isNotEmpty && assignedName != "Unassigned")
+                    if (assignedName.isNotEmpty &&
+                      assignedName != t.calendarUnassigned)
                     Text("👤 $assignedName"),
                 ],
               ),

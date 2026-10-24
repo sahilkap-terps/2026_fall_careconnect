@@ -26,9 +26,10 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:care_connect_app/features/tasks/presentation/calendar_assisiant.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 
-import '../../mock_user_provider.dart';
+import '../../../mock_user_provider.dart';
 
 /// Provider with null user to trigger the error branch in _loadTasksFromDb.
 class _NullUserProvider extends MockUserProvider {
@@ -74,6 +75,8 @@ Widget _wrapWithProvider(UserProvider provider) {
       ),
     ],
     child: const MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: CalendarAssistantScreen(),
     ),
   );
@@ -225,8 +228,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('shows Calendar Assistant title for caregiver',
-        (tester) async {
+    testWidgets('shows Calendar Assistant title for caregiver', (tester) async {
       final provider = MockUserProvider(
         mockUser: MockUser(
           role: 'CAREGIVER',
@@ -833,8 +835,7 @@ void main() {
       expect(find.text('Weekly'), findsOneWidget);
     });
 
-    testWidgets('week view shows task list for selected week',
-        (tester) async {
+    testWidgets('week view shows task list for selected week', (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -1127,6 +1128,8 @@ void main() {
             ],
             child: MaterialApp(
               theme: ThemeData.dark(),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               home: const CalendarAssistantScreen(),
             ),
           ),

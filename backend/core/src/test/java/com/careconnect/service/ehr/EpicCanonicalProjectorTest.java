@@ -210,7 +210,8 @@ class EpicCanonicalProjectorTest {
         assertThat(row.getClinicalStatus()).isEqualTo("active");
         assertThat(row.getVerificationStatus()).isEqualTo("confirmed");
         assertThat(row.getOnsetDate()).isEqualTo(LocalDate.of(2020, 1, 5));
-        assertThat(row.getRecordedDate()).isEqualTo(LocalDate.of(2021, 2, 10));
+        assertThat(row.getRecordedDate()).isEqualTo("2021-02-10");
+        assertThat(row.getRecordedDatePrecision()).isEqualTo("DAY");
     }
 
     // --- observation -----------------------------------------------------

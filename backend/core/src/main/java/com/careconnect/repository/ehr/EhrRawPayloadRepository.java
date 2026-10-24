@@ -13,6 +13,9 @@ import java.util.Optional;
 
 public interface EhrRawPayloadRepository extends JpaRepository<EhrRawPayload, Long> {
 
+    Optional<EhrRawPayload> findByPatientIdAndSourceIdAndResourceTypeAndExternalResourceId(
+            Long patientId, Long sourceId, String resourceType, String externalResourceId);
+
     /** Most recent stored body for one resource type, used to re-derive a mapping. */
     Optional<EhrRawPayload> findFirstByPatientIdAndSourceIdAndResourceTypeOrderByRetrievedAtDesc(
             Long patientId, Long sourceId, String resourceType);
