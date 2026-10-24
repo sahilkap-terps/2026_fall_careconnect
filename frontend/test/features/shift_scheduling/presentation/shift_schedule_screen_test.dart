@@ -14,11 +14,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:care_connect_app/features/shift_scheduling/presentation/shift_schedule_screen.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/features/shift_scheduling/presentation/widgets/calendar_view.dart';
 import 'package:care_connect_app/features/shift_scheduling/presentation/widgets/schedule_visit_dialog.dart';
 import 'package:care_connect_app/services/api_client.dart';
 
-Widget _wrap(Widget child) => MaterialApp(home: child);
+Widget _wrap(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    );
 
 /// Returns an empty calendar for any request — keeps CalendarView off the network.
 class _EmptyCalendarAdapter implements HttpClientAdapter {
@@ -41,31 +47,40 @@ const MethodChannel _connectivityChannel =
 
 void main() {
   group('CaregiverShiftSchedulingScreen', () {
+    testWidgets('shows Spanish labels when Spanish is selected',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const CaregiverShiftSchedulingScreen(),
+          locale: const Locale('es'),
+        ),
+      );
+      expect(find.text('Programación de turnos del cuidador'), findsOneWidget);
+      expect(find.text('Turno recurrente'), findsOneWidget);
+      expect(find.text('Guardar'), findsOneWidget);
+    });
+
     testWidgets('renders without crashing', (tester) async {
       // Verifies the screen builds without error.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.byType(CaregiverShiftSchedulingScreen), findsOneWidget);
     });
 
     testWidgets('shows "Caregiver Shift Scheduling" in AppBar', (tester) async {
       // The AppBar title must identify the screen.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.text('Caregiver Shift Scheduling'), findsOneWidget);
     });
 
     testWidgets('shows "Recurring Shift" SwitchListTile', (tester) async {
       // The recurring shift toggle must be visible.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.text('Recurring Shift'), findsOneWidget);
     });
 
     testWidgets('recurring shift toggle is OFF by default', (tester) async {
       // The switch starts unchecked (isRecurring = false).
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       final switchTile = tester.widget<SwitchListTile>(
         find.byType(SwitchListTile),
       );
@@ -74,8 +89,7 @@ void main() {
 
     testWidgets('toggling switch turns recurring ON', (tester) async {
       // Tapping the SwitchListTile calls setState and flips the value.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       await tester.tap(find.byType(SwitchListTile));
       await tester.pump();
       final switchTile = tester.widget<SwitchListTile>(
@@ -86,52 +100,45 @@ void main() {
 
     testWidgets('shows "Start Time" label', (tester) async {
       // The Start Time section header must be visible.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.text('Start Time'), findsOneWidget);
     });
 
     testWidgets('shows "End Time" label', (tester) async {
       // The End Time section header must be visible.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.text('End Time'), findsOneWidget);
     });
 
     testWidgets('shows "No time selected" for start time initially',
         (tester) async {
       // Before any time is picked, the ListTile shows a placeholder.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.text('No time selected'), findsWidgets);
     });
 
     testWidgets('shows "Days" section label', (tester) async {
       // The days-of-the-week section header must be present.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.text('Days'), findsOneWidget);
     });
 
     testWidgets('shows 7 ChoiceChips for days of the week', (tester) async {
       // One ChoiceChip per day: S M T W T F S.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.byType(ChoiceChip), findsNWidgets(7));
     });
 
     testWidgets('no day chip is selected by default', (tester) async {
       // selectedDayIndexes starts empty, so all chips are unselected.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       final chips = tester.widgetList<ChoiceChip>(find.byType(ChoiceChip));
       expect(chips.every((c) => c.selected == false), isTrue);
     });
 
     testWidgets('tapping a day chip selects it', (tester) async {
       // Selecting the first chip (Sunday) marks it as selected.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       await tester.tap(find.byType(ChoiceChip).first);
       await tester.pump();
       final chips = tester.widgetList<ChoiceChip>(find.byType(ChoiceChip));
@@ -140,22 +147,19 @@ void main() {
 
     testWidgets('shows ElevatedButton "Save"', (tester) async {
       // The Save button must be visible at the bottom.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.text('Save'), findsOneWidget);
       expect(find.byType(ElevatedButton), findsOneWidget);
     });
 
     testWidgets('shows at least one access_time icon', (tester) async {
       // Each time picker tile has an access_time leading icon.
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.byIcon(Icons.access_time), findsWidgets);
     });
 
     testWidgets('tapping start time tile opens time picker', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       // Tap the first "No time selected" text (start time ListTile)
       await tester.tap(find.text('No time selected').first);
       await tester.pumpAndSettle();
@@ -164,8 +168,7 @@ void main() {
     });
 
     testWidgets('selecting start time updates display', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       await tester.tap(find.text('No time selected').first);
       await tester.pumpAndSettle();
       // Find and tap the OK/confirm button in the dialog
@@ -182,16 +185,14 @@ void main() {
     });
 
     testWidgets('tapping end time tile opens time picker', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       await tester.tap(find.text('No time selected').at(1));
       await tester.pumpAndSettle();
       expect(find.byType(TimePickerDialog), findsOneWidget);
     });
 
     testWidgets('selecting end time updates display', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       await tester.tap(find.text('No time selected').at(1));
       await tester.pumpAndSettle();
       final okFinder = find.widgetWithText(TextButton, 'OK');
@@ -205,8 +206,7 @@ void main() {
     });
 
     testWidgets('cancelling time picker does not update time', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       await tester.tap(find.text('No time selected').first);
       await tester.pumpAndSettle();
       final cancelFinder = find.widgetWithText(TextButton, 'Cancel');
@@ -220,8 +220,7 @@ void main() {
     });
 
     testWidgets('tapping selected day chip deselects it', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       // Select first chip
       await tester.tap(find.byType(ChoiceChip).first);
       await tester.pump();
@@ -239,14 +238,14 @@ void main() {
     });
 
     testWidgets('can select multiple day chips', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       // Select first and third chips
       await tester.tap(find.byType(ChoiceChip).at(0));
       await tester.pump();
       await tester.tap(find.byType(ChoiceChip).at(2));
       await tester.pump();
-      final chips = tester.widgetList<ChoiceChip>(find.byType(ChoiceChip)).toList();
+      final chips =
+          tester.widgetList<ChoiceChip>(find.byType(ChoiceChip)).toList();
       expect(chips[0].selected, isTrue);
       expect(chips[1].selected, isFalse);
       expect(chips[2].selected, isTrue);
@@ -254,8 +253,8 @@ void main() {
 
     testWidgets('tapping Save pops the screen', (tester) async {
       // Wrap with a Navigator so pop() has somewhere to go
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
+      await tester.pumpWidget(_wrap(
+        Builder(
           builder: (context) => ElevatedButton(
             onPressed: () => Navigator.push(
               context,
@@ -280,8 +279,7 @@ void main() {
     });
 
     testWidgets('shows two Card widgets for time pickers', (tester) async {
-      await tester.pumpWidget(
-          _wrap(const CaregiverShiftSchedulingScreen()));
+      await tester.pumpWidget(_wrap(const CaregiverShiftSchedulingScreen()));
       expect(find.byType(Card), findsNWidgets(2));
     });
   });

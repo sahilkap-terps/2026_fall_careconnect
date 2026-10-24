@@ -17,7 +17,12 @@ import '../widgets/record_conflict_dialog.dart';
 import 'health_event_details_screen.dart';
 
 class HealthDataScreen extends StatefulWidget {
-  const HealthDataScreen({super.key});
+  final int? patientId;
+
+  const HealthDataScreen({
+    super.key,
+    this.patientId,
+  });
 
   @override
   State<HealthDataScreen> createState() => _HealthDataScreenState();
@@ -139,7 +144,9 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     final ehrService = EhrDataService();
     List<HealthRecord>? ehrRecords;
     try {
-      ehrRecords = await ehrService.tryFetchRecords();
+      ehrRecords = await ehrService.tryFetchRecords(
+        patientId: widget.patientId,
+      );
     } catch (_) {}
     PatientDemographics? demographics;
     var dobNeedsConfirmation = false;
@@ -275,8 +282,7 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       final decision = await showRecordConflictDialog(context, conflict,
           index: i + 1, total: pending.length);
       if (!mounted) return;
-      final versions =
-          conflict.versions.map(RecordConflict.versionId).toList();
+      final versions = conflict.versions.map(RecordConflict.versionId).toList();
       if (decision == null) {
         await _choiceStore.logDecision(RecordDecisionEntry(
             at: DateTime.now(), decision: 'deferred', versions: versions));
@@ -445,17 +451,26 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                       },
                     ),
                   ),
-                if (_ehrUnavailable ||
-                    _athenaProblem == AthenaReadProblem.unreachable)
+                if (_athenaProblem == AthenaReadProblem.unreachable)
                   _noticeBanner(
                     Icons.cloud_off_outlined,
                     'We couldn\'t load records from your other providers. Showing what we could.',
+                  ),
+                if (_ehrUnavailable)
+                  _noticeBanner(
+                    Icons.cloud_off_outlined,
+                    'We couldn\'t load records from Oracle Health. Showing what we could.',
+                  )
+                else
+                  _noticeBanner(
+                    Icons.check_circle_outline,
+                    'Connected to Oracle Health. Your Oracle Health records are included in your health history.',
                   ),
                 if (_dobNeedsConfirmation)
                   _noticeBanner(
                     Icons.cake_outlined,
                     'Your providers have different dates of birth for you. '
-                        'Please confirm which is correct.',
+                    'Please confirm which is correct.',
                     action: TextButton(
                       onPressed: _confirmDob,
                       style: TextButton.styleFrom(
@@ -652,7 +667,8 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                                     .textTheme
                                                     .bodySmall
                                                     ?.copyWith(
-                                                      color: _mutedText(context),
+                                                      color:
+                                                          _mutedText(context),
                                                     ),
                                               ),
                                           ],

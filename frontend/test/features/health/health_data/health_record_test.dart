@@ -70,7 +70,7 @@ void main() {
   test('every source has its display name, athenahealth spelled as the brand '
       'spells it', () {
     expect(RecordSource.values.map((s) => s.label),
-        ['Epic', 'Cerner', 'athenahealth', 'Medicare']);
+        ['Epic', 'Oracle Health', 'athenahealth', 'Medicare']);
     expect(RecordSource.athena.badge, 'From athenahealth');
   });
 }

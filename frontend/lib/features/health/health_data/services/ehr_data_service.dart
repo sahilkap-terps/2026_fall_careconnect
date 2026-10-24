@@ -5,26 +5,137 @@ import '../models/patient_demographics.dart';
 import 'ehr_resource_mapper.dart';
 
 class EhrDataService {
-  Future<List<HealthRecord>> fetchRecords() async =>
-      await tryFetchRecords() ?? <HealthRecord>[];
+  Future<List<HealthRecord>> fetchRecords({int? patientId}) async =>
+      await tryFetchRecords(patientId: patientId) ?? <HealthRecord>[];
 
-  /// The records, or null when the read failed (so the screen can say so).
-  Future<List<HealthRecord>?> tryFetchRecords() async {
+  /// Returns available records, or null when every attempted EHR read fails.
+  /// Each endpoint is isolated so one unavailable source does not hide
+  /// records returned successfully by another source.
+  Future<List<HealthRecord>?> tryFetchRecords({int? patientId}) async {
+    late final Map<String, String> headers;
+
     try {
-      final headers = await AuthTokenManager.getAuthHeaders();
+      headers = await AuthTokenManager.getAuthHeaders();
+    } catch (_) {
+      return null;
+    }
 
-      final resources = await ApiClient.instance.getJson<List<dynamic>>(
-        '/api/ehr/resources',
+    final records = <HealthRecord>[];
+    var requestSucceeded = false;
+
+    final unifiedResources = await _tryFetchList(
+      '/api/ehr/resources',
+      headers: headers,
+    );
+
+    if (unifiedResources != null) {
+      requestSucceeded = true;
+
+      // A resource whose source the app does not know is dropped, never
+      // relabelled as another source (see EhrResourceMapper.sourceFrom).
+      records.addAll(
+        unifiedResources
+            .map(EhrResourceMapper.toHealthRecord)
+            .whereType<HealthRecord>(),
+      );
+    }
+
+    if (patientId != null) {
+      final basePath = '/v1/api/cerner/patients/$patientId';
+
+      final allergies = await _tryFetchEnvelopeList(
+        '$basePath/allergies',
+        'allergies',
+        headers: headers,
+      );
+
+      if (allergies != null) {
+        requestSucceeded = true;
+        records.addAll(allergies.map(_toCernerAllergy));
+      }
+
+      final conditions = await _tryFetchEnvelopeList(
+        '$basePath/conditions',
+        'conditions',
+        headers: headers,
+      );
+
+      if (conditions != null) {
+        requestSucceeded = true;
+
+        records.addAll(
+          conditions
+              .where((condition) => condition['hiddenFromActiveList'] != true)
+              .map(_toCernerCondition),
+        );
+      }
+
+      final encounters = await _tryFetchEnvelopeList(
+        '$basePath/encounters',
+        'encounters',
+        headers: headers,
+      );
+
+      if (encounters != null) {
+        requestSucceeded = true;
+        records.addAll(encounters.map(_toCernerEncounter));
+      }
+    }
+
+    return requestSucceeded ? records : null;
+  }
+
+  Future<List<Map<String, dynamic>>?> _tryFetchList(
+    String path, {
+    required Map<String, String> headers,
+  }) async {
+    try {
+      final values = await ApiClient.instance.getJson<List<dynamic>>(
+        path,
         headers: headers,
         parser: (json) => json is List ? json : <dynamic>[],
       );
 
-      // A resource whose source the app does not know is dropped, never
-      // relabelled as another source (see EhrResourceMapper.sourceFrom).
-      return resources
-          .whereType<Map<String, dynamic>>()
-          .map(EhrResourceMapper.toHealthRecord)
-          .whereType<HealthRecord>()
+      return values
+          .whereType<Map>()
+          .map((value) => Map<String, dynamic>.from(value))
+          .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>?> _tryFetchEnvelopeList(
+    String path,
+    String field, {
+    required Map<String, String> headers,
+  }) async {
+    try {
+      final envelope = await ApiClient.instance.getJson<Map<String, dynamic>>(
+        path,
+        headers: headers,
+        parser: (json) {
+          if (json is Map<String, dynamic>) {
+            return json;
+          }
+
+          if (json is Map) {
+            return Map<String, dynamic>.from(json);
+          }
+
+          return <String, dynamic>{};
+        },
+      );
+
+      final values = envelope[field];
+
+      if (values is! List) {
+        return <Map<String, dynamic>>[];
+      }
+
+      return values
+          .whereType<Map>()
+          .map((value) => Map<String, dynamic>.from(value))
           .toList();
     } catch (_) {
       return null;
@@ -81,5 +192,69 @@ class EhrDataService {
     } catch (_) {
       return null;
     }
+  }
+
+  HealthRecord _toCernerAllergy(Map<String, dynamic> allergy) {
+    return HealthRecord.single(
+      id: (allergy['sourceRecordId'] ?? '').toString(),
+      source: RecordSource.cerner,
+      type: RecordType.allergy,
+      title: EhrResourceMapper.stringOrNull(allergy['substanceText']) ??
+          EhrResourceMapper.stringOrNull(allergy['substanceCode']) ??
+          'Allergy',
+      date: EhrResourceMapper.parseDate(allergy['recordedDate']),
+      status: EhrResourceMapper.stringOrNull(allergy['clinicalStatus']),
+    );
+  }
+
+  HealthRecord _toCernerCondition(Map<String, dynamic> condition) {
+    return HealthRecord.single(
+      id: (condition['sourceRecordId'] ?? '').toString(),
+      source: RecordSource.cerner,
+      type: RecordType.condition,
+      title: EhrResourceMapper.stringOrNull(condition['conditionText']) ??
+          _firstCodeLabel(condition['conditionCodes']) ??
+          'Condition',
+      date: EhrResourceMapper.parseDate(condition['onsetValue']) ??
+          EhrResourceMapper.parseDate(condition['recordedDate']),
+      status: EhrResourceMapper.stringOrNull(condition['clinicalStatus']),
+    );
+  }
+
+  HealthRecord _toCernerEncounter(Map<String, dynamic> encounter) {
+    return HealthRecord.single(
+      id: (encounter['sourceRecordId'] ?? '').toString(),
+      source: RecordSource.cerner,
+      type: RecordType.appointment,
+      title: _firstCodeLabel(encounter['encounterTypes']) ??
+          EhrResourceMapper.stringOrNull(encounter['classDisplay']) ??
+          'Clinical encounter',
+      date: EhrResourceMapper.parseDate(encounter['periodStart']),
+      status: EhrResourceMapper.stringOrNull(encounter['status']),
+    );
+  }
+
+  String? _firstCodeLabel(dynamic values) {
+    if (values is! List) {
+      return null;
+    }
+
+    for (final value in values) {
+      if (value is! Map) {
+        continue;
+      }
+
+      final display = EhrResourceMapper.stringOrNull(value['display']);
+      if (display != null) {
+        return display;
+      }
+
+      final code = EhrResourceMapper.stringOrNull(value['code']);
+      if (code != null) {
+        return code;
+      }
+    }
+
+    return null;
   }
 }
