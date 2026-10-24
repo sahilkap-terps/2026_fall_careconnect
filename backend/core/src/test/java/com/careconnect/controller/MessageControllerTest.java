@@ -13,8 +13,8 @@ import com.careconnect.repository.UserRepository;
 import com.careconnect.security.AuthorizationService;
 import com.careconnect.security.Role;
 import com.careconnect.security.UnauthorizedException;
-import com.careconnect.service.CaregiverPatientLinkService;
 import com.careconnect.service.FileManagementService;
+import com.careconnect.service.MessagingPolicy;
 import com.careconnect.util.SecurityUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,7 +47,7 @@ class MessageControllerTest {
     @Mock
     private UserRepository userRepo;
     @Mock
-    private CaregiverPatientLinkService linkService;
+    private MessagingPolicy messagingPolicy;
     @Mock
     private FileManagementService fileManagementService;
     @Mock
@@ -90,6 +90,7 @@ class MessageControllerTest {
 
         final User sender = makeUser(SENDER_ID, "Alice", "alice@test.com");
         when(securityUtil.resolveCurrentUser()).thenReturn(sender);
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(true);
         final Message saved = makeMessage(1L, SENDER_ID, RECEIVER_ID, "Hello!");
         when(messageRepo.save(any(Message.class))).thenReturn(saved);
 
@@ -99,6 +100,57 @@ class MessageControllerTest {
         assertThat(response.getBody()).isSameAs(saved);
         // verify timestamp and isRead were set before save
         verify(messageRepo).save(argThat(m -> m.getTimestamp() != null && !m.isRead()));
+    }
+
+    @Test
+    @DisplayName("sendMessage returns 403 and saves nothing when the users may not message each other")
+    void sendMessage_notAllowed_returnsForbidden() throws Exception {
+        final Message inbound = new Message(SENDER_ID, RECEIVER_ID, "Hello!");
+        when(securityUtil.resolveCurrentUser()).thenReturn(makeUser(SENDER_ID, "Alice", "alice@test.com"));
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(false);
+
+        final ResponseEntity<?> response = controller.sendMessage(inbound);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isEqualTo(MessageController.NOT_ALLOWED);
+        verify(messageRepo, never()).save(any(Message.class));
+    }
+
+    @Test
+    @DisplayName("sendMessage saves only sender, receiver and content, never a client-supplied id or attachment")
+    void sendMessage_ignoresClientIdAndAttachment() throws Exception {
+        final Message inbound = new Message(SENDER_ID, RECEIVER_ID, "Hello!");
+        final var idField = Message.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(inbound, 77L);
+        inbound.setAttachmentId(99L);
+        inbound.setAttachmentName("someone-elses.pdf");
+        inbound.setRead(true);
+        when(securityUtil.resolveCurrentUser()).thenReturn(makeUser(SENDER_ID, "Alice", "alice@test.com"));
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(true);
+        when(messageRepo.save(any(Message.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        controller.sendMessage(inbound);
+
+        verify(messageRepo).save(argThat(m -> m.getId() == null
+                && m.getAttachmentId() == null
+                && m.getAttachmentName() == null
+                && !m.isRead()
+                && SENDER_ID.equals(m.getSenderId())
+                && RECEIVER_ID.equals(m.getReceiverId())
+                && "Hello!".equals(m.getContent())));
+    }
+
+    @Test
+    @DisplayName("sendMessage refuses a sender other than the signed-in user")
+    void sendMessage_otherSender_throwsUnauthorized() throws Exception {
+        final Message inbound = new Message(SENDER_ID, RECEIVER_ID, "Hello!");
+        final User other = makeUser(RECEIVER_ID, "Bob", "bob@test.com");
+        when(securityUtil.resolveCurrentUser()).thenReturn(other);
+        doThrow(new UnauthorizedException("not you")).when(authorizationService).requireSelfOrAdmin(other, SENDER_ID);
+
+        assertThatThrownBy(() -> controller.sendMessage(inbound)).isInstanceOf(UnauthorizedException.class);
+        verify(messageRepo, never()).save(any(Message.class));
     }
 
     // ─── getConversation ──────────────────────────────────────────────────────
@@ -394,25 +446,38 @@ class MessageControllerTest {
 
     @Test
     @DisplayName("sendAttachment returns 403 when messaging not enabled")
-    void sendAttachment_messagingNotEnabled_returnsForbidden() {
+    void sendAttachment_messagingNotEnabled_returnsForbidden() throws Exception {
         final MultipartFile file = mock(MultipartFile.class);
-        when(linkService.isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID)).thenReturn(false);
-        when(linkService.isPatientMessagingEnabled(RECEIVER_ID, SENDER_ID)).thenReturn(false);
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(false);
 
         final ResponseEntity<?> response =
                 controller.sendAttachment(file, SENDER_ID, RECEIVER_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(response.getBody()).isEqualTo(
-                "Messaging is not enabled for this caregiver-patient link.");
+        assertThat(response.getBody()).isEqualTo(MessageController.NOT_ALLOWED);
+        verifyNoInteractions(fileManagementService);
     }
 
     @Test
-    @DisplayName("sendAttachment succeeds when messaging enabled in forward direction")
+    @DisplayName("sendAttachment refuses a senderId other than the signed-in user")
+    void sendAttachment_otherSender_throwsUnauthorized() throws Exception {
+        final MultipartFile file = mock(MultipartFile.class);
+        final User other = makeUser(RECEIVER_ID, "Bob", "bob@test.com");
+        when(securityUtil.resolveCurrentUser()).thenReturn(other);
+        doThrow(new UnauthorizedException("not you")).when(authorizationService).requireSelfOrAdmin(other, SENDER_ID);
+
+        assertThatThrownBy(() -> controller.sendAttachment(file, SENDER_ID, RECEIVER_ID))
+                .isInstanceOf(UnauthorizedException.class);
+        verifyNoInteractions(fileManagementService);
+        verify(messageRepo, never()).save(any(Message.class));
+    }
+
+    @Test
+    @DisplayName("sendAttachment succeeds when the caregiver may message the patient")
     void sendAttachment_messagingEnabledForward_succeeds() throws Exception {
         final MultipartFile file = mock(MultipartFile.class);
         when(file.getSize()).thenReturn(1024L);
-        when(linkService.isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID)).thenReturn(true);
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(true);
 
         final User sender = makeUser(SENDER_ID, "Alice", "alice@test.com");
         sender.setRole(Role.CAREGIVER);
@@ -444,12 +509,11 @@ class MessageControllerTest {
     }
 
     @Test
-    @DisplayName("sendAttachment succeeds when messaging enabled in reverse direction")
+    @DisplayName("sendAttachment succeeds when the patient may message the caregiver")
     void sendAttachment_messagingEnabledReverse_succeeds() throws Exception {
         final MultipartFile file = mock(MultipartFile.class);
         when(file.getSize()).thenReturn(2048L);
-        when(linkService.isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID)).thenReturn(false);
-        when(linkService.isPatientMessagingEnabled(RECEIVER_ID, SENDER_ID)).thenReturn(true);
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(true);
 
         final User sender = makeUser(SENDER_ID, "Alice", "alice@test.com");
         sender.setRole(Role.PATIENT);
@@ -478,7 +542,7 @@ class MessageControllerTest {
     @DisplayName("sendAttachment returns 500 when file upload fails")
     void sendAttachment_uploadFails_returns500() throws Exception {
         final MultipartFile file = mock(MultipartFile.class);
-        when(linkService.isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID)).thenReturn(true);
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(true);
 
         final User sender = makeUser(SENDER_ID, "Alice", "alice@test.com");
         sender.setRole(Role.CAREGIVER);
@@ -502,7 +566,7 @@ class MessageControllerTest {
     void sendAttachment_senderNotFound_defaultsToPatientRole() throws Exception {
         final MultipartFile file = mock(MultipartFile.class);
         when(file.getSize()).thenReturn(512L);
-        when(linkService.isPatientMessagingEnabled(SENDER_ID, RECEIVER_ID)).thenReturn(true);
+        when(messagingPolicy.canMessage(SENDER_ID, RECEIVER_ID)).thenReturn(true);
         when(userRepo.findById(SENDER_ID)).thenReturn(Optional.empty());
 
         final FileUploadResponse uploadResponse = FileUploadResponse.builder()
