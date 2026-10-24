@@ -554,11 +554,13 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(t.settings), // use existing "Settings" key
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        // BackButton, not a bare IconButton: it carries the "Back" tooltip
+        // that screen readers announce (#259, TC-HELP-058/059).
+        leading: BackButton(
           // Router-safe back: Settings can be reached via context.go(...) (a
-          // replace, e.g. from the Epic return page), leaving nothing to pop.
-          // Navigator.pop() then asserts "popped the last page off the stack".
+          // replace, e.g. from the Epic return page, or Help's Back to
+          // Settings), leaving nothing to pop. Navigator.pop() then asserts
+          // "popped the last page off the stack".
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
@@ -818,6 +820,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
                   // General
                   _buildSectionHeader(context, t.settingsGeneral),
+
+                  _buildSettingsCard(
+                    context,
+                    icon: Icons.help_outline,
+                    title: t.settingsHelp,
+                    subtitle: t.settingsHelpDesc,
+                    onTap: () {
+                      Telemetry.event('button_tap', {
+                        'screen': 'settings',
+                        'target': 'help',
+                        'route': '/help',
+                      });
+                      context.push('/help');
+                    },
+                  ),
 
                   // User-Controlled Persistence Toggle (BNS 5)
                   _buildToggleCard(
