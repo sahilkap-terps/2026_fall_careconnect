@@ -30,9 +30,8 @@ class IdentityConflictService {
     // between connected sources (see [reportDobDisagreement]) for the
     // signed-in patient.
     final owner = await _owner();
-    return List.unmodifiable(_found.values
-        .where((f) => f.owner == owner)
-        .map((f) => f.conflict));
+    return List.unmodifiable(
+        _found.values.where((f) => f.owner == owner).map((f) => f.conflict));
   }
 
   Future<bool> resolve(int conflictId, {required bool accepted}) async {
@@ -100,16 +99,19 @@ class IdentityConflictService {
         f.conflict.incomingValue == _format(incoming));
     if (!already) {
       final id = _nextId--;
-      _found[id] = (owner: owner, conflict: IdentityConflict(
-        id: id,
-        fieldName: 'date_of_birth',
-        canonicalValueBefore: _format(current),
-        incomingValue: _format(incoming),
-        canonicalSourceLabel: currentSource,
-        incomingSourceLabel: incomingSource,
-        status: ConflictStatus.pending,
-        detectedAt: DateTime.now(),
-      ));
+      _found[id] = (
+        owner: owner,
+        conflict: IdentityConflict(
+          id: id,
+          fieldName: 'date_of_birth',
+          canonicalValueBefore: _format(current),
+          incomingValue: _format(incoming),
+          canonicalSourceLabel: currentSource,
+          incomingSourceLabel: incomingSource,
+          status: ConflictStatus.pending,
+          detectedAt: DateTime.now(),
+        )
+      );
     }
     return null;
   }
@@ -144,7 +146,8 @@ class IdentityConflictService {
       if (current == null || incoming == null) return false;
       final prefs = await SharedPreferences.getInstance();
       final all = await _loadChoices();
-      all[_choiceKey(owner, current, incoming)] = accepted ? 'accepted' : 'rejected';
+      all[_choiceKey(owner, current, incoming)] =
+          accepted ? 'accepted' : 'rejected';
       return await prefs.setString(_choicesKey, jsonEncode(all));
     } catch (_) {
       return false;
@@ -169,13 +172,12 @@ class IdentityConflictService {
   /// patient, so one patient's choice never decides another's date.
   static String _choiceKey(String owner, DateTime current, DateTime incoming) =>
       sha256
-          .convert(utf8.encode(
-              'dob|$owner|${_format(current)}|${_format(incoming)}'))
+          .convert(utf8
+              .encode('dob|$owner|${_format(current)}|${_format(incoming)}'))
           .toString();
 
   /// MM/DD/YYYY, as the confirmation screen shows it.
-  static String _format(DateTime d) =>
-      '${d.month.toString().padLeft(2, '0')}/'
+  static String _format(DateTime d) => '${d.month.toString().padLeft(2, '0')}/'
       '${d.day.toString().padLeft(2, '0')}/'
       '${d.year.toString().padLeft(4, '0')}';
 
