@@ -1,12 +1,13 @@
-
 import 'package:care_connect_app/features/tasks/presentation/widgets/add_task_button.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 
 // ── Helpers from features/tasks/widgets/add_task_button_test.dart (merged) ──
 
 Widget _wrap(Widget child, {double width = 800}) => MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: MediaQuery(
         data: MediaQueryData(size: Size(width, 800)),
         child: Scaffold(
@@ -25,6 +26,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: const MediaQueryData(size: Size(800, 800)), // wide screen
             child: Scaffold(
@@ -57,6 +60,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: const MediaQueryData(size: Size(300, 800)), // narrow screen
             child: Scaffold(
@@ -89,6 +94,8 @@ void main() {
     testWidgets('wide screen shows ElevatedButton', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: const MediaQueryData(size: Size(800, 800)),
             child: Scaffold(
@@ -110,6 +117,8 @@ void main() {
     testWidgets('wide screen shows add icon in button', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: const MediaQueryData(size: Size(800, 800)),
             child: Scaffold(
@@ -131,6 +140,8 @@ void main() {
     testWidgets('compact screen does NOT show Add Task text', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: const MediaQueryData(size: Size(300, 800)),
             child: Scaffold(
@@ -152,6 +163,8 @@ void main() {
     testWidgets('renders without crashing', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: MediaQuery(
             data: const MediaQueryData(size: Size(600, 800)),
             child: Scaffold(
@@ -198,7 +211,8 @@ void main() {
         expect(find.byType(ElevatedButton), findsOneWidget);
       });
 
-      testWidgets('invokes callback when tapped on wide screen', (tester) async {
+      testWidgets('invokes callback when tapped on wide screen',
+          (tester) async {
         // Verifies the onPressed callback fires on tap.
         var tapped = false;
         await tester.pumpWidget(_wrap(AddTaskButton(onPressed: () {

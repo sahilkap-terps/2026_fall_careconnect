@@ -593,7 +593,7 @@ class ConditionDetectionServiceTest {
 
         service.runDueRuns();
 
-        verify(runRepository, never()).findDueRuns();
+        verify(runRepository, never()).findDueModelIds();
     }
 
     /** Scenario: the lazy self proxy is used so the transactional methods go through Spring. */
@@ -601,7 +601,9 @@ class ConditionDetectionServiceTest {
     void runDueRuns_processesEveryDueRunUsingSelfWhenSet() {
         final ConditionDetectionService selfProxy = Mockito.mock(ConditionDetectionService.class);
         ReflectionTestUtils.setField(service, "self", selfProxy);
-        when(runRepository.findDueRuns()).thenReturn(List.of(due(1L, MODEL_A), due(2L, MODEL_B)));
+        when(runRepository.findDueModelIds()).thenReturn(List.of(MODEL_A, MODEL_B));
+        when(runRepository.findDueRuns(MODEL_A)).thenReturn(List.of(due(1L, MODEL_A)));
+        when(runRepository.findDueRuns(MODEL_B)).thenReturn(List.of(due(2L, MODEL_B)));
 
         service.runDueRuns();
 
@@ -612,7 +614,8 @@ class ConditionDetectionServiceTest {
     /** Scenario: with no proxy injected (plain unit construction) the service calls itself. */
     @Test
     void runDueRuns_withoutSelf_fallsBackToThis() {
-        when(runRepository.findDueRuns()).thenReturn(List.of(due(3L, MODEL_A)));
+        when(runRepository.findDueModelIds()).thenReturn(List.of(MODEL_A));
+        when(runRepository.findDueRuns(MODEL_A)).thenReturn(List.of(due(3L, MODEL_A)));
         when(runRepository.claim(eq(3L), any(UUID.class), anyLong())).thenReturn(0);
 
         service.runDueRuns();
@@ -636,8 +639,9 @@ class ConditionDetectionServiceTest {
         ReflectionTestUtils.setField(service, "enabled", true);
         final ConditionDetectionService selfProxy = Mockito.mock(ConditionDetectionService.class);
         ReflectionTestUtils.setField(service, "self", selfProxy);
-        when(runRepository.findDueRuns())
-                .thenReturn(List.of(due(1L, MODEL_A), due(2L, MODEL_B), due(3L, MODEL_A)));
+        when(runRepository.findDueModelIds()).thenReturn(List.of(MODEL_A, MODEL_B));
+        when(runRepository.findDueRuns(MODEL_A)).thenReturn(List.of(due(1L, MODEL_A), due(3L, MODEL_A)));
+        when(runRepository.findDueRuns(MODEL_B)).thenReturn(List.of(due(2L, MODEL_B)));
 
         // Act
         service.runDueRuns();
@@ -648,6 +652,46 @@ class ConditionDetectionServiceTest {
         assertThat(queued.get(MODEL_B)).hasSize(1);
         queued.get(MODEL_B).get(0).run();
         verify(selfProxy).processRun(2L);
+    }
+
+    /**
+     * Scenario: ten voice-analysis runs wait in their lane and stay due on every tick. A
+     * transcript run enqueued after them still reaches its own idle lane, instead of being
+     * crowded out of a shared ten-row due list.
+     */
+    @Test
+    void runDueRuns_voiceBacklog_stillQueuesTranscriptRun() {
+        // Arrange: lanes that hold work, so the voice runs stay queued (and due) across ticks
+        final String voice = "voice-model";
+        final String transcript = "transcript-model";
+        final Map<String, List<Runnable>> queued = new HashMap<>();
+        final ConditionRunLanes deferredLanes = new ConditionRunLanes(
+                modelId -> work -> queued.computeIfAbsent(modelId, k -> new ArrayList<>()).add(work));
+        service = new ConditionDetectionService(
+                adapterProvider, runRepository, flagRepository, callSessionService, recordingRepository,
+                deferredLanes);
+        ReflectionTestUtils.setField(service, "enabled", true);
+        final ConditionDetectionService selfProxy = Mockito.mock(ConditionDetectionService.class);
+        ReflectionTestUtils.setField(service, "self", selfProxy);
+        final List<ConditionDueRunProjection> voiceBacklog = new ArrayList<>();
+        for (long id = 1; id <= 10; id++) {
+            voiceBacklog.add(due(id, voice));
+        }
+        when(runRepository.findDueModelIds())
+                .thenReturn(List.of(voice), List.of(transcript, voice));
+        when(runRepository.findDueRuns(voice)).thenReturn(voiceBacklog);
+        when(runRepository.findDueRuns(transcript)).thenReturn(List.of(due(11L, transcript)));
+
+        // Act: the backlog is queued, then a transcript run becomes due behind it
+        service.runDueRuns();
+        service.runDueRuns();
+
+        // Assert: the voice runs were queued once; the transcript run reached its lane and runs
+        assertThat(queued.get(voice)).hasSize(10);
+        assertThat(queued.get(transcript)).hasSize(1);
+        queued.get(transcript).get(0).run();
+        verify(selfProxy).processRun(11L);
+        verify(selfProxy, never()).processRun(1L);
     }
 
     // ---------------------------------------------------------------- describe

@@ -72,8 +72,9 @@ class ConditionDetectionRunRepositoryTest {
     // -------------------------------------------------------------- findDueRuns
 
     /**
-     * The reviewer's backlog scenario: twelve voice runs (more than one window) are due before a
-     * transcript run. The transcript run must still be selected, and voice is capped at ten.
+     * The reviewer's backlog scenario against the real SQL: twelve voice runs (more than one
+     * window) are due before a transcript run. Both models are reported as having due work, the
+     * transcript run is fetched in its own model's window, and voice is capped at ten.
      */
     @Test
     void findDueRuns_voiceBacklog_doesNotStarveTranscriptRun() {
@@ -84,11 +85,14 @@ class ConditionDetectionRunRepositoryTest {
         final ConditionDetectionRun transcript = dueRun("call-0", BEDROCK);
 
         // Act
-        final List<ConditionDueRunProjection> due = repository.findDueRuns();
+        final List<String> models = repository.findDueModelIds();
+        final List<ConditionDueRunProjection> voice = repository.findDueRuns(DAM);
+        final List<ConditionDueRunProjection> text = repository.findDueRuns(BEDROCK);
 
         // Assert
-        assertThat(due).extracting(d -> d.getId().longValue()).contains(transcript.getId());
-        assertThat(due).filteredOn(d -> DAM.equals(d.getModelId())).hasSize(10);
+        assertThat(models).containsExactlyInAnyOrder(DAM, BEDROCK);
+        assertThat(voice).hasSize(10).allMatch(d -> DAM.equals(d.getModelId()));
+        assertThat(text).extracting(d -> d.getId().longValue()).containsExactly(transcript.getId());
     }
 
     /** Finished runs and runs whose next attempt is in the future are not due. */
@@ -105,7 +109,7 @@ class ConditionDetectionRunRepositoryTest {
         final ConditionDetectionRun now = dueRun("call-now", DAM);
 
         // Act + Assert
-        assertThat(repository.findDueRuns()).extracting(d -> d.getId().longValue())
+        assertThat(repository.findDueRuns(DAM)).extracting(d -> d.getId().longValue())
                 .containsExactly(now.getId());
     }
 

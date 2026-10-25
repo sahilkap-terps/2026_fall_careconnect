@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:care_connect_app/features/evv/presentation/pages/evv_hhaexchange_submit_page.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/services/api_service_offline.dart';
 
 late Future<http.Response> Function(http.Request) _httpHandler;
@@ -23,17 +24,19 @@ Future<http.Response> _defaultHandler(http.Request request) async {
   return http.Response('{}', 200);
 }
 
-Widget _wrap() {
-  return const MaterialApp(
-    home: EvvHhaExchangeSubmitPage(),
+Widget _wrap({Locale locale = const Locale('en')}) {
+  return MaterialApp(
+    locale: locale,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: const EvvHhaExchangeSubmitPage(),
   );
 }
 
 void main() {
   setUpAll(() {
     _httpHandler = _defaultHandler;
-    final delegatingClient =
-        MockClient((request) => _httpHandler(request));
+    final delegatingClient = MockClient((request) => _httpHandler(request));
     http.runWithClient(() {
       ApiServiceOffline.httpClient;
     }, () => delegatingClient);
@@ -74,6 +77,11 @@ void main() {
   });
 
   group('EvvHhaExchangeSubmitPage - initial render', () {
+    testWidgets('shows Spanish title when Spanish is selected', (tester) async {
+      await tester.pumpWidget(_wrap(locale: const Locale('es')));
+      expect(find.text('Enviar a HHAExchange'), findsOneWidget);
+    });
+
     testWidgets('renders without crashing', (tester) async {
       await tester.pumpWidget(_wrap());
       expect(find.byType(EvvHhaExchangeSubmitPage), findsOneWidget);
@@ -149,25 +157,31 @@ void main() {
       _httpHandler = (request) async {
         if (request.url.path.contains('/hhaexchange') ||
             request.url.path.contains('/evv')) {
-          return http.Response(jsonEncode([
-            {
-              'id': 1,
-              'patient': {'id': 10, 'firstName': 'Alice', 'lastName': 'Smith'},
-              'serviceType': 'Personal Care',
-              'individualName': 'Alice Smith',
-              'caregiverId': 1,
-              'dateOfService': '2026-03-17',
-              'timeIn': '2026-03-17T10:00:00',
-              'timeOut': '2026-03-17T12:00:00',
-              'status': 'APPROVED',
-              'stateCode': 'VA',
-              'isOffline': false,
-              'eorApprovalRequired': false,
-              'isCorrected': false,
-              'createdAt': '2026-03-17T08:00:00',
-              'updatedAt': '2026-03-17T08:00:00',
-            },
-          ]), 200);
+          return http.Response(
+              jsonEncode([
+                {
+                  'id': 1,
+                  'patient': {
+                    'id': 10,
+                    'firstName': 'Alice',
+                    'lastName': 'Smith'
+                  },
+                  'serviceType': 'Personal Care',
+                  'individualName': 'Alice Smith',
+                  'caregiverId': 1,
+                  'dateOfService': '2026-03-17',
+                  'timeIn': '2026-03-17T10:00:00',
+                  'timeOut': '2026-03-17T12:00:00',
+                  'status': 'APPROVED',
+                  'stateCode': 'VA',
+                  'isOffline': false,
+                  'eorApprovalRequired': false,
+                  'isCorrected': false,
+                  'createdAt': '2026-03-17T08:00:00',
+                  'updatedAt': '2026-03-17T08:00:00',
+                },
+              ]),
+              200);
         }
         return http.Response('{}', 200);
       };
