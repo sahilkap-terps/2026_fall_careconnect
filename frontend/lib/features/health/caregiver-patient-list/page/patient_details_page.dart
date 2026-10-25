@@ -24,6 +24,9 @@ import '../widgets/mood_history_card.dart';
 
 // Health tab
 import '../widgets/current_medications_card.dart';
+
+// Medicare tab (caregivers only)
+import '../widgets/caregiver_medicare_tab.dart';
 // Recent Activity tab
 // Virtual Check-in history
 // Virtual Check-In domain entities
@@ -48,6 +51,41 @@ import 'package:care_connect_app/features/evv/presentation/pages/incident_report
 import 'incident_report_history_screen.dart';
 import '../../../audit/audit_log_screen.dart';
 import '../../../../widgets/post_call_telemetry_summary_screen.dart';
+
+/// The patient's login account id (`users.id`) from the loaded payloads, or 0 if none has one.
+///
+/// [PatientDetailsPage.patientId] is the patient record id (`patient.id`), a different number.
+/// It is deliberately not a fallback: it only equals the account id by coincidence (the first
+/// seeded patient), and using it would call, or load the mood history of, another account.
+@visibleForTesting
+int resolvePatientUserId({
+  required Map<String, dynamic> detailsPayload,
+  required Map<String, dynamic> profilePayload,
+  required Map<String, dynamic>? caregiverData,
+}) {
+  final linkMap = caregiverData?['link'] is Map<String, dynamic>
+      ? caregiverData!['link'] as Map<String, dynamic>
+      : const <String, dynamic>{};
+  final detailsUser = detailsPayload['user'] is Map<String, dynamic>
+      ? detailsPayload['user'] as Map<String, dynamic>
+      : const <String, dynamic>{};
+  final profileUser = profilePayload['user'] is Map<String, dynamic>
+      ? profilePayload['user'] as Map<String, dynamic>
+      : const <String, dynamic>{};
+
+  final candidates = <dynamic>[
+    linkMap['patientUserId'],
+    detailsUser['id'],
+    profileUser['id'],
+  ];
+
+  for (final value in candidates) {
+    if (value is int && value > 0) return value;
+    final parsed = int.tryParse(value?.toString() ?? '');
+    if (parsed != null && parsed > 0) return parsed;
+  }
+  return 0;
+}
 
 class PatientDetailsPage extends StatefulWidget {
   final String patientId;
@@ -159,14 +197,16 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     var recipientName = patientName;
 
     if (role == 'CAREGIVER') {
-      targetUserId = int.tryParse(widget.patientId);
-      if (targetUserId == null) {
+      // The callee is addressed by login account id. widget.patientId is the patient record
+      // id, which matched only for the first seeded patient (see resolvePatientUserId).
+      if (_callHistoryPatientUserId <= 0) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid patient ID for video call.')),
         );
         return;
       }
+      targetUserId = _callHistoryPatientUserId;
     } else if (role == 'PATIENT') {
       final linkedCaregiverUserIds =
           await ApiService.getPatientLinkedCaregiverUserIds(currentUserId);
@@ -1008,31 +1048,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     required Map<String, dynamic> detailsPayload,
     required Map<String, dynamic> profilePayload,
     required Map<String, dynamic>? caregiverData,
-  }) {
-    final linkMap = caregiverData?['link'] is Map<String, dynamic>
-        ? caregiverData!['link'] as Map<String, dynamic>
-        : const <String, dynamic>{};
-    final detailsUser = detailsPayload['user'] is Map<String, dynamic>
-        ? detailsPayload['user'] as Map<String, dynamic>
-        : const <String, dynamic>{};
-    final profileUser = profilePayload['user'] is Map<String, dynamic>
-        ? profilePayload['user'] as Map<String, dynamic>
-        : const <String, dynamic>{};
-
-    final candidates = <dynamic>[
-      linkMap['patientUserId'],
-      detailsUser['id'],
-      profileUser['id'],
-      widget.patientId,
-    ];
-
-    for (final value in candidates) {
-      if (value is int) return value;
-      final parsed = int.tryParse(value?.toString() ?? '');
-      if (parsed != null) return parsed;
-    }
-    return 0;
-  }
+  }) =>
+      resolvePatientUserId(
+        detailsPayload: detailsPayload,
+        profilePayload: profilePayload,
+        caregiverData: caregiverData,
+      );
 
   List<String> _extractStringList(dynamic value) {
     if (value is! List) return const [];
@@ -1651,10 +1672,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     return 'Poor';
   }
 
+  // The backend stores severity as 1-5 (SymptomDTO: Mild=1, Moderate=3,
+  // Severe=5); same thresholds as the patient's own symptom tab.
   String _symptomSeverityLabel(dynamic severityRaw) {
     final severity = _safeInt(severityRaw);
-    if (severity >= 7) return 'Severe';
-    if (severity >= 4) return 'Moderate';
+    if (severity >= 5) return 'Severe';
+    if (severity >= 3) return 'Moderate';
     return 'Mild';
   }
 
@@ -2519,7 +2542,8 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
     final patientId = int.tryParse(widget.patientId);
     if (patientId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to add medication: Invalid patient ID')),
+        const SnackBar(
+            content: Text('Unable to add medication: Invalid patient ID')),
       );
       return;
     }
@@ -2590,8 +2614,7 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
       onMedicationUpdated: _fetchMedications,
       // Refresh medications after delete/approve
       caregiverId: caregiverId,
-      onAddMedication:
-          widget.isCaregiver ? _showAddMedicationModal : null,
+      onAddMedication: widget.isCaregiver ? _showAddMedicationModal : null,
     );
   }
 
@@ -2599,9 +2622,13 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
   Widget build(BuildContext context) {
     final subtitlePrefix =
         _patientError == null ? 'Patient Details • $_mrn' : 'Patient Details';
+    // Patients viewing their own page already have Health Data, so only a
+    // caregiver gets the Medicare tab (WBS 6.2.58).
+    final medicarePatientId =
+        widget.isCaregiver ? int.tryParse(widget.patientId) : null;
 
     return DefaultTabController(
-      length: 5,
+      length: medicarePatientId != null ? 6 : 5,
       child: Scaffold(
         appBar: _DetailsAppBar(title: _patientName, subtitle: subtitlePrefix),
         body: _isLoadingPatient
@@ -2660,7 +2687,7 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                       ),
 
                       // Tab bar row (like your mock)
-                      const _TabsStrip(),
+                      _TabsStrip(showMedicare: medicarePatientId != null),
 
                       // Tab views
                       Expanded(
@@ -2974,6 +3001,12 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                                   ),
                               ],
                             ),
+
+                            // Medicare (caregivers only)
+                            if (medicarePatientId != null)
+                              CaregiverMedicareTab(
+                                patientId: medicarePatientId,
+                              ),
                           ],
                         ),
                       ),
@@ -3024,15 +3057,24 @@ class _DetailsAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// The tab buttons row (Info • Mood • Health • Virtual Check-In)
+/// The tab buttons row (Info • Mood • Health • Virtual Check-In, plus
+/// Medicare for a caregiver)
 class _TabsStrip extends StatelessWidget {
-  const _TabsStrip(); // <-- add const + super.key
+  const _TabsStrip({required this.showMedicare});
+
+  final bool showMedicare;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final width = MediaQuery.sizeOf(context).width;
     final narrow = width < 430;
+    // The light theme's primary (00A7C8) is 2.85:1 on white: too light for
+    // the selected label (4.5:1) and its underline (3:1). Use the darker teal
+    // the Medicare tab and Health Data use (DEF-MCR-35).
+    final selected = Theme.of(context).brightness == Brightness.dark
+        ? cs.primary
+        : const Color(0xFF006B80);
     return Material(
       color: cs.surface,
       child: Padding(
@@ -3042,23 +3084,30 @@ class _TabsStrip extends StatelessWidget {
           labelPadding: narrow
               ? const EdgeInsets.symmetric(horizontal: 10)
               : const EdgeInsets.symmetric(horizontal: 16),
-          labelColor: cs.primary,
+          labelColor: selected,
           unselectedLabelColor: cs.onSurface.withValues(alpha: .7),
           indicator: UnderlineTabIndicator(
-            borderSide: BorderSide(color: cs.primary, width: 3),
+            borderSide: BorderSide(color: selected, width: 3),
           ),
-          tabs: const [
-            Tab(text: 'Info', icon: Icon(Icons.info_outline, size: 18)),
-            Tab(text: 'Mood', icon: Icon(Icons.favorite_border, size: 18)),
-            Tab(
+          tabs: [
+            const Tab(text: 'Info', icon: Icon(Icons.info_outline, size: 18)),
+            const Tab(
+                text: 'Mood', icon: Icon(Icons.favorite_border, size: 18)),
+            const Tab(
               text: 'Health',
               icon: Icon(Icons.health_and_safety_outlined, size: 18),
             ),
-            Tab(text: 'In-home', icon: Icon(Icons.home_outlined, size: 18)),
-            Tab(
+            const Tab(
+                text: 'In-home', icon: Icon(Icons.home_outlined, size: 18)),
+            const Tab(
               text: 'Virtual Check-In',
               icon: Icon(Icons.video_call_outlined, size: 18),
             ),
+            if (showMedicare)
+              const Tab(
+                text: 'Medicare',
+                icon: Icon(Icons.medical_information_outlined, size: 18),
+              ),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 package com.careconnect.config;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
@@ -16,9 +17,14 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test IDs TC-EHR-SCH-020..021 (the two {@code requireSafeIdentifier} tests) are permanent. Never renumber,
+ * never reuse.
+ */
 class SchemaPatchRunnerTest {
 
     @Test
+    @DisplayName("TC-EHR-SCH-020: plain identifiers pass the guard unchanged")
     void requireSafeIdentifier_acceptsPlainIdentifiers() {
         assertThat(SchemaPatchRunner.requireSafeIdentifier("ehr_raw_payload")).isEqualTo("ehr_raw_payload");
         assertThat(SchemaPatchRunner.requireSafeIdentifier("fk_ehr_crosswalk_patient"))
@@ -27,6 +33,7 @@ class SchemaPatchRunnerTest {
     }
 
     @Test
+    @DisplayName("TC-EHR-SCH-021: an identifier that could change the statement is rejected")
     void requireSafeIdentifier_rejectsAnythingThatCouldChangeTheStatement() {
         for (final String hostile : new String[]{
                 "patient; DROP TABLE patient",
@@ -200,6 +207,41 @@ class SchemaPatchRunnerTest {
         assertThat(method).contains("check={}");
         assertThat(method).contains("index={}");
         assertThat(method).doesNotContain("throw new IllegalStateException");
+    }
+
+    /**
+     * Scenario: integration tests run on H2, which never sees the Flyway/catalog DDL, so the
+     * runner's H2 parity patch must create both condition detection tables, be safe to re-run on
+     * every startup, and keep the one-run-per-(call, model) rule the worker's idempotent enqueue
+     * relies on. Uses a real in-memory H2 database rather than mocks so the DDL itself is checked.
+     */
+    @Test
+    void applyH2ConditionDetectionTables_createsTablesIdempotentlyWithUniqueCallModel()
+            throws Exception {
+        // Arrange
+        final org.h2.jdbcx.JdbcDataSource h2 = new org.h2.jdbcx.JdbcDataSource();
+        h2.setURL("jdbc:h2:mem:condition_detection_parity;DB_CLOSE_DELAY=-1");
+        final SchemaPatchRunner runner = new SchemaPatchRunner(h2, mock(SchemaPatchLedger.class));
+
+        // Act: twice, as every application start does
+        org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                runner, "applyH2ConditionDetectionTables");
+        org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                runner, "applyH2ConditionDetectionTables");
+
+        // Assert
+        try (Connection conn = h2.getConnection(); Statement stmt = conn.createStatement()) {
+            final String insertRun = "INSERT INTO condition_detection_runs "
+                    + "(call_id, patient_id, patient_user_id, model_id, input_kind, state, next_attempt_at) "
+                    + "VALUES ('call-1', 1, 10, 'kintsugi-dam-3.1', 'AUDIO', 'READY', CURRENT_TIMESTAMP)";
+            stmt.execute(insertRun);
+            stmt.execute("INSERT INTO condition_flags (run_id, call_id, patient_id, model_id, "
+                    + "condition_name, severity_level, severity_label) "
+                    + "VALUES (1, 'call-1', 1, 'kintsugi-dam-3.1', 'DEPRESSION', 0, 'NONE')");
+            assertThatThrownBy(() -> stmt.execute(insertRun))
+                    .isInstanceOf(SQLException.class)
+                    .hasMessageContaining("UQ_CONDITION_DETECTION_RUNS_CALL_MODEL");
+        }
     }
 
     @Test

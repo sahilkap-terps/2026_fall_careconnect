@@ -9,9 +9,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:care_connect_app/features/social/presentation/pages/main_feed_screen.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 
-Widget _wrap({int userId = 0}) =>
-    MaterialApp(home: MainFeedScreen(userId: userId));
+Widget _wrap({int userId = 0, Locale locale = const Locale('en')}) =>
+    MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: MainFeedScreen(userId: userId),
+    );
 
 void main() {
   group('MainFeedScreen – userId=0 (no network, no timer)', () {
@@ -25,6 +31,16 @@ void main() {
       await tester.pumpWidget(_wrap());
       await tester.pump();
       expect(find.text('My Feed'), findsOneWidget);
+    });
+
+    testWidgets('shows Spanish labels when Spanish is selected', (tester) async {
+      await tester.pumpWidget(_wrap(locale: const Locale('es')));
+      await tester.pump();
+      expect(find.text('Mi feed'), findsOneWidget);
+      expect(
+        find.text('Aún no hay publicaciones. Desliza para actualizar.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows "No posts yet. Pull to refresh." when empty',
