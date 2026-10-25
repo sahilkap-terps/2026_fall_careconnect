@@ -276,14 +276,10 @@ class _MedicationManagementScreenState
                   onPressed: () {
                     _scanMedicationCode();
                   },
-                  icon: Icon(
-                    Icons.qr_code_scanner,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
+                  icon: const Icon(Icons.qr_code_scanner),
                   label: const Text(
                     'Scan Medication Barcode',
                     style: TextStyle(
-                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -302,11 +298,10 @@ class _MedicationManagementScreenState
                   onPressed: () {
                     _enterMedicationCode();
                   },
-                  icon: Icon(Icons.keyboard, color: AppTheme.primary),
+                  icon: const Icon(Icons.keyboard),
                   label: Text(
                     'Enter NDC Code',
                     style: TextStyle(
-                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -325,11 +320,10 @@ class _MedicationManagementScreenState
                   onPressed: () {
                     _addMedicationManually();
                   },
-                  icon: Icon(Icons.edit, color: AppTheme.primary),
+                  icon: const Icon(Icons.edit),
                   label: Text(
                     'Add Medication Manually',
                     style: TextStyle(
-                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),

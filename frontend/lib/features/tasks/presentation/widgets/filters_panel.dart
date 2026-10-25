@@ -139,11 +139,6 @@ class FiltersPanel extends StatelessWidget {
                             avatar: Icon(icon, color: color, size: 18),
                             label: Text(
                               _localizedTypeName(t, type),
-                              style: TextStyle(
-                                color: selectedTypes.contains(type)
-                                    ? color
-                                    : null,
-                              ),
                             ),
                             selected: selectedTypes.contains(type),
                             selectedColor: color.withOpacity(0.2),

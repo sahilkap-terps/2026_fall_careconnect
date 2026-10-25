@@ -1,4 +1,5 @@
 import 'package:care_connect_app/widgets/page_title.dart';
+import 'package:care_connect_app/config/theme/app_theme.dart';
 import 'package:care_connect_app/features/evv/schedule/pages/schedule_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -291,7 +292,7 @@ class _StatCard extends StatelessWidget {
       case _Tone.info:
         return scheme.onPrimaryContainer;
       case _Tone.warning:
-        return scheme.onTertiaryContainer;
+        return AppTheme.textPrimary;
       case _Tone.error:
         return scheme.onErrorContainer;
       case _Tone.neutral:

@@ -109,7 +109,7 @@ class Legend extends StatelessWidget {
                         _localizedTypeName(t, type),
                         style: Theme.of(
                           context,
-                        ).textTheme.bodyMedium?.copyWith(color: color),
+                        ).textTheme.bodyMedium,
                       ),
                     ],
                   );
