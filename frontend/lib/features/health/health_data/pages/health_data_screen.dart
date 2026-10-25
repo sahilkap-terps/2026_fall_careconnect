@@ -518,8 +518,9 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                     action: TextButton(
                       onPressed: _confirmDob,
                       style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF006B80),
-                          minimumSize: const Size(48, 48)),
+                        foregroundColor: _accent(context),
+                        minimumSize: const Size(48, 48),
+                      ),
                       child: const Text('Confirm'),
                     ),
                   ),
@@ -530,8 +531,9 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                     action: TextButton(
                       onPressed: () => _reviewConflicts(),
                       style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF006B80),
-                          minimumSize: const Size(48, 48)),
+                        foregroundColor: _teal,
+                        minimumSize: const Size(48, 48),
+                      ),
                       child: const Text('Review'),
                     ),
                   ),
@@ -794,6 +796,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                   const SizedBox(width: 8),
                                   TextButton(
                                     onPressed: () {},
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: _accent(context),
+                                      minimumSize: const Size(48, 48),
+                                    ),
                                     child: const Text('Review'),
                                   ),
                                 ],
@@ -831,6 +837,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                     action: _epicConnected == null
                                         ? TextButton(
                                             onPressed: _load,
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: _accent(context),
+                                              minimumSize: const Size(48, 48),
+                                            ),
                                             child: const Text('Retry'),
                                           )
                                         : _epicConnected == false
@@ -854,6 +864,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                     action: _oracleHealthConnected == null
                                         ? TextButton(
                                             onPressed: _load,
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: _accent(context),
+                                              minimumSize: const Size(48, 48),
+                                            ),
                                             child: const Text('Retry'),
                                           )
                                         : _oracleHealthConnected == false
@@ -880,6 +894,12 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                                     );
                                                   }
                                                 },
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor:
+                                                      _accent(context),
+                                                  minimumSize:
+                                                      const Size(48, 48),
+                                                ),
                                                 child: const Text('Connect'),
                                               )
                                             : null,
@@ -902,6 +922,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                             AthenaReadProblem.unreachable
                                         ? TextButton(
                                             onPressed: _load,
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: _accent(context),
+                                              minimumSize: const Size(48, 48),
+                                            ),
                                             child: const Text('Retry'),
                                           )
                                         : _athenaProblem ==
@@ -937,6 +961,10 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                                 MedicareReadProblem.linkExpired
                                         ? TextButton(
                                             onPressed: _load,
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: _accent(context),
+                                              minimumSize: const Size(48, 48),
+                                            ),
                                             child: const Text('Retry'),
                                           )
                                         : _medicareProblem ==
@@ -945,6 +973,12 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                                 onPressed: () =>
                                                     GoRouter.of(context).push(
                                                         '/medicare-connect'),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor:
+                                                      _accent(context),
+                                                  minimumSize:
+                                                      const Size(48, 48),
+                                                ),
                                                 child: const Text('Reconnect'),
                                               )
                                             : _medicareProblem ==
@@ -1190,8 +1224,9 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
     return TextButton(
       onPressed: () => GoRouter.of(context).push('/medicare-connect'),
       style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF006B80),
-          minimumSize: const Size(48, 48)),
+        foregroundColor: _accent(context),
+        minimumSize: const Size(48, 48),
+      ),
       child: const Text('Connect'),
     );
   }

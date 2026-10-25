@@ -121,7 +121,9 @@ class _EpicConnectTileState extends State<EpicConnectTile>
       return TextButton(
         onPressed: _busy ? null : _connect,
         style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF006B80),
+          foregroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.primary
+              : const Color(0xFF006B80),
           minimumSize: const Size(48, 48),
         ),
         child: _busy
