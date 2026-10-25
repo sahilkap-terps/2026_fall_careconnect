@@ -315,7 +315,7 @@ class _CareConnectAppState extends State<CareConnectApp>
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: AppLocalizations.supportedLocales,
+      supportedLocales: const <Locale>[Locale('en'), Locale('es')],
       //  set this to the chosen locale
       locale: localeProvider.locale,
 

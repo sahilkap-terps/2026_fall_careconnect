@@ -1,5 +1,6 @@
 import 'package:care_connect_app/features/tasks/presentation/widgets/legend_editor.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _wrapWithProviders(Widget child, TaskTypeManager manager) {
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<TaskTypeManager>.value(
       value: manager,
       child: Scaffold(body: child),
@@ -158,9 +161,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final medFinder = find.text('Medication');
-      final Finder target = medFinder.evaluate().isNotEmpty
-          ? medFinder
-          : find.byType(Text).first;
+      final Finder target =
+          medFinder.evaluate().isNotEmpty ? medFinder : find.byType(Text).first;
 
       await tester.longPress(target);
       await tester.pumpAndSettle();
@@ -184,9 +186,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final genFinder = find.text('General');
-      final Finder target = genFinder.evaluate().isNotEmpty
-          ? genFinder
-          : find.byType(Text).first;
+      final Finder target =
+          genFinder.evaluate().isNotEmpty ? genFinder : find.byType(Text).first;
 
       await tester.longPress(target);
       await tester.pumpAndSettle();

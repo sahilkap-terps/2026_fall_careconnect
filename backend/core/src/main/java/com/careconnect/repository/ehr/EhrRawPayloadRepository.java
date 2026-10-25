@@ -13,6 +13,9 @@ import java.util.Optional;
 
 public interface EhrRawPayloadRepository extends JpaRepository<EhrRawPayload, Long> {
 
+    Optional<EhrRawPayload> findByPatientIdAndSourceIdAndResourceTypeAndExternalResourceId(
+            Long patientId, Long sourceId, String resourceType, String externalResourceId);
+
     /** Most recent stored body for one resource type, used to re-derive a mapping. */
     Optional<EhrRawPayload> findFirstByPatientIdAndSourceIdAndResourceTypeOrderByRetrievedAtDesc(
             Long patientId, Long sourceId, String resourceType);
@@ -49,6 +52,9 @@ public interface EhrRawPayloadRepository extends JpaRepository<EhrRawPayload, Lo
     @Query("delete from EhrRawPayload p where p.retrievedAt < :cutoff and p.patientId in :patientIds")
     int deleteRetrievedBeforeForPatients(
             @Param("cutoff") OffsetDateTime cutoff, @Param("patientIds") List<Long> patientIds);
+
+    /** Delete the raw-payload history for one patient and source (disconnect cleanup). */
+    int deleteByPatientIdAndSourceId(Long patientId, Long sourceId);
 
     /**
      * Unlink (FR-MCR-11, Addendum A1-Q1): removes every row this source holds for this patient.

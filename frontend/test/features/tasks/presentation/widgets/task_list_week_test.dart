@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:care_connect_app/features/tasks/presentation/widgets/task_list_week.dart';
 import 'package:care_connect_app/features/tasks/models/task_model.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 
 final _date = DateTime(2025, 6, 15);
 
@@ -41,6 +42,8 @@ CalendarEventData<Task> _toEvent(Task task) => CalendarEventData<Task>(
 Widget _wrap(Widget child) {
   final manager = TaskTypeManager();
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ChangeNotifierProvider<TaskTypeManager>.value(
       value: manager,
       child: Scaffold(body: child),
@@ -57,7 +60,11 @@ Widget _wrapWithProviders(Widget child) {
     create: (_) => TaskTypeManager()
       ..addTaskType("general", Colors.blue)
       ..addTaskType("exercise", Colors.green),
-    child: MaterialApp(home: Scaffold(body: child)),
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: child),
+    ),
   );
 }
 
@@ -286,7 +293,8 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final tiles = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
+        final tiles =
+            tester.widgetList<ListTile>(find.byType(ListTile)).toList();
         final firstTitle = (tiles.first.title as Text).data!;
         expect(firstTitle, contains('Morning Yoga'));
       });
