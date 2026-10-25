@@ -474,6 +474,46 @@ void main() {
         expect(capturedCount, 8);
       });
 
+      // A new task with no series anchor and no start date picked yet: the
+      // count is measured from today, the last fallback. Accepting the
+      // picker's default (today) as the end date makes the series one day.
+      testWidgets('end date with no anchor or start date counts from today',
+          (tester) async {
+        int? capturedCount;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RecurrenceForm(
+                initialIsRecurring: true,
+                initialRecurrenceType: 'Daily',
+                initialInterval: 1,
+                onChanged: ({
+                  bool? isRecurring,
+                  String? recurrenceType,
+                  List<bool>? daysOfWeek,
+                  int? interval,
+                  int? count,
+                  DateTime? startDate,
+                  DateTime? endDate,
+                  int? dayOfMonth,
+                  bool? applyToSeries,
+                }) {
+                  capturedCount = count;
+                },
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Pick End Date'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        expect(capturedCount, 1);
+      });
+
       testWidgets('shows validation when missing recurrence type', (
         tester,
       ) async {

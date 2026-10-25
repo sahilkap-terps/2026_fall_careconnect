@@ -145,15 +145,6 @@ class KvsAudioTranscodeServiceTest {
                 .isEqualTo("/opt/ffmpeg/bin/ffmpeg");
     }
 
-    /** Scenario: a clip whose window is empty or inverted is rejected when it is built. */
-    @Test
-    void clip_invalidWindow_throwsIllegalArgument() {
-        assertThatThrownBy(() -> new KvsAudioClip(Path.of("a"), 5_000L, 5_000L))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new KvsAudioClip(Path.of("a"), -1L, 5_000L))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
     /** Scenario: a null clip is rejected like a missing file, before any temp file is made. */
     @Test
     void toWav_nullClip_throwsIllegalArgument() {

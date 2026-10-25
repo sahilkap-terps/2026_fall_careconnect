@@ -182,7 +182,8 @@ public class KvsArchivedMediaExportService {
         }
     }
 
-    private KinesisVideoArchivedMediaClient archivedClient(final Region region, final String endpoint) {
+    /** Package-private so tests can supply a mocked client; production builds a real one. */
+    KinesisVideoArchivedMediaClient archivedClient(final Region region, final String endpoint) {
         return KinesisVideoArchivedMediaClient.builder()
                 .region(region)
                 .endpointOverride(URI.create(endpoint))
