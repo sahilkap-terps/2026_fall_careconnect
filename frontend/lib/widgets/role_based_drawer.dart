@@ -152,8 +152,10 @@ class RoleBasedDrawer extends StatelessWidget {
                 title: const Text('Health Data'),
                 onTap: () {
                   Navigator.pop(context);
-                  // /health doesn't exist; the screen is /health-data.
-                  Navigator.pushNamed(context, '/health-data');
+                  // /health doesn't exist; the screen is /health-data. The
+                  // app runs on GoRouter, whose Navigator has no named
+                  // routes, so pushNamed would throw (DEF-MCR-38).
+                  context.push('/health-data');
                 },
               ),
 
