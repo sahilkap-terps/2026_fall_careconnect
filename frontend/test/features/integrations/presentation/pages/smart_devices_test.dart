@@ -1,3 +1,4 @@
+import '../../../../m4_localization_coverage_cases.dart' as m4_coverage;
 // Tests for SmartDevicesPage
 // (lib/features/integrations/presentation/pages/smart_devices.dart).
 //
@@ -120,6 +121,7 @@ Future<void> _pumpAndWait(WidgetTester tester) async {
 }
 
 void main() {
+  m4_coverage.registerM4Coverage('smart');
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {

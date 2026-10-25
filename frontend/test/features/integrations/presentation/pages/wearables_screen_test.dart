@@ -1,3 +1,5 @@
+import '../../../../m4_health_connection_coverage_cases.dart' as m4_health;
+import '../../../../m4_localization_coverage_cases.dart' as m4_coverage;
 import 'package:care_connect_app/l10n/app_localizations.dart';
 // Tests for WearablesScreen
 // (lib/features/integrations/presentation/pages/wearables_screen.dart).
@@ -152,6 +154,8 @@ void _setUpChannels() {
 }
 
 void main() {
+  m4_health.registerM4HealthCoverage('wear');
+  m4_coverage.registerM4Coverage('wear');
   TestWidgetsFlutterBinding.ensureInitialized();
 
   // Suppress overflow errors in test viewport

@@ -1,3 +1,4 @@
+import '../../../m4_localization_coverage_cases.dart' as m4_coverage;
 import 'package:care_connect_app/l10n/app_localizations.dart';
 // Tests for PatientFallPromptPage
 // (lib/features/fall_alert/pages/alert_details_page_patient.dart).
@@ -53,6 +54,7 @@ Widget _withNav(Widget page) {
 }
 
 void main() {
+  m4_coverage.registerM4Coverage('patient');
   TestWidgetsFlutterBinding.ensureInitialized();
 
   // ── initial render ─────────────────────────────────────────────────────────

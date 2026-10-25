@@ -52,13 +52,20 @@ class ConnectedDevice {
 }
 
 class AddDeviceScreen extends StatefulWidget {
-  const AddDeviceScreen({super.key});
+  const AddDeviceScreen({super.key, this.healthClient, this.platformOverride});
+
+  // Optional dependencies let widget tests exercise native connection flows.
+  // Normal app callers keep the existing Health client and OS detection.
+  final Health? healthClient;
+  final TargetPlatform? platformOverride;
 
   @override
   State<AddDeviceScreen> createState() => _AddDeviceScreenState();
 }
 
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
+  Health get _healthClient => widget.healthClient ?? Health();
+
   int currentStep = 0;
   String? selectedPlatform;
   bool isConnecting = false;
@@ -121,7 +128,9 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     ];
 
     // Add Apple Health only for iOS
-    if (!kIsWeb && Platform.isIOS) {
+    if (!kIsWeb && (widget.platformOverride == null
+        ? Platform.isIOS
+        : widget.platformOverride == TargetPlatform.iOS)) {
       platforms.add({
         'id': 'apple_health',
         'name': 'Apple Health',
@@ -151,7 +160,9 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     }
 
     // Add Google Fit only for Android
-    if (!kIsWeb && Platform.isAndroid) {
+    if (!kIsWeb && (widget.platformOverride == null
+        ? Platform.isAndroid
+        : widget.platformOverride == TargetPlatform.android)) {
       platforms.add({
         'id': 'google_fit',
         'name': 'Health Connect',
@@ -1209,7 +1220,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     required String successLabel,
   }) async {
     debugPrint('Starting $successLabel connection via Health Connect...');
-    final health = Health();
+    final health = _healthClient;
 
     setState(() {
       isConnecting = true;
@@ -1303,7 +1314,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
         HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
       ];
 
-      bool requested = await Health().requestAuthorization(
+      bool requested = await _healthClient.requestAuthorization(
         requiredTypes,
         permissions:
             requiredTypes.map((type) => HealthDataAccess.READ).toList(),
@@ -1311,7 +1322,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 
       if (requested) {
         final hasPermissions =
-            await Health().hasPermissions(requiredTypes) ?? false;
+            await _healthClient.hasPermissions(requiredTypes) ?? false;
         if (!hasPermissions) {
           // iOS can report false here even after an auth success callback.
           // Continue and let actual sync determine whether data access works.

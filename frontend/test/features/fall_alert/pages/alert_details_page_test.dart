@@ -1,3 +1,4 @@
+import '../../../m4_localization_coverage_cases.dart' as m4_coverage;
 import 'package:care_connect_app/l10n/app_localizations.dart';
 // Tests for AlertDetailsPage and PatientFallPromptPage
 // (lib/features/fall_alert/pages/alert_details_page.dart)
@@ -26,6 +27,7 @@ Widget _wrap() => MaterialApp(
     home: AlertDetailsPage(alert: _makeAlert()));
 
 void main() {
+  m4_coverage.registerM4Coverage('alert');
   group('AlertDetailsPage – initial render', () {
     testWidgets('renders without crashing', (tester) async {
       await tester.pumpWidget(_wrap());
