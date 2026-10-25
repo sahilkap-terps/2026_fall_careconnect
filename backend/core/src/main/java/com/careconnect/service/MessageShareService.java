@@ -5,10 +5,12 @@ import com.careconnect.model.Message;
 import com.careconnect.model.Message.ShareKind;
 import com.careconnect.model.Patient;
 import com.careconnect.model.User;
+import com.careconnect.model.ehr.MedicareProperties;
 import com.careconnect.repository.MessageRepository;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.security.MedicareAccessPolicy;
+import com.careconnect.service.ehr.MedicareConnectionService;
 import com.careconnect.websocket.ChatMessageWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,6 +38,7 @@ public class MessageShareService {
     static final String ONLY_PATIENT = "Only a patient can share their records.";
     static final String UNKNOWN_KIND = "Unknown share kind.";
     static final String NO_RECEIVER = "receiverId is required.";
+    static final String MEDICARE_NOT_CONNECTED = "Connect Medicare before sharing it.";
 
     private final MessageRepository messages;
     private final PatientRepository patients;
@@ -44,6 +47,8 @@ public class MessageShareService {
     private final MessagingPolicy messagingPolicy;
     private final MedicareAccessPolicy medicareAccess;
     private final ChatMessageWebSocketHandler chatSocket;
+    private final MedicareConnectionService medicareConnections;
+    private final MedicareProperties medicareProperties;
 
     /**
      * @param message         the saved card
@@ -61,6 +66,7 @@ public class MessageShareService {
      * @param receiverId the caregiver's user id
      * @param kind       a {@link ShareKind} name, case-insensitive
      * @throws AppException 403 if the sender is not a patient or may not share with this receiver,
+     *                      409 for a Medicare card when the patient has not connected Medicare,
      *                      400 for a missing receiver or an unknown kind
      */
     @Transactional
@@ -82,6 +88,11 @@ public class MessageShareService {
             throw new AppException(HttpStatus.FORBIDDEN, MessagingPolicy.NOT_ALLOWED);
         }
 
+        // A Medicare card for a patient with no Medicare connection would open an empty tab
+        if (shareKind == ShareKind.MEDICARE && !medicareConnected(patient.getId())) {
+            throw new AppException(HttpStatus.CONFLICT, MEDICARE_NOT_CONNECTED);
+        }
+
         final Message card = new Message(sender.getId(), receiverId, fallbackText(shareKind));
         card.setShareKind(shareKind);
         card.setSharePatientId(patient.getId());
@@ -101,6 +112,15 @@ public class MessageShareService {
         } catch (IllegalArgumentException e) {
             throw new AppException(HttpStatus.BAD_REQUEST, UNKNOWN_KIND);
         }
+    }
+
+    /**
+     * Whether this patient has Medicare connected, by the check {@code GET /v1/api/medicare/status}
+     * uses. In mock mode every patient counts as connected, as that endpoint reports, so sharing can
+     * be tried without a Blue Button sign-in.
+     */
+    private boolean medicareConnected(final Long patientId) {
+        return medicareProperties.isMock() || medicareConnections.status(patientId).connected();
     }
 
     private boolean canView(final User receiver, final ShareKind kind, final Long patientId) {

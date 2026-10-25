@@ -5,11 +5,14 @@ import com.careconnect.model.Message;
 import com.careconnect.model.Message.ShareKind;
 import com.careconnect.model.Patient;
 import com.careconnect.model.User;
+import com.careconnect.model.ehr.MedicareProperties;
 import com.careconnect.repository.MessageRepository;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.security.MedicareAccessPolicy;
 import com.careconnect.security.Role;
+import com.careconnect.service.ehr.MedicareConnectionService;
+import com.careconnect.service.ehr.MedicareConnectionService.ConnectionStatus;
 import com.careconnect.websocket.ChatMessageWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +60,10 @@ class MessageShareServiceTest {
     private MedicareAccessPolicy medicareAccess;
     @Mock
     private ChatMessageWebSocketHandler chatSocket;
+    @Mock
+    private MedicareConnectionService medicareConnections;
+    @Mock
+    private MedicareProperties medicareProperties;
     @InjectMocks
     private MessageShareService service;
 
@@ -78,6 +85,9 @@ class MessageShareServiceTest {
         // A linked caregiver with messaging on, unless a test says otherwise
         when(linkService.hasAccessToPatient(CAREGIVER_USER, PATIENT_USER)).thenReturn(true);
         when(messagingPolicy.canMessage(PATIENT_USER, CAREGIVER_USER)).thenReturn(true);
+        // Live mode, with Medicare connected, unless a test says otherwise
+        when(medicareProperties.isMock()).thenReturn(false);
+        when(medicareConnections.status(PATIENT_RECORD)).thenReturn(new ConnectionStatus(true, "LINKED", null));
     }
 
     private void assertRefused(final Runnable call, final HttpStatus status, final String message) {
@@ -118,6 +128,51 @@ class MessageShareServiceTest {
 
         assertThat(result.receiverCanView()).isFalse();
         verify(messages).save(any(Message.class));
+        verify(chatSocket).deliver(result.message());
+    }
+
+    @Test
+    @DisplayName("refuses a MEDICARE card when the patient has not connected Medicare (409), and saves and pushes nothing")
+    void share_medicareNotConnected_conflict() {
+        when(medicareConnections.status(PATIENT_RECORD)).thenReturn(new ConnectionStatus(false, "UNLINKED", null));
+
+        assertRefused(() -> service.share(patientUser, CAREGIVER_USER, "MEDICARE"),
+                HttpStatus.CONFLICT, MessageShareService.MEDICARE_NOT_CONNECTED);
+        verifyNoInteractions(medicareAccess);
+    }
+
+    @Test
+    @DisplayName("sends a MEDICARE card when the patient has Medicare connected, checking the patient record id")
+    void share_medicareConnected_sent() {
+        when(medicareAccess.canAccess(caregiverUser, PATIENT_RECORD)).thenReturn(true);
+
+        final MessageShareService.ShareResult result = service.share(patientUser, CAREGIVER_USER, "MEDICARE");
+
+        verify(medicareConnections).status(PATIENT_RECORD);
+        verify(chatSocket).deliver(result.message());
+        assertThat(result.message().getShareKind()).isEqualTo(ShareKind.MEDICARE);
+    }
+
+    @Test
+    @DisplayName("in mock mode, sends a MEDICARE card with no Medicare connection, as the status endpoint reports every patient connected")
+    void share_mockModeWithoutConnection_sent() {
+        when(medicareProperties.isMock()).thenReturn(true);
+        when(medicareConnections.status(PATIENT_RECORD)).thenReturn(new ConnectionStatus(false, "UNLINKED", null));
+
+        final MessageShareService.ShareResult result = service.share(patientUser, CAREGIVER_USER, "MEDICARE");
+
+        verify(medicareConnections, never()).status(any());
+        verify(chatSocket).deliver(result.message());
+    }
+
+    @Test
+    @DisplayName("does not check the Medicare connection for a HEALTH card")
+    void share_health_skipsMedicareConnectionCheck() {
+        when(medicareConnections.status(PATIENT_RECORD)).thenReturn(new ConnectionStatus(false, "UNLINKED", null));
+
+        final MessageShareService.ShareResult result = service.share(patientUser, CAREGIVER_USER, "HEALTH");
+
+        verifyNoInteractions(medicareConnections);
         verify(chatSocket).deliver(result.message());
     }
 
@@ -197,6 +252,8 @@ class MessageShareServiceTest {
 
         assertRefused(() -> service.share(patientUser, CAREGIVER_USER, "MEDICARE"),
                 HttpStatus.FORBIDDEN, MessagingPolicy.NOT_ALLOWED);
+        // The 403 comes first: an unlinked receiver learns nothing about the patient's Medicare
+        verifyNoInteractions(medicareConnections);
     }
 
     @Test
