@@ -1,3 +1,4 @@
+import 'package:care_connect_app/l10n/app_localizations.dart';
 // Tests for WearablesScreen
 // (lib/features/integrations/presentation/pages/wearables_screen.dart).
 //
@@ -38,7 +39,12 @@ Widget _wrap(Widget child) {
   ));
   return ChangeNotifierProvider<UserProvider>.value(
     value: provider,
-    child: MaterialApp(home: child),
+    child: MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -53,56 +59,67 @@ Map<String, dynamic> _fitbitDevice({
   String name = 'My Fitbit',
   bool isActive = true,
   DateTime? connectedAt,
-}) => {
-  'id': id,
-  'platform': 'fitbit',
-  'name': name,
-  'connectedAt': (connectedAt ?? DateTime.now().subtract(const Duration(hours: 2))).toIso8601String(),
-  'permissions': ['steps', 'calories'],
-  'isActive': isActive,
-};
+}) =>
+    {
+      'id': id,
+      'platform': 'fitbit',
+      'name': name,
+      'connectedAt':
+          (connectedAt ?? DateTime.now().subtract(const Duration(hours: 2)))
+              .toIso8601String(),
+      'permissions': ['steps', 'calories'],
+      'isActive': isActive,
+    };
 
 /// A Google Fit device JSON map.
 Map<String, dynamic> _googleFitDevice({
   String id = 'gfit-1',
   String name = 'Google Fit',
   bool isActive = true,
-}) => {
-  'id': id,
-  'platform': 'google_fit',
-  'name': name,
-  'connectedAt': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
-  'permissions': ['steps', 'heart_rate', 'calories'],
-  'isActive': isActive,
-};
+}) =>
+    {
+      'id': id,
+      'platform': 'google_fit',
+      'name': name,
+      'connectedAt':
+          DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
+      'permissions': ['steps', 'heart_rate', 'calories'],
+      'isActive': isActive,
+    };
 
 /// An Apple Health device JSON map.
 Map<String, dynamic> _appleHealthDevice({
   String id = 'ahealth-1',
   String name = 'Apple Health',
   bool isActive = true,
-}) => {
-  'id': id,
-  'platform': 'apple_health',
-  'name': name,
-  'connectedAt': DateTime.now().subtract(const Duration(minutes: 10)).toIso8601String(),
-  'permissions': ['steps'],
-  'isActive': isActive,
-};
+}) =>
+    {
+      'id': id,
+      'platform': 'apple_health',
+      'name': name,
+      'connectedAt': DateTime.now()
+          .subtract(const Duration(minutes: 10))
+          .toIso8601String(),
+      'permissions': ['steps'],
+      'isActive': isActive,
+    };
 
 /// An unknown-platform device JSON map.
 Map<String, dynamic> _unknownDevice({
   String id = 'unknown-1',
   String name = 'Unknown Band',
   bool isActive = true,
-}) => {
-  'id': id,
-  'platform': 'some_other',
-  'name': name,
-  'connectedAt': DateTime.now().subtract(const Duration(minutes: 30)).toIso8601String(),
-  'permissions': [],
-  'isActive': isActive,
-};
+}) =>
+    {
+      'id': id,
+      'platform': 'some_other',
+      'name': name,
+      'connectedAt': DateTime.now()
+          .subtract(const Duration(minutes: 30))
+          .toIso8601String(),
+      'permissions': [],
+      'isActive': isActive,
+    };
 
 /// Sets a tall test viewport and registers the teardown to reset it.
 Future<void> _setTallViewport(WidgetTester tester) async {
@@ -357,7 +374,8 @@ void main() {
       expect(find.byIcon(Icons.add), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('shows fitness_center icon for Fitbit supported device', (tester) async {
+    testWidgets('shows fitness_center icon for Fitbit supported device',
+        (tester) async {
       await _setTallViewport(tester);
       await tester.pumpWidget(_wrap(const WearablesScreen()));
       await tester.pump();
@@ -366,7 +384,8 @@ void main() {
       expect(find.byIcon(Icons.fitness_center), findsOneWidget);
     });
 
-    testWidgets('shows ElevatedButton for Add Your First Device', (tester) async {
+    testWidgets('shows ElevatedButton for Add Your First Device',
+        (tester) async {
       await _setTallViewport(tester);
       await tester.pumpWidget(_wrap(const WearablesScreen()));
       await tester.pump();
@@ -398,7 +417,8 @@ void main() {
   // Connected devices state - with pre-seeded devices
   // ======================================================================
   group('WearablesScreen - connected devices state', () {
-    testWidgets('shows "Connected Devices" heading with one device', (tester) async {
+    testWidgets('shows "Connected Devices" heading with one device',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([_fitbitDevice()]),
       });
@@ -424,7 +444,8 @@ void main() {
       expect(find.text('1 device connected'), findsOneWidget);
     });
 
-    testWidgets('shows correct device count text for 2 devices', (tester) async {
+    testWidgets('shows correct device count text for 2 devices',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(),
@@ -468,7 +489,8 @@ void main() {
 
     testWidgets('shows device name on card', (tester) async {
       SharedPreferences.setMockInitialValues({
-        'connected_devices': _makeDevicesJson([_fitbitDevice(name: 'My Fitbit Watch')]),
+        'connected_devices':
+            _makeDevicesJson([_fitbitDevice(name: 'My Fitbit Watch')]),
       });
 
       await _setTallViewport(tester);
@@ -518,7 +540,8 @@ void main() {
       expect(find.text('2 permissions granted'), findsOneWidget);
     });
 
-    testWidgets('shows singular permission text for 1 permission', (tester) async {
+    testWidgets('shows singular permission text for 1 permission',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([_appleHealthDevice()]),
       });
@@ -563,7 +586,8 @@ void main() {
       expect(find.text('1 device connected'), findsOneWidget);
     });
 
-    testWidgets('shows fitness_center icon for fitbit device card', (tester) async {
+    testWidgets('shows fitness_center icon for fitbit device card',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([_fitbitDevice()]),
       });
@@ -576,7 +600,8 @@ void main() {
       expect(find.byIcon(Icons.fitness_center), findsOneWidget);
     });
 
-    testWidgets('shows watch icon for unknown platform device card', (tester) async {
+    testWidgets('shows watch icon for unknown platform device card',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([_unknownDevice()]),
       });
@@ -589,7 +614,8 @@ void main() {
       expect(find.byIcon(Icons.watch), findsOneWidget);
     });
 
-    testWidgets('shows RefreshIndicator in connected devices view', (tester) async {
+    testWidgets('shows RefreshIndicator in connected devices view',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([_fitbitDevice()]),
       });
@@ -602,7 +628,8 @@ void main() {
       expect(find.byType(RefreshIndicator), findsOneWidget);
     });
 
-    testWidgets('shows multiple device cards when multiple devices connected', (tester) async {
+    testWidgets('shows multiple device cards when multiple devices connected',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(name: 'Fitbit Charge'),
@@ -626,9 +653,11 @@ void main() {
   // Remove device dialog
   // ======================================================================
   group('WearablesScreen - remove device dialog', () {
-    testWidgets('tapping delete icon shows remove confirmation dialog', (tester) async {
+    testWidgets('tapping delete icon shows remove confirmation dialog',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
-        'connected_devices': _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
+        'connected_devices':
+            _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
       });
 
       await _setTallViewport(tester);
@@ -641,14 +670,17 @@ void main() {
       await tester.pump();
 
       expect(find.text('Remove Device'), findsOneWidget);
-      expect(find.text('Are you sure you want to remove My Fitbit?'), findsOneWidget);
+      expect(find.text('Are you sure you want to remove My Fitbit?'),
+          findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Remove'), findsOneWidget);
     });
 
-    testWidgets('tapping Cancel dismisses dialog and keeps device', (tester) async {
+    testWidgets('tapping Cancel dismisses dialog and keeps device',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
-        'connected_devices': _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
+        'connected_devices':
+            _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
       });
 
       await _setTallViewport(tester);
@@ -673,7 +705,8 @@ void main() {
 
     testWidgets('tapping Remove in dialog removes the device', (tester) async {
       SharedPreferences.setMockInitialValues({
-        'connected_devices': _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
+        'connected_devices':
+            _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
       });
 
       await _setTallViewport(tester);
@@ -696,7 +729,8 @@ void main() {
 
     testWidgets('removing last device shows empty state', (tester) async {
       SharedPreferences.setMockInitialValues({
-        'connected_devices': _makeDevicesJson([_fitbitDevice(name: 'Solo Fitbit')]),
+        'connected_devices':
+            _makeDevicesJson([_fitbitDevice(name: 'Solo Fitbit')]),
       });
 
       await _setTallViewport(tester);
@@ -717,7 +751,8 @@ void main() {
 
     testWidgets('removing last device shows snackbar', (tester) async {
       SharedPreferences.setMockInitialValues({
-        'connected_devices': _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
+        'connected_devices':
+            _makeDevicesJson([_fitbitDevice(name: 'My Fitbit')]),
       });
 
       await _setTallViewport(tester);
@@ -739,7 +774,8 @@ void main() {
   // _formatDate coverage via device cards
   // ======================================================================
   group('WearablesScreen - _formatDate', () {
-    testWidgets('shows "days ago" for device connected days ago', (tester) async {
+    testWidgets('shows "days ago" for device connected days ago',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(
@@ -760,7 +796,8 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(
-            connectedAt: DateTime.now().subtract(const Duration(days: 1, hours: 1)),
+            connectedAt:
+                DateTime.now().subtract(const Duration(days: 1, hours: 1)),
           ),
         ]),
       });
@@ -773,7 +810,8 @@ void main() {
       expect(find.textContaining('1 day ago'), findsOneWidget);
     });
 
-    testWidgets('shows "hours ago" for device connected hours ago', (tester) async {
+    testWidgets('shows "hours ago" for device connected hours ago',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(
@@ -794,7 +832,8 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(
-            connectedAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 1)),
+            connectedAt:
+                DateTime.now().subtract(const Duration(hours: 1, minutes: 1)),
           ),
         ]),
       });
@@ -807,7 +846,8 @@ void main() {
       expect(find.textContaining('1 hour ago'), findsOneWidget);
     });
 
-    testWidgets('shows "minutes ago" for device connected minutes ago', (tester) async {
+    testWidgets('shows "minutes ago" for device connected minutes ago',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(
@@ -828,7 +868,8 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(
-            connectedAt: DateTime.now().subtract(const Duration(minutes: 1, seconds: 10)),
+            connectedAt: DateTime.now()
+                .subtract(const Duration(minutes: 1, seconds: 10)),
           ),
         ]),
       });
@@ -841,7 +882,8 @@ void main() {
       expect(find.textContaining('1 minute ago'), findsOneWidget);
     });
 
-    testWidgets('shows "Just now" for device connected seconds ago', (tester) async {
+    testWidgets('shows "Just now" for device connected seconds ago',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(
@@ -863,7 +905,8 @@ void main() {
   // Invalid / corrupt SharedPreferences data
   // ======================================================================
   group('WearablesScreen - corrupt data handling', () {
-    testWidgets('handles corrupt JSON in connected_devices gracefully', (tester) async {
+    testWidgets('handles corrupt JSON in connected_devices gracefully',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': 'not valid json!',
       });
@@ -882,7 +925,8 @@ void main() {
   // No connected_devices key
   // ======================================================================
   group('WearablesScreen - no connected_devices key', () {
-    testWidgets('shows empty state when connected_devices key is missing', (tester) async {
+    testWidgets('shows empty state when connected_devices key is missing',
+        (tester) async {
       SharedPreferences.setMockInitialValues({});
 
       await _setTallViewport(tester);
@@ -955,7 +999,8 @@ void main() {
   // All devices inactive -> shows empty state
   // ======================================================================
   group('WearablesScreen - all inactive devices', () {
-    testWidgets('shows empty state when all devices are inactive', (tester) async {
+    testWidgets('shows empty state when all devices are inactive',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(isActive: false),
@@ -976,7 +1021,8 @@ void main() {
   // Permissions count text
   // ======================================================================
   group('WearablesScreen - permissions display', () {
-    testWidgets('shows "0 permissions granted" for device with no permissions', (tester) async {
+    testWidgets('shows "No permissions granted" for device with no permissions',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([_unknownDevice()]),
       });
@@ -986,10 +1032,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('0 permissions granted'), findsOneWidget);
+      expect(find.text('No permissions granted'), findsOneWidget);
     });
 
-    testWidgets('shows "3 permissions granted" for device with 3 permissions', (tester) async {
+    testWidgets('shows "3 permissions granted" for device with 3 permissions',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([_googleFitDevice()]),
       });
@@ -1007,7 +1054,8 @@ void main() {
   // Removing one of multiple devices keeps remaining
   // ======================================================================
   group('WearablesScreen - remove one of multiple devices', () {
-    testWidgets('removing one device keeps the other device visible', (tester) async {
+    testWidgets('removing one device keeps the other device visible',
+        (tester) async {
       SharedPreferences.setMockInitialValues({
         'connected_devices': _makeDevicesJson([
           _fitbitDevice(name: 'Keep Me'),
