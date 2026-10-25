@@ -474,12 +474,11 @@ void main() {
         expect(capturedCount, 8);
       });
 
-      // A new task with no series anchor and no start date picked yet: the
-      // count is measured from today, the last fallback. Accepting the
-      // picker's default (today) as the end date makes the series one day.
-      testWidgets('end date with no anchor or start date counts from today',
-          (tester) async {
+      testWidgets('end date with no anchor or start date counts from today', (
+        tester,
+      ) async {
         int? capturedCount;
+        DateTime? capturedEnd;
 
         await tester.pumpWidget(
           MaterialApp(
@@ -500,17 +499,21 @@ void main() {
                   bool? applyToSeries,
                 }) {
                   capturedCount = count;
+                  capturedEnd = endDate;
                 },
               ),
             ),
           ),
         );
 
+        // The picker opens on today; accepting it ends the series today.
         await tester.tap(find.text('Pick End Date'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('OK'));
         await tester.pumpAndSettle();
 
+        final now = DateTime.now();
+        expect(capturedEnd, DateTime(now.year, now.month, now.day));
         expect(capturedCount, 1);
       });
 
