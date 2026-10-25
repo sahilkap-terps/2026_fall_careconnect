@@ -25,6 +25,7 @@ class EhrDataService {
 
     final unifiedResources = await _tryFetchList(
       '/api/ehr/resources',
+      query: {'source': 'ALL'},
       headers: headers,
     );
 
@@ -85,11 +86,13 @@ class EhrDataService {
 
   Future<List<Map<String, dynamic>>?> _tryFetchList(
     String path, {
+    Map<String, dynamic>? query,
     required Map<String, String> headers,
   }) async {
     try {
       final values = await ApiClient.instance.getJson<List<dynamic>>(
         path,
+        query: query,
         headers: headers,
         parser: (json) => json is List ? json : <dynamic>[],
       );
