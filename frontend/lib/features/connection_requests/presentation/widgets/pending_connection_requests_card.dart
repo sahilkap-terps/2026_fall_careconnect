@@ -61,8 +61,8 @@ class _PendingConnectionRequestsCardState
         await widget.declineRequest(request.id);
       }
       if (!mounted) return;
-      setState(() => _requests =
-          _requests.where((r) => r.id != request.id).toList());
+      setState(() =>
+          _requests = _requests.where((r) => r.id != request.id).toList());
       messenger.showSnackBar(SnackBar(
         content: Text(accept
             ? l10n.connectionRequests_accepted(request.caregiverName)
@@ -72,8 +72,8 @@ class _PendingConnectionRequestsCardState
     } catch (e) {
       debugPrint('PendingConnectionRequestsCard: $e');
       if (!mounted) return;
-      messenger.showSnackBar(
-          SnackBar(content: Text(l10n.connectionRequests_error)));
+      messenger
+          .showSnackBar(SnackBar(content: Text(l10n.connectionRequests_error)));
     } finally {
       if (mounted) setState(() => _busy.remove(request.id));
     }
@@ -97,8 +97,8 @@ class _PendingConnectionRequestsCardState
                   style: theme.textTheme.titleMedium),
               for (final request in _requests) ...[
                 const SizedBox(height: 12),
-                Text(l10n.connectionRequests_wantsToConnect(
-                    request.caregiverName)),
+                Text(l10n
+                    .connectionRequests_wantsToConnect(request.caregiverName)),
                 if (request.message != null && request.message!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),

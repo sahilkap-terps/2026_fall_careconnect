@@ -37,7 +37,8 @@ class ConnectionRequestService {
     }
     final decoded = json.decode(response.body) as List<dynamic>;
     return decoded
-        .map((e) => ConnectionRequestSummary.fromJson(e as Map<String, dynamic>))
+        .map(
+            (e) => ConnectionRequestSummary.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
