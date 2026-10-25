@@ -207,4 +207,13 @@ class MessageShareServiceTest {
         assertRefused(() -> service.share(patientUser, CAREGIVER_USER, "MEDICARE"),
                 HttpStatus.FORBIDDEN, MessagingPolicy.NOT_ALLOWED);
     }
+
+    @Test
+    @DisplayName("Refuses a patient who is trying to send medicare data without being connected to medicare (409)")
+    void share_noMedicareData_conflict(){
+        when(messagingPolicy.canMessage(PATIENT_USER, CAREGIVER_USER)).thenReturn(false);
+
+        assertRefused(() -> service.share(patientUser, CAREGIVER_USER, "MEDICARE"),
+                HttpStatus.FORBIDDEN, MessagingPolicy.NOT_ALLOWED);
+    }
 }

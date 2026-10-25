@@ -9,6 +9,7 @@ import com.careconnect.repository.MessageRepository;
 import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.security.MedicareAccessPolicy;
+import com.careconnect.service.ehr.MedicareConnectionService;
 import com.careconnect.websocket.ChatMessageWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+
+import static com.careconnect.model.Message.ShareKind.MEDICARE;
 
 /**
  * A patient shares one kind of their data with a linked caregiver as a card in chat.
@@ -36,6 +39,7 @@ public class MessageShareService {
     static final String ONLY_PATIENT = "Only a patient can share their records.";
     static final String UNKNOWN_KIND = "Unknown share kind.";
     static final String NO_RECEIVER = "receiverId is required.";
+    static final String CONNECT_MEDICARE = "Connect Medicare before sharing it.";
 
     private final MessageRepository messages;
     private final PatientRepository patients;
@@ -44,6 +48,7 @@ public class MessageShareService {
     private final MessagingPolicy messagingPolicy;
     private final MedicareAccessPolicy medicareAccess;
     private final ChatMessageWebSocketHandler chatSocket;
+    private final MedicareConnectionService medicareConnectionService;
 
     /**
      * @param message         the saved card
@@ -62,6 +67,7 @@ public class MessageShareService {
      * @param kind       a {@link ShareKind} name, case-insensitive
      * @throws AppException 403 if the sender is not a patient or may not share with this receiver,
      *                      400 for a missing receiver or an unknown kind
+     *                      409 if the sender isn't connected to Medicare, but tries to send medicare data
      */
     @Transactional
     public ShareResult share(final User sender, final Long receiverId, final String kind) {
@@ -80,6 +86,13 @@ public class MessageShareService {
         if (!linkService.hasAccessToPatient(receiverId, sender.getId())
                 || !messagingPolicy.canMessage(sender.getId(), receiverId)) {
             throw new AppException(HttpStatus.FORBIDDEN, MessagingPolicy.NOT_ALLOWED);
+        }
+
+        // If the user is trying to share Medicare data without being connected to medicare, throw an error
+        // medicareConnectionService handles mock mode.
+        if(shareKind == MEDICARE &&
+                ! medicareConnectionService.status(patient.getId()).connected()){
+            throw new AppException(HttpStatus.CONFLICT, CONNECT_MEDICARE);
         }
 
         final Message card = new Message(sender.getId(), receiverId, fallbackText(shareKind));
