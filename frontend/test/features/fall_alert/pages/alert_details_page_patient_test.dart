@@ -1,3 +1,4 @@
+import 'package:care_connect_app/l10n/app_localizations.dart';
 // Tests for PatientFallPromptPage
 // (lib/features/fall_alert/pages/alert_details_page_patient.dart).
 //
@@ -37,6 +38,9 @@ import 'package:care_connect_app/features/fall_alert/pages/alert_details_page_pa
 /// has something to pop back to.
 Widget _withNav(Widget page) {
   return MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: Builder(
       builder: (ctx) => ElevatedButton(
         onPressed: () => Navigator.of(ctx).push(
@@ -57,7 +61,10 @@ void main() {
     testWidgets('renders Scaffold with "Fall Detected" title', (tester) async {
       // Verifies the widget builds and the AppBar title is correct.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(autoCallSeconds: 999),
         ),
       );
@@ -70,7 +77,10 @@ void main() {
     testWidgets('shows "Are You Okay?" header', (tester) async {
       // Verifies the primary question is rendered in the header card.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(autoCallSeconds: 999),
         ),
       );
@@ -82,7 +92,10 @@ void main() {
     testWidgets('shows "I\'m Okay" action button', (tester) async {
       // Verifies the acknowledge-okay button is present.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(autoCallSeconds: 999),
         ),
       );
@@ -94,7 +107,10 @@ void main() {
     testWidgets('shows "Call for Help" action button', (tester) async {
       // Verifies the escalation button is present.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(autoCallSeconds: 999),
         ),
       );
@@ -106,7 +122,10 @@ void main() {
     testWidgets('shows auto-call countdown text', (tester) async {
       // Verifies the countdown banner is rendered with the remaining seconds.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(autoCallSeconds: 999),
         ),
       );
@@ -118,7 +137,10 @@ void main() {
     testWidgets('shows warning body text about auto-call', (tester) async {
       // Verifies the explanatory text in the info banner is present.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(autoCallSeconds: 999),
         ),
       );
@@ -161,6 +183,9 @@ void main() {
       bool called = false;
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(
             autoCallSeconds: 999,
             onAcknowledgeOk: () async {
@@ -186,7 +211,10 @@ void main() {
     ) async {
       // Verifies _openEmergencySheet shows the modal sheet with expected content.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(autoCallSeconds: 999),
         ),
       );
@@ -203,7 +231,10 @@ void main() {
     ) async {
       // Verifies the default emergency number (911) is shown in the sheet.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(
             autoCallSeconds: 999,
             emergencyNumber: '911',
@@ -218,12 +249,16 @@ void main() {
       expect(find.textContaining('911'), findsWidgets);
     });
 
-    testWidgets('contact tile is disabled when no emergency phone is provided', (
+    testWidgets('contact tile is disabled when no emergency phone is provided',
+        (
       tester,
     ) async {
       // Verifies the emergency-contact tile is disabled (no phone on file).
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(
             autoCallSeconds: 999,
             // emergencyContactPhone intentionally omitted → disabled tile
@@ -243,7 +278,10 @@ void main() {
     ) async {
       // Verifies the emergency-contact tile shows the provided phone number.
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PatientFallPromptPage(
             autoCallSeconds: 999,
             emergencyContactName: 'John Doe',
