@@ -26,6 +26,7 @@ class DefaultAppHeader extends StatelessWidget implements PreferredSizeWidget {
             child: Center(
               child: Image.asset(
                 'assets/images/CareConnectLogo.png',
+                semanticLabel: 'CareConnect',
                 height: 32,
               ),
             ),

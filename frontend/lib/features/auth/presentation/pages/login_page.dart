@@ -124,6 +124,7 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(8),
                         child: Image.asset(
                           'assets/images/CareConnectLogo.png',
+                          semanticLabel: 'CareConnect',
                           width: isMobile ? 150 : 170,
                           height: isMobile ? 150 : 170,
                           fit: BoxFit.contain,
