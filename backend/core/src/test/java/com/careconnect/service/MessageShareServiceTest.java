@@ -10,7 +10,9 @@ import com.careconnect.repository.PatientRepository;
 import com.careconnect.repository.UserRepository;
 import com.careconnect.security.MedicareAccessPolicy;
 import com.careconnect.security.Role;
+import com.careconnect.service.ehr.MedicareConnectionService;
 import com.careconnect.websocket.ChatMessageWebSocketHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,16 +24,19 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+@Slf4j
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("MessageShareService: a patient shares data with a caregiver as a chat card")
@@ -57,16 +62,26 @@ class MessageShareServiceTest {
     private MedicareAccessPolicy medicareAccess;
     @Mock
     private ChatMessageWebSocketHandler chatSocket;
+    @Mock
+    private MedicareConnectionService medicareConnectionService;
+
     @InjectMocks
     private MessageShareService service;
 
     private User patientUser;
     private User caregiverUser;
+    private MedicareConnectionService.ConnectionStatus linked;
+    private MedicareConnectionService.ConnectionStatus unlinked;
 
     @BeforeEach
     void setUp() {
         patientUser = User.builder().id(PATIENT_USER).role(Role.PATIENT).email("p@test").password("x").status("ACTIVE").build();
         caregiverUser = User.builder().id(CAREGIVER_USER).role(Role.CAREGIVER).email("c@test").password("x").status("ACTIVE").build();
+
+        linked = new MedicareConnectionService.ConnectionStatus(true, "LINKED", LocalDateTime.now().plusDays(1));
+        unlinked = MedicareConnectionService.ConnectionStatus.unlinked();
+        when(medicareConnectionService.status(anyLong())).thenReturn(linked);
+
 
         final Patient patient = new Patient();
         patient.setId(PATIENT_RECORD);
@@ -211,9 +226,8 @@ class MessageShareServiceTest {
     @Test
     @DisplayName("Refuses a patient who is trying to send medicare data without being connected to medicare (409)")
     void share_noMedicareData_conflict(){
-        when(messagingPolicy.canMessage(PATIENT_USER, CAREGIVER_USER)).thenReturn(false);
-
+        when(medicareConnectionService.status(anyLong())).thenReturn(unlinked);
         assertRefused(() -> service.share(patientUser, CAREGIVER_USER, "MEDICARE"),
-                HttpStatus.FORBIDDEN, MessagingPolicy.NOT_ALLOWED);
+                HttpStatus.CONFLICT, MessageShareService.CONNECT_MEDICARE);
     }
 }
