@@ -20,6 +20,7 @@ import 'package:provider/provider.dart';
 
 import 'widgets/add_task_button.dart';
 import 'widgets/calendar_cell.dart';
+import 'widgets/calendar_keyboard_scroll_behavior.dart';
 import 'widgets/event_tile.dart';
 import 'widgets/filters_panel.dart';
 import 'widgets/import_ics_button.dart';
@@ -254,7 +255,7 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    return CalendarControllerProvider<Task>(
+    final calendar = CalendarControllerProvider<Task>(
       controller: _eventController,
       child: Scaffold(
         drawer: const CommonDrawer(currentRoute: '/calendar'),
@@ -716,6 +717,10 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
           ),
         ),
       ),
+    );
+    return ScrollConfiguration(
+      behavior: CalendarKeyboardScrollBehavior(label: t.calendarAssistant),
+      child: calendar,
     );
   }
 
