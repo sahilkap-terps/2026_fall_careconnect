@@ -30,7 +30,7 @@ class MessagingPolicyTest {
     private MessagingPolicy policy;
 
     @Test
-    @DisplayName("a caregiver can message a linked patient when the link allows messaging")
+    @DisplayName("TC-MSG-POL-001 a caregiver can message a linked patient when the link allows messaging")
     void caregiverToLinkedPatient_messagingOn_allowed() {
         when(linkService.hasAccessToPatient(CAREGIVER, PATIENT)).thenReturn(true);
         when(linkService.isPatientMessagingEnabled(CAREGIVER, PATIENT)).thenReturn(true);
@@ -39,7 +39,7 @@ class MessagingPolicyTest {
     }
 
     @Test
-    @DisplayName("a patient can message their caregiver when the link allows messaging")
+    @DisplayName("TC-MSG-POL-002 a patient can message their caregiver when the link allows messaging")
     void patientToCaregiver_messagingOn_allowed() {
         when(linkService.hasAccessToPatient(PATIENT, CAREGIVER)).thenReturn(false);
         when(linkService.hasAccessToPatient(CAREGIVER, PATIENT)).thenReturn(true);
@@ -49,7 +49,7 @@ class MessagingPolicyTest {
     }
 
     @Test
-    @DisplayName("messaging turned off on the link blocks both directions")
+    @DisplayName("TC-MSG-POL-003 messaging turned off on the link blocks both directions")
     void linkWithMessagingOff_blocksBothDirections() {
         when(linkService.hasAccessToPatient(CAREGIVER, PATIENT)).thenReturn(true);
         when(linkService.isPatientMessagingEnabled(CAREGIVER, PATIENT)).thenReturn(false);
@@ -59,7 +59,7 @@ class MessagingPolicyTest {
     }
 
     @Test
-    @DisplayName("being friends does not get round a link with messaging off")
+    @DisplayName("TC-MSG-POL-004 being friends does not get round a link with messaging off")
     void linkWithMessagingOff_friendshipIgnored() {
         when(linkService.hasAccessToPatient(CAREGIVER, PATIENT)).thenReturn(true);
         when(linkService.isPatientMessagingEnabled(CAREGIVER, PATIENT)).thenReturn(false);
@@ -69,7 +69,7 @@ class MessagingPolicyTest {
     }
 
     @Test
-    @DisplayName("two users with no link can message once a friend request between them was accepted")
+    @DisplayName("TC-MSG-POL-005 two users with no link can message once a friend request between them was accepted")
     void noLink_friends_allowed() {
         when(friendRequests.existsAcceptedBetween(PATIENT, STRANGER)).thenReturn(true);
 
@@ -77,7 +77,7 @@ class MessagingPolicyTest {
     }
 
     @Test
-    @DisplayName("two users with no link and no accepted friend request cannot message")
+    @DisplayName("TC-MSG-POL-006 two users with no link and no accepted friend request cannot message")
     void noLink_notFriends_refused() {
         when(friendRequests.existsAcceptedBetween(PATIENT, STRANGER)).thenReturn(false);
 
@@ -85,7 +85,7 @@ class MessagingPolicyTest {
     }
 
     @Test
-    @DisplayName("a missing sender or receiver, or messaging yourself, is refused without a lookup")
+    @DisplayName("TC-MSG-POL-007 a missing sender or receiver, or messaging yourself, is refused without a lookup")
     void nullOrSelf_refused() {
         assertThat(policy.canMessage(null, PATIENT)).isFalse();
         assertThat(policy.canMessage(PATIENT, null)).isFalse();

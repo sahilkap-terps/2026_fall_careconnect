@@ -29,7 +29,7 @@ class FriendRequestRepositoryTest {
     }
 
     @Test
-    @DisplayName("an accepted request makes the two users friends, whichever way it was sent")
+    @DisplayName("TC-MSG-POL-008 an accepted request makes the two users friends, whichever way it was sent")
     void accepted_eitherDirection_true() {
         request(1, 2, "accepted");
 
@@ -38,7 +38,7 @@ class FriendRequestRepositoryTest {
     }
 
     @Test
-    @DisplayName("a pending or rejected request does not")
+    @DisplayName("TC-MSG-POL-009 a pending or rejected request does not")
     void pendingOrRejected_false() {
         request(1, 2, "pending");
         request(3, 4, "rejected");
@@ -48,7 +48,7 @@ class FriendRequestRepositoryTest {
     }
 
     @Test
-    @DisplayName("an accepted request between other users does not")
+    @DisplayName("TC-MSG-POL-010 an accepted request between other users does not")
     void acceptedBetweenOthers_false() {
         request(1, 2, "accepted");
 

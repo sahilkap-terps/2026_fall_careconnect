@@ -40,7 +40,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link MessageController}. Test Plan IDs: TC-MSG-CTL-001…024 (inherited tests, labelled for
- * PR #386), TC-MSG-SEC-001, 002 (PR #386's sender check on sendAttachment) and TC-MSG-SEC-009…011 (PR #419: who may
+ * PR #386), TC-MSG-SEC-001, 002 (PR #386's sender check on sendAttachment) and TC-MSG-SEC-011…013 (PR #419: who may
  * message whom, and /send saving only sender, receiver and content). The sender check over HTTP, with the real
  * AuthorizationService and GlobalExceptionHandler, is TC-MSG-SEC-003…008 in {@link MessageControllerAttachmentHttpTest}.
  * Who may message whom is {@code MessagingPolicy}'s rule, tested in {@code MessagingPolicyTest}; here it is mocked.
@@ -114,7 +114,7 @@ class MessageControllerTest {
     }
 
     @Test
-    @DisplayName("TC-MSG-SEC-009 sendMessage returns 403 and saves nothing when the users may not message each other")
+    @DisplayName("TC-MSG-SEC-012 sendMessage returns 403 and saves nothing when the users may not message each other")
     void sendMessage_notAllowed_returnsForbidden() throws Exception {
         final Message inbound = new Message(SENDER_ID, RECEIVER_ID, "Hello!");
         when(securityUtil.resolveCurrentUser()).thenReturn(makeUser(SENDER_ID, "Alice", "alice@test.com"));
@@ -128,7 +128,7 @@ class MessageControllerTest {
     }
 
     @Test
-    @DisplayName("TC-MSG-SEC-010 sendMessage saves only sender, receiver and content, never a client-supplied id or attachment")
+    @DisplayName("TC-MSG-SEC-013 sendMessage saves only sender, receiver and content, never a client-supplied id or attachment")
     void sendMessage_ignoresClientIdAndAttachment() throws Exception {
         final Message inbound = new Message(SENDER_ID, RECEIVER_ID, "Hello!");
         final var idField = Message.class.getDeclaredField("id");
