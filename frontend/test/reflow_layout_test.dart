@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'mock_user_provider.dart';
+import 'package:care_connect_app/shared/widgets/dashboard_appheader_widget.dart';
 
 class _NoUser extends MockUserProvider {
   @override
@@ -76,6 +77,52 @@ void main() {
         ),
         home: child,
       );
+
+  for (final width in [320.0, 800.0]) {
+    for (final role in ['PATIENT', 'CAREGIVER']) {
+      testWidgets('dashboard header reflows at $width / 200% / $role',
+          (tester) async {
+        tester.view.physicalSize = Size(width, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        const bodyKey = ValueKey('dashboard-body');
+        Widget dashboard(double scale) => app(
+              Builder(
+                  builder: (context) => Scaffold(
+                        appBar: DashboardAppHeader(
+                          context: context,
+                          userName: 'Alexandra Montgomery',
+                          role: role,
+                        ),
+                        body: const SizedBox.expand(key: bodyKey),
+                      )),
+              scale,
+            );
+        await tester.pumpWidget(dashboard(1.2));
+        await tester.pumpAndSettle();
+        final originalHeight = tester.getSize(find.byType(AppBar)).height;
+
+        await tester.pumpWidget(dashboard(2));
+        await tester.pumpAndSettle();
+        final header = tester.getRect(find.byType(AppBar));
+        final body = tester.getRect(find.byKey(bodyKey));
+        expect(header.height, greaterThan(originalHeight));
+        expect(header.bottom, lessThanOrEqualTo(body.top));
+        for (final text in tester.widgetList<Text>(find.descendant(
+            of: find.byType(DashboardAppHeader),
+            matching: find.byType(Text)))) {
+          final finder = find.byWidget(text);
+          final paragraph = tester.renderObject<RenderParagraph>(finder);
+          expect(paragraph.didExceedMaxLines, isFalse);
+          final rect = tester.getRect(finder);
+          expect(rect.bottom, lessThanOrEqualTo(header.bottom));
+          expect(rect.right, lessThanOrEqualTo(width));
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 
   for (final height in [568.0, 256.0]) {
     for (final scale in [1.0, 2.0]) {
