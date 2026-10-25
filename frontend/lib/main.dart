@@ -121,6 +121,7 @@ class _CareConnectAppWithErrorBoundaryState
     ErrorWidget.builder = (FlutterErrorDetails details) {
       // You can customize this error UI as needed
       return MaterialApp(
+        title: 'Application Error | CareConnect',
         home: Scaffold(
           body: Center(
             child: Padding(

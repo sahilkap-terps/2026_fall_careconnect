@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/health_record.dart';
@@ -1050,7 +1051,8 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
               InkWell(
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute<void>(
+                    TitledMaterialPageRoute<void>(
+                      title: 'Health Event Details',
                       builder: (context) => HealthEventDetailsScreen(
                         record: r,
                       ),

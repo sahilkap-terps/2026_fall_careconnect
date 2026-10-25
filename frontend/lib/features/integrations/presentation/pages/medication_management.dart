@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -553,7 +554,8 @@ class _MedicationManagementScreenState
 
     Navigator.push(
       context,
-      MaterialPageRoute(
+      TitledMaterialPageRoute(
+        title: 'Barcode Scanner',
         builder: (context) => BarcodeScannerScreen(
           onCodeScanned: (String code) async {
             Navigator.pop(context);

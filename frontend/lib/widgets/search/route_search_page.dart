@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 // lib/features/search/pages/route_search_page.dart
 // Search UI that lists pages by role, supports routes and direct widget pushes.
 
@@ -108,7 +109,9 @@ class _RouteSearchPageState extends State<RouteSearchPage> {
         final builderArgs = {...pathVars, ...query};
         final widget = m.builder!(builderArgs);
         await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => widget),
+          TitledMaterialPageRoute(
+            title: m.title,
+            builder: (_) => widget),
         );
         break;
     }

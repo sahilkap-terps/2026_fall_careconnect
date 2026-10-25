@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 import 'package:care_connect_app/features/dashboard/caregiver-dashboard/pages/caregiver-dashboard.dart';
 import 'package:care_connect_app/features/fall_alert/pages/mock_alert_lab_page.dart';
 import 'package:care_connect_app/features/fall_alert/pages/alert_details_page_patient.dart';
@@ -292,8 +293,27 @@ OracleHealthLaunchPage buildOracleHealthLaunchPage({
 final GoRouter appRouter = _appRouterRef = GoRouter(
   initialLocation: '/',
   observers: [_telemetryGoRouterObserver],
+  errorBuilder: (context, state) => PageTitle(
+    title: 'Page Not Found',
+    child: Scaffold(
+      appBar: AppBar(title: const Text('Page Not Found')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SelectableText(state.error?.toString() ?? 'page not found'),
+            TextButton(
+              onPressed: () => context.go('/'),
+              child: const Text('Home'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
   routes: [
-    GoRoute(
+    TitledGoRoute(
+      title: 'Welcome',
       path: '/',
       // The Medicare connect flow may return to the plain base URL
       // (https://app/?medicare=connected). With HashUrlStrategy the router
@@ -313,8 +333,12 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
       builder: (_, __) => const WelcomePage(),
     ),
-    GoRoute(path: '/voice', builder: (_, __) => const VoiceCommandAI()),
-    GoRoute(
+    TitledGoRoute(
+        title: 'Voice Assistant',
+        path: '/voice',
+        builder: (_, __) => const VoiceCommandAI()),
+    TitledGoRoute(
+      title: 'Health Data',
       path: '/health-data',
       redirect: _requireSignIn,
       builder: (context, _) {
@@ -328,19 +352,22 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Confirm Date of Birth',
       path: '/dob-confirm',
       redirect: _requireSignIn,
       builder: (_, __) => const DobConfirmationScreen(),
     ),
     // CC-12: the patient's own passport. Not /passport/:token, which is the
     // public page a QR scan opens.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Medical Passport',
       path: '/medical-passport',
       redirect: _requireSignIn,
       builder: (_, __) => const MedicalPassportPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Connect Medicare',
       path: '/medicare-connect',
       redirect: (context, state) {
         // Store the ?medicare= result before the sign-in guard can send the
@@ -361,39 +388,55 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       ),
     ),
     // WBS 6.2.59: the patient chooses which caregivers see their Medicare data.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Medicare Sharing',
       path: '/medicare-sharing',
       redirect: _requireSignIn,
       builder: (_, __) => const MedicareSharingPage(),
     ),
     // CC-12: what a phone camera opens after scanning a patient's emergency
     // QR code. Public on purpose: whoever scans it at a scene has no account.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Emergency Medical Passport',
       path: '/passport/:token',
       builder: (_, state) =>
           PassportScanPage(token: state.pathParameters['token'] ?? ''),
     ),
     // CC-12: the patient's own emergency QR code (design screen 2).
-    GoRoute(
+    TitledGoRoute(
+      title: 'Emergency QR Code',
       path: '/emergency-qr',
       redirect: _requireSignIn,
       builder: (_, __) => const EmergencyQrPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'UI Preview',
       path: '/ui-preview',
       builder: (_, __) => const UiPreviewScreen(),
     ),
-    GoRoute(path: '/stml/brief', builder: (_, __) => const StmlBriefPage()),
-    GoRoute(
+    TitledGoRoute(
+        title: 'Daily Brief',
+        path: '/stml/brief',
+        builder: (_, __) => const StmlBriefPage()),
+    TitledGoRoute(
+        title: 'Summary Confirmations',
         path: '/summaries',
         builder: (_, __) => const SummaryConfirmationList()),
-    GoRoute(path: '/stml/recall', builder: (_, __) => const StmlRecallPage()),
-    GoRoute(path: '/stml/search', builder: (_, __) => const StmlSearchPage()),
-    GoRoute(
+    TitledGoRoute(
+        title: 'Memory Recall',
+        path: '/stml/recall',
+        builder: (_, __) => const StmlRecallPage()),
+    TitledGoRoute(
+        title: 'Memory Search',
+        path: '/stml/search',
+        builder: (_, __) => const StmlSearchPage()),
+    TitledGoRoute(
+      title: 'Select Patient for Memory Check-In',
       path: '/stml/checkin',
       builder: (_, __) => const StmlCheckInPatientSelectionPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Memory Check-In',
       path: '/stml/checkin/:patientId',
       builder: (_, state) {
         final patientId = int.tryParse(state.pathParameters['patientId'] ?? '');
@@ -405,9 +448,12 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return StmlCheckInPage(patientId: patientId);
       },
     ),
-    GoRoute(
-        path: '/symptoms', builder: (_, __) => const SymptomsAllergiesPage()),
-    GoRoute(
+    TitledGoRoute(
+        title: 'Symptoms and Allergies',
+        path: '/symptoms',
+        builder: (_, __) => const SymptomsAllergiesPage()),
+    TitledGoRoute(
+      title: 'Sign In',
       path: '/login',
       builder: (context, state) {
         final extra = state.extra;
@@ -422,20 +468,23 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return LoginPage(userType: userType);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'USPS Integration Test',
       path: '/usps-test',
       name: 'uspsTest',
       builder: (context, state) => const UspsTestScreen(),
     ),
 
-    GoRoute(
+    TitledGoRoute(
+      title: 'Sign Up',
       path: '/signup',
       builder: (context, state) {
         // We're now using a single caregiver sign up screen
         return const RegistrationPage();
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Dashboard',
       path: '/dashboard',
       builder: (context, state) {
         return FutureBuilder<UserData?>(
@@ -520,7 +569,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Patient Dashboard',
       path: '/dashboard/patient',
       builder: (context, state) {
         final userIdStr = state.uri.queryParameters['userId'];
@@ -556,7 +606,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     ),
 
     // Caregiver dashboard route (backend redirects)
-    GoRoute(
+    TitledGoRoute(
+      title: 'Caregiver Dashboard',
       path: '/dashboard/caregiver',
       builder: (context, state) {
         final caregiverIdStr = state.uri.queryParameters['caregiverId'];
@@ -597,7 +648,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
     ),
     // Direct caregiver dashboard route (for specific caregiver dashboard view)
-    GoRoute(
+    TitledGoRoute(
+      title: 'Caregiver Dashboard',
       path: '/caregiver-dashboard',
       builder: (context, state) {
         final caregiverIdStr = state.uri.queryParameters['caregiverId'];
@@ -627,7 +679,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
     ),
     // Add a redirect route for authenticated users going to root
-    GoRoute(
+    TitledGoRoute(
+      title: 'Home',
       path: '/home',
       redirect: (context, state) async {
         final isLoggedIn = await UserRoleStorageService.instance.isLoggedIn();
@@ -637,7 +690,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return '/';
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Caregiver Registration',
       path: '/register/caregiver',
       builder: (_, __) => const RegistrationPage(),
     ),
@@ -646,14 +700,19 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     //   path: '/register/caregiver/payment',
     //   builder: (_, __) => const CaregiverRegistrationFlowPage(),
     // ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Patient Registration',
       path: '/register/patient',
       builder: (_, __) => const PatientRegistrationPage(),
     ),
-    GoRoute(path: '/add-patient', builder: (_, __) => const AddPatientScreen()),
+    TitledGoRoute(
+        title: 'Add Patient',
+        path: '/add-patient',
+        builder: (_, __) => const AddPatientScreen()),
     // Patient-friendly invite route: resolves the care-circle link ID
     // automatically so users do not need manual URL construction.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Invite to Care Circle',
       path: '/care-circle/invite',
       name: 'inviteShareAuto',
       builder: (context, state) {
@@ -666,7 +725,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     ),
     // Issue #69: QR-based invite share for caregivers. Scoped to a care-circle
     // link id in the path; optional invitedEmail / inviteReason via `extra`.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Invite to Care Circle',
       path: '/care-circle/:linkId/invite',
       name: 'inviteShare',
       builder: (context, state) {
@@ -687,7 +747,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     // Issue #75: invite-aware entry screen. Opened by an invite link; shows the
     // "Who Invited Me?" context and hands off into registration/login, then
     // accepts the invite once the user is authenticated.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Accept Care Circle Invitation',
       path: '/invite/:token',
       name: 'inviteLanding',
       builder: (context, state) {
@@ -695,7 +756,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return InviteLandingScreen(token: token);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Social Feed',
       path: '/social-feed',
       builder: (context, state) {
         final userIdStr = state.uri.queryParameters['userId'];
@@ -703,7 +765,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return MainFeedScreen(userId: userId ?? 1);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Select Subscription Package',
       path: '/select-package',
       builder: (context, state) {
         final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -718,15 +781,18 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         }
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Reset Password',
       path: '/reset-password',
       builder: (_, __) => const ResetPasswordScreen(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Subscription Management',
       path: '/subscription',
       builder: (_, __) => const SubscriptionManagementPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Set Up Password',
       path: '/setup-password',
       builder: (context, state) {
         final token = state.uri.queryParameters['token'];
@@ -749,15 +815,18 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
     ),
     // FIX: Remove duplicate, keep only one gamification route
-    GoRoute(
+    TitledGoRoute(
+      title: 'Achievements',
       path: '/gamification',
       builder: (_, __) => const GamificationScreen(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Checkout',
       path: '/stripe-checkout',
       redirect: (_, __) => '/select-package',
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Billing',
       path: '/native-billing',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
@@ -767,7 +836,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return NativeBillingPage(tierId: tierId, tier: tier, userId: userId);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Select Subscription Tier',
       path: '/select-subscription-tier',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
@@ -777,7 +847,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
             email: email, userState: userState);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Payment',
       path: '/web-pay',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
@@ -795,7 +866,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Payment Successful',
       path: '/payment-success',
       builder: (context, state) {
         final sessionId = state.uri.queryParameters['session_id'];
@@ -809,7 +881,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Payment Cancelled',
       path: '/payment-cancel',
       builder: (context, state) {
         final isRegistration =
@@ -817,7 +890,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return PaymentCancelPage(isRegistration: isRegistration);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Patient Details',
       path: '/patient/:id',
       builder: (context, state) {
         final idStr = state.pathParameters['id'];
@@ -857,7 +931,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return PatientStatusPage(patientId: patientId);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Analytics',
       path: '/analytics',
       builder: (context, state) {
         final patientIdStr = state.uri.queryParameters['patientId'];
@@ -901,7 +976,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return AnalyticsPage(patientId: patientId);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Admin Analytics',
       path: '/admin/analytics',
       redirect: (context, state) async {
         final userData = await UserRoleStorageService.instance.getUserData();
@@ -915,7 +991,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
       builder: (_, __) => const AdminAnalyticsDashboardPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'User Management',
       path: '/admin/users',
       redirect: (context, state) async {
         final userData = await UserRoleStorageService.instance.getUserData();
@@ -929,7 +1006,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
       builder: (_, __) => const AdminUsersPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Completing Sign In',
       path: '/oauth/callback',
       builder: (context, state) {
         final token = state.uri.queryParameters['token'];
@@ -941,7 +1019,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     // Epic connect web return target (Epic Phase 0). The backend callback redirects the browser
     // here (?status=ok|error) when the connect flow was started on web with returnMode=web; mobile
     // uses the careconnect://epic/linked deep link instead. See EpicOAuthController.callback.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Epic Connection Status',
       path: '/epic-linked',
       builder: (context, state) => EpicLinkedReturnPage(
         status: state.uri.queryParameters['status'],
@@ -950,7 +1029,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     // Oracle Health EHR-initiated SMART launch entry point.
     // Parameter validation and authorization will be added separately.
 
-    GoRoute(
+    TitledGoRoute(
+      title: 'Connect Oracle Health',
       path: '/oracle-health-launch',
       builder: (_, state) => buildOracleHealthLaunchPage(
         browserUri: Uri.base,
@@ -959,14 +1039,16 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     ),
 
     // Oracle Health SMART-on-FHIR web authorization return.
-    GoRoute(
+    TitledGoRoute(
+      title: 'Oracle Health Connection Status',
       path: '/oracle-health-linked',
       builder: (context, state) => OracleHealthLinkedReturnPage(
         status: state.uri.queryParameters['status'],
       ),
     ),
     // Epic citation deep-link target: /epic/{resourceType}/{id}?patientId=... (Epic Phase 2).
-    GoRoute(
+    TitledGoRoute(
+      title: 'Health Record Details',
       path: '/epic/:type/:id',
       builder: (context, state) => EpicResourceDetailPage(
         resourceType: state.pathParameters['type'] ?? '',
@@ -974,30 +1056,39 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         patientId: state.uri.queryParameters['patientId'],
       ),
     ),
-    GoRoute(path: '/wearables', builder: (_, __) => const WearablesScreen()),
-    GoRoute(
+    TitledGoRoute(
+        title: 'Wearables',
+        path: '/wearables',
+        builder: (_, __) => const WearablesScreen()),
+    TitledGoRoute(
+      title: 'Home Monitoring',
       path: '/home-monitoring',
       builder: (_, __) => const HomeMonitoringScreen(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Smart Devices',
       path: '/smart-devices',
       builder: (_, __) => const SmartDevicesPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Medication Management',
       path: '/medication',
       builder: (_, __) => const MedicationManagementScreen(),
     ),
 
     // EVV Routes
-    GoRoute(
+    TitledGoRoute(
+      title: 'Electronic Visit Verification',
       path: '/evv',
       builder: (_, __) => const EvvDashboard(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Select Patient for Visit',
       path: '/evv/select-patient',
       builder: (_, __) => const PatientSelectionPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Start Visit',
       path: '/evv/start-visit',
       builder: (context, state) {
         final patientId =
@@ -1010,7 +1101,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return StartVisitPage(patientId: patientId);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Visit Check-In Location',
       path: '/evv/checkin-location',
       builder: (context, state) {
         final patientId =
@@ -1027,7 +1119,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Visit in Progress',
       path: '/evv/visit-progress',
       builder: (context, state) {
         final patientId =
@@ -1059,7 +1152,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Visit Check-Out Location',
       path: '/evv/checkout-location',
       builder: (context, state) {
         final patientId =
@@ -1100,7 +1194,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Complete Visit',
       path: '/evv/visit-complete',
       builder: (context, state) {
         final patientId =
@@ -1160,7 +1255,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Visit Completed',
       path: '/evv/visit-completed-success',
       builder: (context, state) {
         final patientId =
@@ -1223,35 +1319,48 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Review Visit Records',
       path: '/evv/review-records',
       builder: (_, __) => const EvvRecordReviewPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Visit History',
       path: '/evv/visit-history',
       builder: (_, __) => const EvvVisitHistoryPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Visit Corrections',
       path: '/evv/corrections',
       builder: (_, __) => const EvvCorrectionsPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Offline Visit Sync',
       path: '/evv/offline-sync',
       builder: (_, __) => const EvvOfflineSyncPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Profile Settings',
       path: '/profile-settings',
       builder: (_, __) => const ProfileSettingsPage(),
     ),
-    GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
-    GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
-    GoRoute(
+    TitledGoRoute(
+        title: 'Profile',
+        path: '/profile',
+        builder: (_, __) => const ProfilePage()),
+    TitledGoRoute(
+        title: 'Settings',
+        path: '/settings',
+        builder: (_, __) => const SettingsPage()),
+    TitledGoRoute(
+      title: 'File Management',
       path: '/file-management',
       builder: (context, state) => FileManagementPage(
         highlightFileId: state.uri.queryParameters['fileId'],
       ),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Call Summary',
       path: '/calls/:callId/summary',
       builder: (context, state) {
         final callId = state.pathParameters['callId'];
@@ -1263,7 +1372,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return PostCallTelemetrySummaryScreen(callId: callId);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Visit Summary',
       path: '/visits/:visitId/summary',
       builder: (context, state) {
         final visitId = state.pathParameters['visitId'] ?? '';
@@ -1279,7 +1389,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Mail Details',
       path: '/mail/:mailId',
       builder: (context, state) {
         final mailId = state.pathParameters['mailId'] ?? '';
@@ -1295,19 +1406,23 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         );
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'AI Configuration',
       path: '/ai-configuration',
       builder: (_, __) => const AIConfigurationPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Notetaker Configuration',
       path: '/notetaker-configuration',
       builder: (_, __) => const NotetakerConfigurationPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Notetaker Search',
       path: "/notetaker-search",
       builder: (_, __) => const NotetakerSearchPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Note Details',
       path: "/notetaker/detail/:noteId",
       builder: (context, state) {
         // Accept either a PatientNote via `extra` (list → detail) or
@@ -1317,7 +1432,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     ),
 
     // Team A Chime + Bedrock sentiment test route
-    GoRoute(
+    TitledGoRoute(
+      title: 'Video Call',
       path: '/video-call-chime',
       builder: (context, state) {
         final userId = state.uri.queryParameters['userId'] ?? '1';
@@ -1372,22 +1488,26 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     ),
 
     //Adding Calendar Assistant route
-    GoRoute(
+    TitledGoRoute(
+      title: 'Calendar',
       path: '/calendar',
       builder: (_, __) => const CalendarAssistantScreen(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Virtual Check-In',
       path: '/virtual-checkin',
       builder: (context, state) => const PatientVirtualCheckIn(),
     ),
     //Adding Alexa login route
-    GoRoute(
+    TitledGoRoute(
+      title: 'Alexa Sign In',
       path: '/alexaLogin',
       builder: (context, state) {
         return const AlexaLoginPage();
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Alexa Sign In',
       path: '/alexaLogin/:redirectUri/:state',
       builder: (context, state) {
         return AlexaLoginPage(
@@ -1398,16 +1518,19 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     ),
 
     //Adding Informed Delivery route
-    GoRoute(
+    TitledGoRoute(
+      title: 'Informed Delivery',
       path: '/informed-delivery',
       builder: (_, __) => const InformedDeliveryScreen(),
     ),
     // Handle routes from legacy menus
-    GoRoute(
+    TitledGoRoute(
+      title: 'Tasks',
       path: '/tasks',
       builder: (context, state) => const CaregiverPatientList(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Task Scheduling',
       path: '/taskscheduling',
       redirect: (context, state) async {
         final userData = await UserRoleStorageService.instance.getUserData();
@@ -1421,7 +1544,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return '/login';
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Messages and Calls',
       path: '/chatandcalls',
       redirect: (context, state) async {
         final isLoggedIn = await UserRoleStorageService.instance.isLoggedIn();
@@ -1431,7 +1555,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return '/login';
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'AI Assistant',
       path: '/aiassistant',
       redirect: (context, state) async {
         final isLoggedIn = await UserRoleStorageService.instance.isLoggedIn();
@@ -1441,13 +1566,15 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return '/login';
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Fitbit',
       path: '/fitbit',
       redirect: (context, state) {
         return '/wearables';
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Emergency Assistance',
       path: '/sos',
       redirect: (context, state) async {
         final isLoggedIn = await UserRoleStorageService.instance.isLoggedIn();
@@ -1457,7 +1584,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return '/login';
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Patient Tasks',
       path: '/patient-tasks',
       builder: (context, state) {
         final patientIdStr = state.uri.queryParameters['patientId'];
@@ -1468,7 +1596,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return TasksScreen(patientId: patientId, patientName: patientName);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Assign Task',
       path: '/assign-task',
       builder: (context, state) {
         final patientIdStr = state.uri.queryParameters['patientId'];
@@ -1478,7 +1607,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return AssignTaskScreen(patientId: patientId, patientName: patientName);
       },
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Custom Task Scheduling',
       path: '/custom-task-scheduling',
       builder: (context, state) {
         final patientIdStr = state.uri.queryParameters['patientId'];
@@ -1489,7 +1619,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
     ),
 
-    GoRoute(
+    TitledGoRoute(
+      title: 'Predefined Task Scheduling',
       path: '/pre-defined-task',
       builder: (context, state) {
         final patientIdStr = state.uri.queryParameters['patientId'];
@@ -1506,7 +1637,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
       },
     ),
 
-    GoRoute(
+    TitledGoRoute(
+      title: 'Invoice Assistant',
       path: '/invoice-assistant',
       redirect: (context, state) {
         // redirect only if the path is exactly /invoice-assistant
@@ -1516,25 +1648,29 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         return null;
       },
       routes: [
-        GoRoute(
+        TitledGoRoute(
+          title: 'Invoice Dashboard',
           path: 'dashboard',
           name: 'invoiceDashboard',
           builder: (context, state) =>
               const InvoiceTabbedPage(initialTabIndex: 0),
         ),
-        GoRoute(
+        TitledGoRoute(
+          title: 'Upload Invoice',
           path: 'upload',
           name: 'invoiceUpload',
           builder: (context, state) =>
               const InvoiceTabbedPage(initialTabIndex: 1),
         ),
-        GoRoute(
+        TitledGoRoute(
+          title: 'Invoice List',
           path: 'list',
           name: 'invoiceList',
           builder: (context, state) =>
               const InvoiceTabbedPage(initialTabIndex: 2),
           routes: [
-            GoRoute(
+            TitledGoRoute(
+              title: 'Filtered Invoice List',
               path: ':filter',
               name: 'invoiceListFiltered',
               builder: (context, state) => InvoiceTabbedPage(
@@ -1544,7 +1680,8 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
             ),
           ],
         ),
-        GoRoute(
+        TitledGoRoute(
+          title: 'Invoice Details',
           path: 'detail/:id',
           name: 'invoiceDetail',
           builder: (context, state) {
@@ -1554,19 +1691,25 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         ),
       ],
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Menu',
       path: 'menu',
       name: 'menupage',
       builder: (context, state) => const MenuPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Fall Alert Lab',
       path: '/alertpage',
       builder: (context, state) => const MockAlertLabPage(),
     ),
-    GoRoute(
+    TitledGoRoute(
+      title: 'Fall Alert',
       path: '/alertpage-patient',
       builder: (context, state) => const PatientFallPromptPage(),
     ),
-    GoRoute(path: '/search', builder: (_, __) => const RouteSearchPage()),
+    TitledGoRoute(
+        title: 'Search',
+        path: '/search',
+        builder: (_, __) => const RouteSearchPage()),
   ],
 );

@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 import 'dart:convert';
 
 import 'package:care_connect_app/features/auth/presentation/pages/sign_up_screen.dart';
@@ -701,7 +702,8 @@ class _CaregiverPatientList extends State<CaregiverPatientList> {
                                 }
 
                                 Navigator.of(context).push(
-                                  MaterialPageRoute(
+                                  TitledMaterialPageRoute(
+                                    title: 'Conversation',
                                     builder: (_) => ChatRoomScreen(
                                       peerUserId: peerUserId,
                                       peerName: patient.fullName,
@@ -711,7 +713,8 @@ class _CaregiverPatientList extends State<CaregiverPatientList> {
                               },
                               onTap: () {
                                 Navigator.of(context).push(
-                                  MaterialPageRoute(
+                                  TitledMaterialPageRoute(
+                                    title: 'Patient Details',
                                     builder: (_) => PatientDetailsPage(
                                       patientId: patient.id,
                                       isCaregiver: true, // or patient: patient

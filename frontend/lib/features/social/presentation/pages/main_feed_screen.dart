@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -113,7 +114,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
       onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
+            TitledMaterialPageRoute(
+              title: 'Post Comments',
               builder: (_) => CommentScreen(postId: post.id),
             ),
           );
@@ -165,7 +167,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                 onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
+                      TitledMaterialPageRoute(
+                        title: 'Post Comments',
                         builder: (_) => CommentScreen(postId: post.id),
                       ),
                     );
@@ -230,7 +233,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          TitledMaterialPageRoute(
+                            title: 'Search User',
                               builder: (_) =>
                                   SearchUserScreen()
                           ),
@@ -243,7 +247,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          TitledMaterialPageRoute(
+                            title: 'Friend Requests',
                               builder: (_) =>
                                   FriendRequestsScreen()
                           ),
@@ -256,7 +261,9 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => ChatInboxScreen()),
+                          TitledMaterialPageRoute(
+                            title: 'Chat Inbox',
+                            builder: (_) => ChatInboxScreen()),
                         );
                       },
                     ),
@@ -270,7 +277,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                       onPressed: () async {
                         final result = await Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          TitledMaterialPageRoute(
+                            title: 'New Post',
                               builder: (_) =>
                                   NewPostScreen()
                           ),

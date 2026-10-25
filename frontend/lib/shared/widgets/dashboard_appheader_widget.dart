@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/pages/settings_page.dart';
 import 'package:go_router/go_router.dart';
@@ -146,7 +147,8 @@ class DashboardAppHeader extends StatelessWidget
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
+                                  TitledMaterialPageRoute(
+                                    title: 'Settings',
                                     builder: (context) => const SettingsPage(),
                                   ),
                                 );

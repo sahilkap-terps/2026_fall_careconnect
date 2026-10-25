@@ -1,3 +1,4 @@
+import 'package:care_connect_app/widgets/page_title.dart';
 import 'package:care_connect_app/pages/settings_page.dart';
 import 'package:flutter/material.dart';
 
@@ -33,7 +34,9 @@ class DefaultAppHeader extends StatelessWidget implements PreferredSizeWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
+                TitledMaterialPageRoute(
+                  title: 'Settings',
+                  builder: (context) => const SettingsPage()),
               );
             },
             icon: Icon(
