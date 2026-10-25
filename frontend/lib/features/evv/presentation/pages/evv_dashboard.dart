@@ -73,6 +73,8 @@ class _EvvDashboardState extends State<EvvDashboard>
     final isSupervisor = user?.role == 'SUPERVISOR';
     final isCaregiver = user?.role == 'CAREGIVER';
     final isPatient = user?.role == 'PATIENT';
+    final compact = MediaQuery.sizeOf(context).width < 600 ||
+        MediaQuery.textScalerOf(context).scale(16) > 24;
 
     if (_isLoading) {
       return Scaffold(
@@ -163,7 +165,7 @@ class _EvvDashboardState extends State<EvvDashboard>
           ),
         ),
       ),
-      floatingActionButton: isCaregiver
+      floatingActionButton: isCaregiver && !compact
           ? FloatingActionButton.extended(
               onPressed: () {
                 Navigator.push(
@@ -476,7 +478,9 @@ class _MainActions extends StatelessWidget {
                     crossAxisCount: crossAxisCount,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    mainAxisExtent: 72,
+                    mainAxisExtent: 72 *
+                        (MediaQuery.textScalerOf(context).scale(16) / 16)
+                            .clamp(1.0, double.infinity),
                   ),
                   itemCount: actions.length,
                   itemBuilder: (context, i) {
@@ -528,11 +532,15 @@ class _ActionCard extends StatelessWidget {
             children: [
               Icon(spec.icon, color: scheme.primary),
               const SizedBox(width: 8),
-              Text(
-                spec.title,
-                style: TextStyle(
-                  color: scheme.onSurface,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  spec.title,
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -701,7 +709,7 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, color: scheme.primary),
         const SizedBox(width: 8),
-        Text(title, style: textStyle),
+        Expanded(child: Text(title, style: textStyle, softWrap: true)),
       ],
     );
   }

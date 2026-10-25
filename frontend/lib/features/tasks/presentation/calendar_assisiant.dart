@@ -21,6 +21,7 @@ import 'package:provider/provider.dart';
 import 'widgets/add_task_button.dart';
 import 'widgets/calendar_cell.dart';
 import 'widgets/calendar_keyboard_scroll_behavior.dart';
+import 'widgets/calendar_reflow_layout.dart';
 import 'widgets/event_tile.dart';
 import 'widgets/filters_panel.dart';
 import 'widgets/import_ics_button.dart';
@@ -271,7 +272,8 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
           ],
         ),
         body: SafeArea(
-          child: Column(
+          child: CalendarReflowLayout(
+            isMonth: _currentView == CalendarViewType.month,
             children: [
               // ------------------
               // Filters Row
@@ -369,8 +371,6 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
               // Calendar widget
               // ------------------
               Expanded(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 500),
                   child: Builder(
                     builder: (context) {
                       final theme = Theme.of(context);
@@ -382,6 +382,7 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
                             controller: _eventController,
                             initialMonth: _selectedDay,
                             cellAspectRatio: 1.5,
+                            useAvailableVerticalSpace: true,
                             cellBuilder:
                                 (date, events, isToday, isInMonth, isWeekend) {
                               return CalendarCell(
@@ -435,12 +436,16 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
                                   ),
 
                                   // Month title
-                                  Text(
-                                    formatted,
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      color: theme.colorScheme.onSurface,
-                                      fontWeight: FontWeight.bold,
+                                  Expanded(
+                                    child: Text(
+                                      formatted,
+                                      textAlign: TextAlign.center,
+                                      softWrap: true,
+                                      style:
+                                          theme.textTheme.titleMedium?.copyWith(
+                                        color: theme.colorScheme.onSurface,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
 
@@ -649,7 +654,6 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
                       }
                     },
                   ),
-                ),
               ),
 
               const SizedBox(height: 16),

@@ -1,4 +1,5 @@
 import 'package:care_connect_app/widgets/page_title.dart';
+import 'package:care_connect_app/widgets/wrapping_bottom_navigation_bar.dart';
 import 'dart:async';
 import 'dart:convert';
 import '../services/auth_token_manager.dart';
@@ -1256,6 +1257,18 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   /// Build the bottom navigation bar
   Widget _buildBottomNavigationBar() {
     final t = AppLocalizations.of(context)!;
+    if (MediaQuery.sizeOf(context).width < 600 ||
+        MediaQuery.textScalerOf(context).scale(12) > 18) {
+      return WrappingBottomNavigationBar(
+        labels: _navItems.map((item) => item.localizedLabel(t)).toList(),
+        icons: [for (var i = 0; i < _navItems.length; i++)
+          _buildNavIcon(_navItems[i], active: i == _selectedIndex)],
+        selectedIndex: _selectedIndex,
+        onSelected: _onItemTapped,
+        selectedColor: _config.primaryColor ?? Theme.of(context).primaryColor,
+        unselectedColor: Colors.grey[600]!,
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         boxShadow: [

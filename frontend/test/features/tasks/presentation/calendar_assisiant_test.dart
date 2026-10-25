@@ -311,13 +311,15 @@ void main() {
     for (var i = 0; i < 25; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
-      if (FocusManager.instance.primaryFocus?.debugLabel ==
-          'Calendar scroll region') {
+      if (FocusManager.instance.primaryFocus?.context
+              ?.findAncestorWidgetOfExactType<PageView>() != null) {
         break;
       }
     }
     expect(FocusManager.instance.primaryFocus?.debugLabel,
         'Calendar scroll region');
+    expect(FocusManager.instance.primaryFocus?.context
+        ?.findAncestorWidgetOfExactType<PageView>(), isNotNull);
     final before = controller.page!;
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();

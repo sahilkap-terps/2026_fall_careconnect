@@ -3,6 +3,7 @@ import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'calendar_reflow_layout.dart';
 
 /// =============================
 /// FiltersPanel Widget
@@ -91,8 +92,7 @@ class FiltersPanel extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: CalendarFilterLayout(
         children: [
           // -----------------------
           // Left side: filter card
