@@ -1,6 +1,6 @@
-
 import 'package:care_connect_app/features/tasks/presentation/widgets/filters_panel.dart';
 import 'package:care_connect_app/features/tasks/utils/task_type_manager.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,12 +15,12 @@ class _LocalUserSession extends UserSession {
   final bool isPatient = false;
 
   _LocalUserSession({this.isCaregiver = true})
-    : super(
-        id: 1,
-        email: 'test@test.com',
-        role: isCaregiver ? 'CAREGIVER' : 'PATIENT',
-        token: 'fake-token',
-      );
+      : super(
+          id: 1,
+          email: 'test@test.com',
+          role: isCaregiver ? 'CAREGIVER' : 'PATIENT',
+          token: 'fake-token',
+        );
 }
 
 /// Mock UserProvider that supplies a fake caregiver user.
@@ -48,6 +48,8 @@ Widget _wrap({bool expanded = false}) {
       ChangeNotifierProvider<TaskTypeManager>(create: (_) => TaskTypeManager()),
     ],
     child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: FiltersPanel(
           expanded: expanded,
@@ -95,7 +97,11 @@ void main() {
             create: (_) => _LocalUserProvider(),
           ),
         ],
-        child: MaterialApp(home: Scaffold(body: child)),
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: child),
+        ),
       );
     }
 
