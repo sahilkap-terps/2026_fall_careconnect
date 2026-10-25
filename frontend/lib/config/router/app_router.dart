@@ -572,6 +572,9 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
     TitledGoRoute(
       title: 'Patient Dashboard',
       path: '/dashboard/patient',
+      redirect: (_, state) => state.uri.queryParameters.containsKey('userId')
+          ? null
+          : state.uri.replace(path: '/dashboard').toString(),
       builder: (context, state) {
         final userIdStr = state.uri.queryParameters['userId'];
         final userId = userIdStr != null ? int.tryParse(userIdStr) : null;
