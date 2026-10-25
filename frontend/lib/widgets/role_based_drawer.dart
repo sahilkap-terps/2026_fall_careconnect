@@ -152,7 +152,8 @@ class RoleBasedDrawer extends StatelessWidget {
                 title: const Text('Health Data'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.pushNamed(context, '/health');
+                  // /health doesn't exist; the screen is /health-data.
+                  Navigator.pushNamed(context, '/health-data');
                 },
               ),
 

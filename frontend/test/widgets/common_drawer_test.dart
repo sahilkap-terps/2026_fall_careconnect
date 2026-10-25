@@ -129,6 +129,21 @@ void main() {
       expect(find.text('Calendar Assistant'), findsOneWidget);
     });
 
+    testWidgets('TC-HDATA-049: a patient sees Health Data in the menu',
+        (tester) async {
+      await openDrawer(tester);
+      expect(find.text('Health Data'), findsOneWidget);
+      expect(find.byIcon(Icons.health_and_safety), findsOneWidget);
+    });
+
+    for (final role in ['CAREGIVER', 'FAMILY_MEMBER', 'ADMIN']) {
+      testWidgets('TC-HDATA-050: a $role does not see Health Data in the menu',
+          (tester) async {
+        await openDrawer(tester, role: role);
+        expect(find.text('Health Data'), findsNothing);
+      });
+    }
+
     testWidgets('shows Medication Management', (tester) async {
       await openDrawer(tester);
       expect(find.text('Medication Management'), findsOneWidget);

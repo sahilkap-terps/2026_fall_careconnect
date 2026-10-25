@@ -26,7 +26,7 @@ Widget _wrap({UserProvider? provider, GlobalKey<NavigatorState>? navKey}) {
       '/patients': (_) => const Scaffold(body: Text('Patients Page')),
       '/patients/add': (_) => const Scaffold(body: Text('Add Patient Page')),
       '/tasks': (_) => const Scaffold(body: Text('Tasks Page')),
-      '/health': (_) => const Scaffold(body: Text('Health Page')),
+      '/health-data': (_) => const Scaffold(body: Text('Health Page')),
       '/analytics': (_) => const Scaffold(body: Text('Analytics Page')),
       '/messages': (_) => const Scaffold(body: Text('Messages Page')),
       '/settings': (_) => const Scaffold(body: Text('Settings Page')),
@@ -646,7 +646,7 @@ void main() {
       expect(find.text('Dashboard Page'), findsOneWidget);
     });
 
-    testWidgets('tapping Health Data navigates to /health', (tester) async {
+    testWidgets('tapping Health Data navigates to /health-data', (tester) async {
       final provider = _SessionUserProvider(
         name: 'Test',
         email: 't@t.com',

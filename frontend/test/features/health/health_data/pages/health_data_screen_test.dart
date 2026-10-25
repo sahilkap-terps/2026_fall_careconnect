@@ -268,6 +268,104 @@ void main() {
     expect(find.text('Connect Medicare Account'), findsOneWidget);
   });
 
+  // ---- Reaching the Medicare page without typing a URL (2026-10-25) ----
+
+  const manage = 'Manage Medicare connection';
+
+  testWidgets(
+      'TC-HDATA-045: with Medicare connected, "Manage Medicare connection" '
+      'opens the Medicare page, and coming back reloads the screen',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(1200, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    var reads = 0;
+    final adapter = fixtures();
+    ApiClient.instance.debugSetHttpClientAdapter(_CountingAdapter(adapter,
+        onVisits: () => reads++));
+    final router = GoRouter(initialLocation: '/health-data', routes: [
+      GoRoute(
+          path: '/health-data', builder: (_, __) => const HealthDataScreen()),
+      GoRoute(
+          path: '/medicare-connect',
+          builder: (context, _) => Scaffold(
+              body: TextButton(
+                  onPressed: () => context.pop(),
+                  child: const Text('Back from Medicare page')))),
+    ]);
+    await t.pumpWidget(MaterialApp.router(routerConfig: router));
+    await settle(t);
+    expect(find.widgetWithText(TextButton, manage), findsOneWidget);
+    final before = reads;
+    await t.tap(find.widgetWithText(TextButton, manage));
+    await t.pumpAndSettle();
+    expect(find.text('Back from Medicare page'), findsOneWidget);
+    await t.tap(find.text('Back from Medicare page'));
+    await t.pump();
+    // The reload's requests run on real time (Dio), outside the fake clock:
+    // give them up to ~2 s to go out before checking.
+    for (var i = 0; i < 40 && reads <= before; i++) {
+      await t.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await t.pump(const Duration(milliseconds: 50));
+    }
+    await settle(t);
+    expect(find.widgetWithText(TextButton, manage), findsOneWidget);
+    expect(reads, greaterThan(before));
+  });
+
+  for (final c in {
+    'not connected (404)': (404, '{}'),
+    'connection expired (409)': (
+      409,
+      '{"error":"ERR-MCR-05","message":"Your Medicare connection has expired. '
+          'Connect again to see current records.","connected":false}'
+    ),
+    'not allowed (403)': (403, '{}'),
+  }.entries) {
+    testWidgets(
+        'TC-HDATA-046: when Medicare is ${c.key}, "$manage" is not shown',
+        (t) async {
+      await pump(
+          t,
+          RouteAdapter(const {}, status: {
+            '/v1/api/medicare/visits': c.value.$1,
+            '/v1/api/medicare/coverage': c.value.$1,
+          }, statusBodies: {
+            '/v1/api/medicare/visits': c.value.$2,
+            '/v1/api/medicare/coverage': c.value.$2,
+          }));
+      await settle(t);
+      expect(find.text(manage), findsNothing);
+    });
+  }
+
+  for (final role in ['CAREGIVER', 'ADMIN', 'FAMILY_MEMBER']) {
+    testWidgets('TC-HDATA-047: a $role does not see "$manage"', (t) async {
+      ApiClient.instance.debugSetHttpClientAdapter(fixtures());
+      await t.pumpWidget(ChangeNotifierProvider<UserProvider>(
+        create: (_) => UserProvider()
+          ..setUser(UserSession(
+              id: 2, email: 'user@example.com', role: role, token: 't')),
+        child: const MaterialApp(home: HealthDataScreen()),
+      ));
+      await settle(t);
+      expect(find.text(manage), findsNothing);
+    });
+  }
+
+  testWidgets('TC-HDATA-048: "$manage" is a labelled button that meets the '
+      'tap-target size', (t) async {
+    await t.binding.setSurfaceSize(const Size(1200, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    await pump(t, fixtures());
+    await settle(t);
+    final button = find.widgetWithText(TextButton, manage);
+    expect(button, findsOneWidget);
+    final size = t.getSize(button);
+    expect(size.height, greaterThanOrEqualTo(48));
+    expect(size.width, greaterThanOrEqualTo(48));
+  });
+
   testWidgets(
       'TC-HDATA-023: when the other providers cannot be read the '
       'screen says so and still shows Medicare', (t) async {
@@ -1256,6 +1354,23 @@ class _DobAdapter implements HttpClientAdapter {
       });
     }
     return rest.fetch(options, requestStream, cancelFuture);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Counts Medicare visit reads, so a test can tell the screen reloaded.
+class _CountingAdapter implements HttpClientAdapter {
+  _CountingAdapter(this.inner, {required this.onVisits});
+  final HttpClientAdapter inner;
+  final void Function() onVisits;
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) {
+    if (options.path.contains('/v1/api/medicare/visits')) onVisits();
+    return inner.fetch(options, requestStream, cancelFuture);
   }
 
   @override
