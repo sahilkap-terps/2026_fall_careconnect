@@ -550,6 +550,10 @@ class _CaregiverPatientList extends State<CaregiverPatientList> {
         onRefresh: _loadPatients,
         child: Column(
           children: [
+            Semantics(
+              headingLevel: 1,
+              child: Text('Patient List', style: theme.textTheme.headlineSmall),
+            ),
             // Stats Cards
             Padding(
               padding: const EdgeInsets.all(16),

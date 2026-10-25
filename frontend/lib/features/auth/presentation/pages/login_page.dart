@@ -183,12 +183,15 @@ class _LoginPageState extends State<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Form title
-                        Text(
-                          t.login_signInTitle,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.primary,
+                        Semantics(
+                          headingLevel: 1,
+                          child: Text(
+                            t.login_signInTitle,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primary,
+                            ),
                           ),
                         ),
 

@@ -40,6 +40,7 @@ class DashboardAppHeader extends StatelessWidget
         '${twoDigits(time.month)}/${twoDigits(time.day)}/${time.year} ${twoDigits(time.hour)}:${twoDigits(time.minute)}';
 
     return AppBar(
+      excludeHeaderSemantics: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
       automaticallyImplyLeading: false,
@@ -220,12 +221,15 @@ class DashboardAppHeader extends StatelessWidget
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            "${t.appheaderwidget_welcomeBack} $userName",
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
+                          Semantics(
+                            headingLevel: 1,
+                            child: Text(
+                              "${t.appheaderwidget_welcomeBack} $userName",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.primary,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 3),
