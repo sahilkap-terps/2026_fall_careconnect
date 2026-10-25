@@ -642,6 +642,7 @@ class ChatMessageWebSocketHandlerTest {
     // ─── deliver() ────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("TC-MSG-WS-044 deliver pushes a share card to its connected receiver as message-received with shareKind and sharePatientId")
     void deliver_shareCard_pushesMessageReceivedWithShareFields() throws Exception {
         authenticate(recipientSession, "s2", "2");
         when(recipientSession.isOpen()).thenReturn(true);
@@ -661,6 +662,7 @@ class ChatMessageWebSocketHandlerTest {
     }
 
     @Test
+    @DisplayName("TC-MSG-WS-045 deliver pushes a plain message without share fields")
     void deliver_plainMessage_hasNoShareFields() throws Exception {
         authenticate(recipientSession, "s2", "2");
         when(recipientSession.isOpen()).thenReturn(true);
@@ -672,11 +674,13 @@ class ChatMessageWebSocketHandlerTest {
     }
 
     @Test
+    @DisplayName("TC-MSG-WS-046 deliver returns false when the receiver is not connected")
     void deliver_receiverNotConnected_returnsFalse() {
         assertThat(handler.deliver(savedMessage(13L, 1L, 2L, "hi"))).isFalse();
     }
 
     @Test
+    @DisplayName("TC-MSG-WS-047 deliver returns false when the receiver's session is closed")
     void deliver_receiverSessionClosed_returnsFalse() throws Exception {
         authenticate(recipientSession, "s2", "2");
         when(recipientSession.isOpen()).thenReturn(false);
@@ -685,6 +689,7 @@ class ChatMessageWebSocketHandlerTest {
     }
 
     @Test
+    @DisplayName("TC-MSG-WS-048 deliver returns false, without throwing, when the send fails")
     void deliver_sendThrows_returnsFalseWithoutPropagating() throws Exception {
         authenticate(recipientSession, "s2", "2");
         when(recipientSession.isOpen()).thenReturn(true);

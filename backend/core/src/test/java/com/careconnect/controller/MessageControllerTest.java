@@ -465,7 +465,7 @@ class MessageControllerTest {
     // ─── share ────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("share passes the signed-in user, never a client value, and returns the card and receiverCanView")
+    @DisplayName("TC-MSG-CTL-025 share passes the signed-in user, never a client value, and returns the card and receiverCanView")
     void share_returnsCardAndReceiverCanView() {
         final User patient = makeUser(SENDER_ID, "Pat", "pat@test.com");
         when(securityUtil.resolveCurrentUser()).thenReturn(patient);

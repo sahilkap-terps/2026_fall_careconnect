@@ -249,7 +249,7 @@ class MedicareAccessPolicyTest {
     class CanAccess {
 
         @Test
-        @DisplayName("yes for an assigned caregiver holding the patient's MEDICARE_VIEW consent")
+        @DisplayName("TC-MCR-AUTHZ-085 yes for an assigned caregiver holding the patient's MEDICARE_VIEW consent")
         void consentedCaregiver() {
             linked(PATIENT, true);
             consented(MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, true);
@@ -258,7 +258,7 @@ class MedicareAccessPolicyTest {
         }
 
         @Test
-        @DisplayName("no, without throwing, for an assigned caregiver without the consent")
+        @DisplayName("TC-MCR-AUTHZ-086 no, without throwing, for an assigned caregiver without the consent")
         void caregiverWithoutConsent() {
             linked(PATIENT, true);
             consented(MedicareAccessPolicy.SCOPE_MEDICARE_VIEW, false);
@@ -267,7 +267,7 @@ class MedicareAccessPolicyTest {
         }
 
         @Test
-        @DisplayName("no for no caller or no patient")
+        @DisplayName("TC-MCR-AUTHZ-087 no for no caller or no patient")
         void nothingNamed() {
             assertThat(policy.canAccess(null, PATIENT_RECORD)).isFalse();
             assertThat(policy.canAccess(user(PATIENT, Role.PATIENT), null)).isFalse();
