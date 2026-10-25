@@ -425,6 +425,7 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
                                 children: [
                                   // Left arrow (previous month)
                                   IconButton(
+                                    tooltip: 'Previous month',
                                     icon: const Icon(Icons.chevron_left),
                                     color: theme.colorScheme.onSurface,
                                     onPressed: () {
@@ -444,6 +445,7 @@ class _CalendarAssistantScreenState extends State<CalendarAssistantScreen> {
 
                                   // Right arrow (next month)
                                   IconButton(
+                                    tooltip: 'Next month',
                                     icon: const Icon(Icons.chevron_right),
                                     color: theme.colorScheme.onSurface,
                                     onPressed: () {

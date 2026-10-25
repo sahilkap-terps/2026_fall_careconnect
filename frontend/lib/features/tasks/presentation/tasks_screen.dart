@@ -94,6 +94,7 @@ class _TasksScreenState extends State<TasksScreen> {
       ),
       drawer: const CommonDrawer(currentRoute: '/patient-tasks'),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Add task',
         onPressed: () {
           context.go(
             '/assign-task?patientId=${widget.patientId}&patientName=${widget.patientName}',

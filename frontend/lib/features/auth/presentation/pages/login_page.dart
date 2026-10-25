@@ -297,6 +297,9 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 suffixIcon: IconButton(
+                                  tooltip: _showPassword
+                                      ? 'Hide password'
+                                      : 'Show password',
                                   icon: Icon(
                                     _showPassword
                                         ? Icons.visibility_off_outlined

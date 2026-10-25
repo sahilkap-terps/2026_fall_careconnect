@@ -131,6 +131,9 @@ class _SettingsPageState extends State<SettingsPage> {
       barrierDismissible: false,
       builder: (ctx) {
         return AlertDialog(
+          semanticLabel:
+              AppLocalizations.of(ctx)?.settings_telemetryDefaultDialogTitle ??
+                  'Telemetry is enabled',
           title: Text(
               AppLocalizations.of(ctx)?.settings_telemetryDefaultDialogTitle ??
                   'Telemetry is enabled'),
@@ -244,6 +247,9 @@ class _SettingsPageState extends State<SettingsPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        semanticLabel:
+            AppLocalizations.of(ctx)?.settings_telemetryOptOutDialogTitle ??
+                'Opt out of telemetry?',
         title: Text(
             AppLocalizations.of(ctx)?.settings_telemetryOptOutDialogTitle ??
                 'Opt out of telemetry?'),
@@ -275,6 +281,9 @@ class _SettingsPageState extends State<SettingsPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        semanticLabel:
+            AppLocalizations.of(ctx)?.settings_telemetryOptInDialogTitle ??
+                'Enable telemetry?',
         title: Text(
             AppLocalizations.of(ctx)?.settings_telemetryOptInDialogTitle ??
                 'Enable telemetry?'),
@@ -450,6 +459,7 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        semanticLabel: t.settingsClearCache,
         title: Text(t.settingsClearCache),
         content: Text(t.settingsClearCacheDesc),
         actions: [
@@ -479,6 +489,7 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        semanticLabel: t.settingsSignOut,
         title: Text(t.settingsSignOut),
         content: Text(t.settingsSignOutConfirmMessage),
         actions: [
@@ -509,6 +520,7 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        semanticLabel: t.settingsDeleteAccount,
         title: Text(
           t.settingsDeleteAccount,
           style: TextStyle(color: Theme.of(context).colorScheme.error),

@@ -22,6 +22,7 @@ class AppBarHelper {
       automaticallyImplyLeading: automaticallyImplyLeading,
       leading: leading ??
           IconButton(
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
               if (Navigator.canPop(context)) {

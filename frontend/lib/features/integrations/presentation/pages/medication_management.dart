@@ -220,6 +220,7 @@ class _MedicationManagementScreenState
               onPressed: _generateAndSharePDF,
             ),
           IconButton(
+            tooltip: 'Add medication',
             icon: const Icon(Icons.add),
             onPressed: () {
               _navigateToAddMedication();
@@ -384,6 +385,7 @@ class _MedicationManagementScreenState
                     tooltip: 'Share medication list',
                   ),
                   IconButton(
+                    tooltip: 'Add medication',
                     onPressed: _navigateToAddMedication,
                     icon: const Icon(Icons.add_circle,
                         color: Colors.indigo, size: 32),

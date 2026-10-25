@@ -106,6 +106,7 @@ class FiltersPanel extends StatelessWidget {
                   ListTile(
                     title: Text(t.calendarFilters),
                     trailing: IconButton(
+                      tooltip: expanded ? 'Collapse filters' : 'Expand filters',
                       icon: Icon(
                         expanded ? Icons.expand_more : Icons.chevron_right,
                       ),

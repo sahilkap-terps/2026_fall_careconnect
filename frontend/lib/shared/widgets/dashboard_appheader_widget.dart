@@ -144,6 +144,7 @@ class DashboardAppHeader extends StatelessWidget
                             height: 40,
                             child: IconButton(
                               padding: EdgeInsets.zero,
+                              tooltip: t.settings,
                               onPressed: () {
                                 Navigator.push(
                                   context,
