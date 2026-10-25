@@ -474,6 +474,49 @@ void main() {
         expect(capturedCount, 8);
       });
 
+      testWidgets('end date with no anchor or start date counts from today', (
+        tester,
+      ) async {
+        int? capturedCount;
+        DateTime? capturedEnd;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RecurrenceForm(
+                initialIsRecurring: true,
+                initialRecurrenceType: 'Daily',
+                initialInterval: 1,
+                onChanged: ({
+                  bool? isRecurring,
+                  String? recurrenceType,
+                  List<bool>? daysOfWeek,
+                  int? interval,
+                  int? count,
+                  DateTime? startDate,
+                  DateTime? endDate,
+                  int? dayOfMonth,
+                  bool? applyToSeries,
+                }) {
+                  capturedCount = count;
+                  capturedEnd = endDate;
+                },
+              ),
+            ),
+          ),
+        );
+
+        // The picker opens on today; accepting it ends the series today.
+        await tester.tap(find.text('Pick End Date'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        final now = DateTime.now();
+        expect(capturedEnd, DateTime(now.year, now.month, now.day));
+        expect(capturedCount, 1);
+      });
+
       testWidgets('shows validation when missing recurrence type', (
         tester,
       ) async {

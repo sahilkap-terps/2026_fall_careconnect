@@ -331,8 +331,9 @@ class _RecurrenceFormState extends State<RecurrenceForm> {
                       if (recurrenceType != null) {
                         final iv =
                             (interval == null || interval! < 1) ? 1 : interval!;
-                        final effectiveStart =
-                            widget.anchorStartDate ?? startDate ?? DateTime.now();
+                        final effectiveStart = widget.anchorStartDate ??
+                            startDate ??
+                            DateTime.now();
 
                         count = RecurrenceUtils.calculateCount(
                           startDate: TaskUtils.normalizeDate(effectiveStart),
