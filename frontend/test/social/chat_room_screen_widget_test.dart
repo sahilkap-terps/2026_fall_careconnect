@@ -20,7 +20,7 @@ void main() {
       ApiService.debugResetHttpClient();
     });
 
-    testWidgets('keeps pending across refresh and sends after reconnect', (
+    testWidgets('TC-MSG-CHAT-001 keeps pending across refresh and sends after reconnect', (
       tester,
     ) async {
       final userProvider = UserProvider()
@@ -92,7 +92,7 @@ void main() {
       expect(find.text('hello offline'), findsNothing);
     });
 
-    testWidgets('resends multiple pending messages in original order', (
+    testWidgets('TC-MSG-CHAT-002 resends multiple pending messages in original order', (
       tester,
     ) async {
       final userProvider = UserProvider()
@@ -167,7 +167,7 @@ void main() {
       expect(find.text('second offline'), findsNothing);
     });
 
-    testWidgets('does not resend queued-offline message after reconnect', (
+    testWidgets('TC-MSG-CHAT-003 does not resend queued-offline message after reconnect', (
       tester,
     ) async {
       final userProvider = UserProvider()
@@ -245,7 +245,7 @@ void main() {
     });
 
     testWidgets(
-        'drops a message the server refuses with 403 and does not retry it', (
+        'TC-MSG-CHAT-004 drops a message the server refuses with 403 and does not retry it', (
       tester,
     ) async {
       final userProvider = UserProvider()
@@ -308,6 +308,70 @@ void main() {
       await pumpChat('chat-refused-1');
       expect(mockClient.sendMessageCalls, 1);
       expect(find.text('not allowed'), findsNothing);
+    });
+
+    testWidgets(
+        'TC-MSG-CHAT-005 the refusal is a snack bar in a live region, so a screen reader announces it '
+        '(WCAG 4.1.3)', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final userProvider = UserProvider()
+        ..setUser(UserSession(
+          id: 7,
+          email: 'patient@test.careconnect.dev',
+          role: 'PATIENT',
+          token: 't',
+        ));
+
+      final mockClient = _QueueThenOnlineClient()
+        ..queueOffline = false
+        ..refuse = true;
+      ApiService.debugSetHttpClient(mockClient);
+
+      const MethodChannel secureStorageChannel =
+          MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        secureStorageChannel,
+        (MethodCall methodCall) async => null,
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<UserProvider>.value(
+          value: userProvider,
+          child: MaterialApp(
+            home: ChatRoomScreen(
+              peerUserId: 21,
+              peerName: 'Peer User',
+              enableAutoSync: false,
+              conversationLoader: ({
+                required int user1,
+                required int user2,
+              }) async =>
+                  <dynamic>[],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'not allowed');
+      await tester.tap(find.byIcon(Icons.send));
+      await tester.pumpAndSettle();
+
+      final refusal = find.text("You can't send messages to this user.");
+      expect(refusal, findsOneWidget);
+      expect(find.ancestor(of: refusal, matching: find.byType(SnackBar)),
+          findsOneWidget);
+      expect(
+        find.ancestor(
+          of: refusal,
+          matching: find.byWidgetPredicate(
+              (w) => w is Semantics && w.properties.liveRegion == true),
+        ),
+        findsWidgets,
+      );
+      semantics.dispose();
     });
   });
 }
