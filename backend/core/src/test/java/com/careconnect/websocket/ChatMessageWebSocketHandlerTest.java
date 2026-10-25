@@ -639,6 +639,65 @@ class ChatMessageWebSocketHandlerTest {
         // No exception; message is just not found
     }
 
+    // ─── deliver() ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("TC-MSG-WS-044 deliver pushes a share card to its connected receiver as message-received with shareKind and sharePatientId")
+    void deliver_shareCard_pushesMessageReceivedWithShareFields() throws Exception {
+        authenticate(recipientSession, "s2", "2");
+        when(recipientSession.isOpen()).thenReturn(true);
+        Message card = savedMessage(11L, 1L, 2L, "Shared my Medicare records");
+        card.setShareKind(Message.ShareKind.MEDICARE);
+        card.setSharePatientId(10L);
+
+        assertThat(handler.deliver(card)).isTrue();
+
+        Map<String, Object> payload = captureLastPayload(recipientSession);
+        assertThat(payload.get("type")).isEqualTo("message-received");
+        assertThat(payload.get("messageId")).isEqualTo(11);
+        assertThat(payload.get("senderId")).isEqualTo("1");
+        assertThat(payload.get("content")).isEqualTo("Shared my Medicare records");
+        assertThat(payload.get("shareKind")).isEqualTo("MEDICARE");
+        assertThat(payload.get("sharePatientId")).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("TC-MSG-WS-045 deliver pushes a plain message without share fields")
+    void deliver_plainMessage_hasNoShareFields() throws Exception {
+        authenticate(recipientSession, "s2", "2");
+        when(recipientSession.isOpen()).thenReturn(true);
+
+        assertThat(handler.deliver(savedMessage(12L, 1L, 2L, "hi"))).isTrue();
+
+        Map<String, Object> payload = captureLastPayload(recipientSession);
+        assertThat(payload).doesNotContainKeys("shareKind", "sharePatientId");
+    }
+
+    @Test
+    @DisplayName("TC-MSG-WS-046 deliver returns false when the receiver is not connected")
+    void deliver_receiverNotConnected_returnsFalse() {
+        assertThat(handler.deliver(savedMessage(13L, 1L, 2L, "hi"))).isFalse();
+    }
+
+    @Test
+    @DisplayName("TC-MSG-WS-047 deliver returns false when the receiver's session is closed")
+    void deliver_receiverSessionClosed_returnsFalse() throws Exception {
+        authenticate(recipientSession, "s2", "2");
+        when(recipientSession.isOpen()).thenReturn(false);
+
+        assertThat(handler.deliver(savedMessage(14L, 1L, 2L, "hi"))).isFalse();
+    }
+
+    @Test
+    @DisplayName("TC-MSG-WS-048 deliver returns false, without throwing, when the send fails")
+    void deliver_sendThrows_returnsFalseWithoutPropagating() throws Exception {
+        authenticate(recipientSession, "s2", "2");
+        when(recipientSession.isOpen()).thenReturn(true);
+        doThrow(new java.io.IOException("broken pipe")).when(recipientSession).sendMessage(any(TextMessage.class));
+
+        assertThat(handler.deliver(savedMessage(15L, 1L, 2L, "hi"))).isFalse();
+    }
+
     @Test
     @DisplayName("TC-MSG-SEC-015 a read receipt from a user who neither sent nor received the message is ignored: not marked read, sender not told")
     void readReceipt_fromSomeoneOtherThanTheReceiver_isIgnored() throws Exception {
