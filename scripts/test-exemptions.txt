@@ -24,3 +24,9 @@ frontend/lib/*/models/*
 backend/core/src/main/java/*/dto/*
 backend/core/src/main/java/*/model/*
 backend/core/src/main/java/*/repository/*
+
+# Constants only: `const` declarations produce no coverage lines, so these can
+# never pass the 80% gate. Their values are checked by
+# test/features/help/data/help_content_ids_test.dart and help_home_config_test.dart.
+frontend/lib/features/help/data/help_content_ids.dart
+frontend/lib/features/help/data/help_home_config.dart

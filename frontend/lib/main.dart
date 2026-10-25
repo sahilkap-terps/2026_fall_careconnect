@@ -19,6 +19,7 @@ import 'services/api_service.dart';
 import 'services/messaging_service.dart';
 import 'services/local_db/local_db_startup.dart';
 import 'config/theme/app_theme.dart';
+import 'config/theme/app_text_scaling.dart';
 import 'config/utils/responsive_utils.dart';
 import 'config/utils/web_utils.dart';
 import 'features/tasks/utils/task_type_manager.dart';
@@ -374,7 +375,7 @@ class _CareConnectAppState extends State<CareConnectApp>
                 ? mediaQuery.devicePixelRatio
                 : mediaQuery.devicePixelRatio.clamp(1.0, 3.0),
           ),
-          child: updatedChild,
+          child: AppTextScaling(router: appRouter, child: updatedChild),
         );
       },
     );

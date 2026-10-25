@@ -49,8 +49,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
     } else {
       fetchFeed();
       _pollingTimer = Timer.periodic(
-          const Duration(seconds: 10),
-              (_) => fetchFeed(silent: true),
+        const Duration(seconds: 10),
+        (_) => fetchFeed(silent: true),
       );
     }
   }
@@ -73,9 +73,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final newPosts = data
-            .map((json) => PostWithCommentCountDto.fromJson(json))
-            .toList();
+        final newPosts =
+            data.map((json) => PostWithCommentCountDto.fromJson(json)).toList();
 
         // Update only if different to prevent unnecessary rebuilds
         if (!listEquals(posts, newPosts)) {
@@ -199,17 +198,17 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-            onRefresh: fetchFeed,
-            child: posts.isEmpty
-                ? Center(child: Text(l10n.socialFeedEmpty))
-                : ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                return buildPostCard(posts[index]);
-              },
+              onRefresh: fetchFeed,
+              child: posts.isEmpty
+                  ? Center(child: Text(l10n.socialFeedEmpty))
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: posts.length,
+                      itemBuilder: (context, index) {
+                        return buildPostCard(posts[index]);
+                      },
+                    ),
             ),
-          ),
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
@@ -225,10 +224,8 @@ class _MainFeedScreenState extends State<MainFeedScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     IconButton(
-                      icon: const Icon(
-                          Icons.person_search,
-                          color: Colors.white
-                      ),
+                      icon:
+                          const Icon(Icons.person_search, color: Colors.white),
                       tooltip: l10n.socialFeedAddFriend,
                       onPressed: () {
                         Navigator.push(

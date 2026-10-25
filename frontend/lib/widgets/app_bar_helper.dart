@@ -42,11 +42,16 @@ class AppBarHelper {
           IconButton(
             tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             icon: const Icon(Icons.arrow_back),
+            // A name for screen readers (WCAG 4.1.2); "Back", localized.
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             onPressed: () {
               if (Navigator.canPop(context)) {
                 Navigator.of(context).pop();
               } else {
-                context.push('/dashboard');
+                // A directly opened page (for example voice navigation to
+                // Calendar) has no parent to pop. Make Home the navigation
+                // root so subsequent Back actions cannot reopen that page.
+                context.go('/dashboard');
               }
             },
           ),

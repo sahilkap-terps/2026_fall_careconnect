@@ -10,6 +10,7 @@ import '../services/notification_settings_service.dart';
 import '../providers/locale_provider.dart';
 import '../widgets/language/language_picker.dart';
 import '../widgets/epic_connect_tile.dart';
+import '../features/health/health_data/widgets/athena_connect_tile.dart';
 import '../widgets/oracle_health_connect_tile.dart';
 import '../utils/responsive_utils.dart';
 
@@ -573,8 +574,9 @@ class _SettingsPageState extends State<SettingsPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           // Router-safe back: Settings can be reached via context.go(...) (a
-          // replace, e.g. from the Epic return page), leaving nothing to pop.
-          // Navigator.pop() then asserts "popped the last page off the stack".
+          // replace, e.g. from the Epic return page, or Help's Back to
+          // Settings), leaving nothing to pop. Navigator.pop() then asserts
+          // "popped the last page off the stack".
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
@@ -739,6 +741,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   // Connected Services
                   _buildSectionHeader(context, 'Connected Services'),
                   const EpicConnectTile(),
+                  // athenahealth: the API accepts patients only.
+                  if (user?.role.toLowerCase() == 'patient')
+                    const AthenaConnectTile(compact: true),
                   const OracleHealthConnectTile(),
                   const SizedBox(height: 24),
 
@@ -835,6 +840,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
                   // General
                   _buildSectionHeader(context, t.settingsGeneral),
+
+                  _buildSettingsCard(
+                    context,
+                    icon: Icons.help_outline,
+                    title: t.settingsHelp,
+                    subtitle: t.settingsHelpDesc,
+                    onTap: () {
+                      Telemetry.event('button_tap', {
+                        'screen': 'settings',
+                        'target': 'help',
+                        'route': '/help',
+                      });
+                      context.push('/help');
+                    },
+                  ),
 
                   // User-Controlled Persistence Toggle (BNS 5)
                   _buildToggleCard(
