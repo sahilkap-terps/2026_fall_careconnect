@@ -15,6 +15,7 @@ import '../utils/responsive_utils.dart';
 
 import '../features/telemetry/telemetry.dart';
 import '../features/telemetry/telemetry_settings.dart';
+import '../features/health/health_data/widgets/athena_connect_tile.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -721,9 +722,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
                   const SizedBox(height: 24),
 
+                  const OracleHealthConnectTile(),
+
                   // Connected Services
                   _buildSectionHeader(context, 'Connected Services'),
                   const EpicConnectTile(),
+                  // athenahealth: the API accepts patients only.
+                  if (user?.role.toLowerCase() == 'patient')
+                    const AthenaConnectTile(compact: true),
                   const OracleHealthConnectTile(),
                   const SizedBox(height: 24),
 
