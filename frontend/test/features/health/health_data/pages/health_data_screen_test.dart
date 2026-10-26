@@ -869,7 +869,9 @@ void main() {
       await pump(t, athena500());
       await settle(t);
       expect(
-        find.text('We couldn\'t load records from Oracle Health. Showing what we could.'),
+        find.text(
+          'We couldn\'t load records from your other providers. Showing what we could.',
+        ),
         findsOneWidget,
       );
       expect(find.text('athenahealth isn\'t connected yet.'), findsNothing);

@@ -497,12 +497,7 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                 //     Icons.check_circle_outline,
                 //     'Connected to Oracle Health. Your Oracle Health records are included in your health history.',
                 //   ),
-                  _noticeBanner(
-                    Icons.cloud_off_outlined,
-                    'We couldn\'t load records from your connected health sources. Showing what we could.',
-                    warning: true,
-                  ),
-
+                  
                 // Normal connected status is now shown in Connected Sources.
                 // Keep this banner available in case UI/UX decides to restore it.
                 // else
