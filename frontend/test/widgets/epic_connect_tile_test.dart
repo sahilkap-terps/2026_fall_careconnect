@@ -23,4 +23,22 @@ void main() {
     expect(find.byType(ListTile), findsNothing);
     expect(find.text('Epic (MyChart)'), findsNothing);
   });
+  testWidgets('buttonOnly uses the theme primary color in dark mode',
+    (tester) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData.dark(),
+      home: const Scaffold(
+        body: EpicConnectTile(buttonOnly: true),
+      ),
+    ),
+  );
+
+  final button = tester.widget<TextButton>(find.byType(TextButton));
+
+  expect(
+    button.style?.foregroundColor?.resolve(<WidgetState>{}),
+    ThemeData.dark().colorScheme.primary,
+  );
+});
 }
