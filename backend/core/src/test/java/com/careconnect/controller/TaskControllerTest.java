@@ -1,6 +1,7 @@
 package com.careconnect.controller;
 
 import com.careconnect.dto.TaskDto;
+import com.careconnect.exception.AppException;
 import com.careconnect.model.Task;
 import com.careconnect.security.AuthorizationService;
 import com.careconnect.security.UnauthorizedException;
@@ -17,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
@@ -132,17 +134,18 @@ class TaskControllerTest {
 
         @Test
         @WithMockUser(username = "caregiver@test.com")
-        @DisplayName("Returns 404 when task is null")
+        @DisplayName("Returns 404 when task does not exist")
         void returns404WhenTaskMissing() throws Exception {
-            // Arrange
-            when(taskService.getTaskById(999L)).thenReturn(null);
+            // Match the real service: missing tasks throw a 404 exception.
+            when(taskService.getTaskById(999L))
+                .thenThrow(new AppException(HttpStatus.NOT_FOUND, "Task not found"));
 
-            // Act + Assert
-            mockMvc.perform(get("/v3/api/tasks/999"))
-                    .andExpect(status().isNotFound());
+            mockMvc.perform(get("/v3/api/tasks/999")).andExpect(status().isNotFound());
 
-            // Assert
             verify(taskService).getTaskById(999L);
+
+            // Lookup failed, so task authorization must never run.
+            verify(authorizationService, never()).requireTaskAccess(any(), any());
         }
     }
 
