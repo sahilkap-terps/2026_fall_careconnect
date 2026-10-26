@@ -44,11 +44,7 @@ public class TaskController {
         User currentUser = securityUtil.resolveCurrentUser();
         Task task = taskService.getTaskById(id);
         authorizationService.requireTaskAccess(currentUser, task);
-        if (task != null) {
-            return ResponseEntity.ok(toResponse(task));
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(toResponse(task));
     }
 
     @GetMapping("/patient/{patientId}")
