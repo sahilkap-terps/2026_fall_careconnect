@@ -40,7 +40,6 @@ class AppBarHelper {
       automaticallyImplyLeading: automaticallyImplyLeading,
       leading: leading ??
           IconButton(
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             icon: const Icon(Icons.arrow_back),
             // A name for screen readers (WCAG 4.1.2); "Back", localized.
             tooltip: MaterialLocalizations.of(context).backButtonTooltip,

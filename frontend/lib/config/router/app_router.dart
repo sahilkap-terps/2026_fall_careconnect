@@ -1380,6 +1380,29 @@ final GoRouter appRouter = _appRouterRef = GoRouter(
         title: 'Settings',
         path: '/settings',
         builder: (_, __) => const SettingsPage()),
+    GoRoute(
+      path: HelpRoutes.home,
+      builder: (_, __) => const HelpCenterPage(),
+      routes: [
+        GoRoute(
+          path: HelpRoutes.topicPattern,
+          builder: (_, state) => HelpTopicPage(
+            categoryId: state.pathParameters['categoryId']!,
+          ),
+        ),
+        GoRoute(
+          path: HelpRoutes.articlePattern,
+          builder: (_, state) => HelpArticlePage(
+            articleId: state.pathParameters['articleId']!,
+          ),
+        ),
+        GoRoute(
+          path: HelpRoutes.glossaryPattern,
+          builder: (_, state) =>
+              HelpGlossaryPage(termId: state.uri.queryParameters['term']),
+        ),
+      ],
+    ),
     TitledGoRoute(
       title: 'File Management',
       path: '/file-management',
