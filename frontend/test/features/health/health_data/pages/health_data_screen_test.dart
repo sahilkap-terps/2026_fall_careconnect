@@ -566,6 +566,83 @@ void main() {
 
     expect(find.text('Type 2 diabetes'), findsOneWidget);
   });
+  testWidgets(
+      'the same Medicare record from the unified and dedicated endpoints '
+      'is shown only once', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits':
+              envelope(fixtureResources('eob-bundle.json')),
+          '/v1/api/medicare/coverage': envelope(const []),
+          '/api/ehr/resources':
+              '[{"resourceType":"ExplanationOfBenefit",'
+                  '"resourceId":"medicare-duplicate","source":"MEDICARE",'
+                  '"category":"Claims","title":"Simple pneumonia and pleurisy with CC",'
+                  '"status":"Paid","occurredAt":"2026-04-18T00:00:00Z"}]',
+          '/api/athena/resources':
+              '{"items":[],"page":0,"size":100,"hasNext":false}',
+        }));
+
+    await settle(t);
+
+    expect(
+      find.text('Simple pneumonia and pleurisy with CC'),
+      findsOneWidget,
+    );
+  });
+  testWidgets(
+      'Medicare records from the unified endpoint remain when the '
+      'dedicated Medicare read fails', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    await pump(
+        t,
+        RouteAdapter({
+          '/api/ehr/resources':
+              '[{"resourceType":"ExplanationOfBenefit",'
+                  '"resourceId":"medicare-fallback","source":"MEDICARE",'
+                  '"category":"Claims","title":"Medicare fallback claim",'
+                  '"status":"Paid","occurredAt":"2026-04-18T00:00:00Z"}]',
+          '/api/athena/resources':
+              '{"items":[],"page":0,"size":100,"hasNext":false}',
+        }, status: {
+          '/v1/api/medicare/visits': 503,
+          '/v1/api/medicare/coverage': 503,
+        }));
+
+    await settle(t);
+
+    expect(find.text('Medicare fallback claim'), findsOneWidget);
+  });
+  testWidgets(
+      'athenahealth records from the unified endpoint remain when the '
+      'dedicated athenahealth read fails', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage': envelope(const []),
+          '/api/ehr/resources':
+              '[{"resourceType":"Condition","resourceId":"athena-fallback",'
+                  '"source":"ATHENAHEALTH","category":"Conditions",'
+                  '"title":"Athena fallback condition","status":"active",'
+                  '"occurredAt":"2026-07-01T00:00:00Z"}]',
+        }, status: {
+          '/api/athena/resources': 503,
+        }));
+
+    await settle(t);
+
+    expect(find.text('Athena fallback condition'), findsOneWidget);
+  });
 
   RouteAdapter athenaNotConnected() => RouteAdapter({
         '/v1/api/medicare/visits': envelope(const []),

@@ -195,13 +195,17 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       _epicConnected = epicConnected;
       _oracleHealthConnected = oracleHealthConnected;
       _choices = choices;
-      _ehr = athena.complete
-          ? (ehrRecords ?? [])
-              .where(
-                (record) => !record.sources.contains(RecordSource.athena),
-              )
-              .toList()
-          : (ehrRecords ?? []);
+      _ehr = (ehrRecords ?? []).where((record) {
+        if (athena.complete &&
+            record.sources.contains(RecordSource.athena)) {
+          return false;
+        }
+        if (medicare.complete &&
+            record.sources.contains(RecordSource.medicare)) {
+          return false;
+        }
+        return true;
+      }).toList();
       _ehrUnavailable = ehrRecords == null;
       _medicareProblem = medicare.problem;
       _medicare = medicare.records;
