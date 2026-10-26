@@ -45,6 +45,7 @@ class EhrResourceMapper {
       case 'AllergyIntolerance':
         return RecordType.allergy;
       case 'Encounter':
+      case 'Appointment':
         return RecordType.appointment;
       case 'Observation':
       case 'DiagnosticReport':
