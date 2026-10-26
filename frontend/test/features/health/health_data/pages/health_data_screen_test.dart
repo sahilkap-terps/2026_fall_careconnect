@@ -540,6 +540,32 @@ void main() {
     expect(find.text('Medicare Part A (Hospital Insurance)'), findsOneWidget);
     expect(find.textContaining('athenahealth isn'), findsNothing);
   });
+  testWidgets(
+      'the same athenahealth record from the unified and dedicated endpoints '
+      'is shown only once', (t) async {
+    await t.binding.setSurfaceSize(const Size(800, 3000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    const athenaRecord =
+        '{"resourceType":"Condition","resourceId":"ath-1",'
+        '"source":"ATHENAHEALTH","category":"Conditions",'
+        '"title":"Type 2 diabetes","status":"active",'
+        '"occurredAt":"2026-07-01T00:00:00Z"}';
+
+    await pump(
+        t,
+        RouteAdapter({
+          '/v1/api/medicare/visits': envelope(const []),
+          '/v1/api/medicare/coverage': envelope(const []),
+          '/api/ehr/resources': '[$athenaRecord]',
+          '/api/athena/resources':
+              '{"items":[$athenaRecord],"page":0,"size":100,"hasNext":false}',
+        }));
+
+    await settle(t);
+
+    expect(find.text('Type 2 diabetes'), findsOneWidget);
+  });
 
   RouteAdapter athenaNotConnected() => RouteAdapter({
         '/v1/api/medicare/visits': envelope(const []),

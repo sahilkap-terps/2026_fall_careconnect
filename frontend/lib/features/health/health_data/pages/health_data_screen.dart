@@ -195,7 +195,13 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       _epicConnected = epicConnected;
       _oracleHealthConnected = oracleHealthConnected;
       _choices = choices;
-      _ehr = ehrRecords ?? [];
+      _ehr = athena.complete
+          ? (ehrRecords ?? [])
+              .where(
+                (record) => !record.sources.contains(RecordSource.athena),
+              )
+              .toList()
+          : (ehrRecords ?? []);
       _ehrUnavailable = ehrRecords == null;
       _medicareProblem = medicare.problem;
       _medicare = medicare.records;
@@ -300,8 +306,7 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
       final decision = await showRecordConflictDialog(context, conflict,
           index: i + 1, total: pending.length);
       if (!mounted) return;
-      final versions =
-          conflict.versions.map(RecordConflict.versionId).toList();
+      final versions = conflict.versions.map(RecordConflict.versionId).toList();
       if (decision == null) {
         await _choiceStore.logDecision(RecordDecisionEntry(
             at: DateTime.now(), decision: 'deferred', versions: versions));
@@ -497,7 +502,7 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                 //     Icons.check_circle_outline,
                 //     'Connected to Oracle Health. Your Oracle Health records are included in your health history.',
                 //   ),
-                  
+
                 // Normal connected status is now shown in Connected Sources.
                 // Keep this banner available in case UI/UX decides to restore it.
                 // else
@@ -509,7 +514,7 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                   _noticeBanner(
                     Icons.cake_outlined,
                     'Your providers have different dates of birth for you. '
-                        'Please confirm which is correct.',
+                    'Please confirm which is correct.',
                     action: TextButton(
                       onPressed: _confirmDob,
                       style: TextButton.styleFrom(
@@ -708,7 +713,8 @@ class _HealthDataScreenState extends State<HealthDataScreen> {
                                                     .textTheme
                                                     .bodySmall
                                                     ?.copyWith(
-                                                      color: _mutedText(context),
+                                                      color:
+                                                          _mutedText(context),
                                                     ),
                                               ),
                                           ],
