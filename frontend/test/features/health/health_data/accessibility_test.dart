@@ -28,6 +28,7 @@ import 'package:care_connect_app/features/health/health_data/pages/health_event_
 import 'package:care_connect_app/features/health/health_data/services/athena_connect_service.dart';
 import 'package:care_connect_app/features/health/health_data/services/athena_data_service.dart';
 import 'package:care_connect_app/features/health/health_data/widgets/athena_connect_tile.dart';
+import 'package:care_connect_app/l10n/app_localizations.dart';
 import 'package:care_connect_app/services/api_client.dart';
 
 import 'health_data_test_support.dart';
