@@ -73,7 +73,9 @@ void main() {
     }
     await t.pumpAndSettle();
   }
-
+  Finder athenaConnect() => find.descendant(
+      of: find.byType(AthenaConnectTile),
+      matching: find.widgetWithText(TextButton, 'Connect'));
   testWidgets(
       'TC-HDATA-009: a loading state shows until Medicare answers '
       '(FR-MCR-27)', (t) async {
@@ -247,12 +249,12 @@ void main() {
             'again to see current records.'),
         findsOneWidget);
     expect(find.text(_errMcr03), findsNothing);
-    expect(find.text('Connect Medicare Account'), findsOneWidget);
+    expect(find.text('Connect'), findsWidgets);
   });
 
   testWidgets(
       'TC-HDATA-021: a patient with no Medicare link (404) is offered '
-      'Connect Medicare Account, not told Medicare could not be reached '
+      'Connect, not told Medicare could not be reached '
       '(AC-MCR-11-2)', (t) async {
     await pump(
         t,
@@ -265,7 +267,7 @@ void main() {
         }));
     await settle(t);
     expect(find.text(_errMcr03), findsNothing);
-    expect(find.text('Connect Medicare Account'), findsOneWidget);
+    expect(find.text('Connect'), findsWidgets);
   });
 
   testWidgets(
@@ -283,9 +285,11 @@ void main() {
         }));
     await settle(t);
     expect(
-        find.textContaining(
-            RegExp('couldn.t .*Oracle Health', caseSensitive: false)),
-        findsOneWidget);
+      find.text(
+        'We couldn\'t load records from your connected health sources. Showing what we could.',
+      ),
+      findsOneWidget,
+    );
     expect(
         find.text('Simple pneumonia and pleurisy with CC', skipOffstage: false),
         findsOneWidget);
@@ -551,8 +555,9 @@ void main() {
       'connect it', (t) async {
     await pump(t, athenaNotConnected());
     await settle(t);
-    expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
-    expect(find.text('Connect athenahealth'), findsOneWidget);
+    expect(find.text('Athena Health'), findsOneWidget);
+    expect(find.text('Not connected'), findsWidgets);
+    expect(athenaConnect(), findsOneWidget);
   });
 
   group('connecting athenahealth from the banner', () {
@@ -565,11 +570,12 @@ void main() {
       final adapter = athenaNotConnected();
       await pump(t, adapter);
       await settle(t);
-      await t.tap(find.text('Connect athenahealth'));
+      await t.ensureVisible(athenaConnect());
+      await t.pumpAndSettle();
+      await t.tap(athenaConnect());
       await t.pumpAndSettle();
       return adapter;
     }
-
     Finder dialogConnect() => find.descendant(
         of: find.byType(AlertDialog),
         matching: find.widgetWithText(FilledButton, 'Connect'));
@@ -586,7 +592,7 @@ void main() {
       await t.tap(find.text('Cancel'));
       await t.pumpAndSettle();
       expect(athena.connects, 0);
-      expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
+      expect(find.text('Athena Health'), findsOneWidget);
     });
 
     testWidgets('agreeing connects, says so in a snackbar and reloads the '
@@ -634,9 +640,10 @@ void main() {
       await settle(t);
       expect(find.textContaining('couldn\'t find an athenahealth chart'),
           findsOneWidget);
-      expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
-      expect(find.text('Connect athenahealth'), findsOneWidget);
-    });
+      expect(find.text('Athena Health'), findsOneWidget);
+      expect(find.text('Not connected'), findsWidgets);
+      expect(athenaConnect(), findsOneWidget);
+          });
   });
 
   RouteAdapter athenaOff() => RouteAdapter({
@@ -651,8 +658,9 @@ void main() {
       'still offered Connect, as with Epic', (t) async {
     await pump(t, athenaOff());
     await settle(t);
-    expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
-    expect(find.text('Connect athenahealth'), findsOneWidget);
+    expect(find.text('Athena Health'), findsOneWidget);
+    expect(find.text('Not connected'), findsWidgets);
+    expect(athenaConnect(), findsOneWidget);
   });
 
   for (final role in ['CAREGIVER', 'ADMIN', 'FAMILY_MEMBER']) {
@@ -670,8 +678,8 @@ void main() {
     });
   }
 
-  testWidgets('a signed-in patient sees the banner when athena is off',
-      (t) async {
+  testWidgets('a signed-in patient sees the Athena Connect action when athena is off',
+    (t) async {
     ApiClient.instance.debugSetHttpClientAdapter(athenaOff());
     await t.pumpWidget(ChangeNotifierProvider<UserProvider>(
       create: (_) => UserProvider()
@@ -680,7 +688,8 @@ void main() {
       child: const MaterialApp(home: HealthDataScreen()),
     ));
     await settle(t);
-    expect(find.text('Connect athenahealth'), findsOneWidget);
+    expect(find.text('Athena Health'), findsOneWidget);
+    expect(athenaConnect(), findsOneWidget);
   });
 
   RouteAdapter duplicates(String athenaStatus) => RouteAdapter({
@@ -842,13 +851,14 @@ void main() {
           '/api/athena/resources': '{"error":"An unexpected error occurred"}',
         });
 
-    testWidgets('a patient still gets the banner with Connect, not a '
+    testWidgets('a patient still gets the Connect action, not a '
         '"couldn\'t load" message', (t) async {
       AthenaConnectService.instance = _StatusAthena(null);
       await pump(t, athena500());
       await settle(t);
-      expect(find.text('athenahealth isn\'t connected yet.'), findsOneWidget);
-      expect(find.text('Connect athenahealth'), findsOneWidget);
+      expect(find.text('Athena Health'), findsOneWidget);
+      expect(find.text('Not connected'), findsWidgets);
+      expect(athenaConnect(), findsOneWidget);
       expect(find.textContaining('other providers'), findsNothing);
     });
 
@@ -866,15 +876,18 @@ void main() {
     });
   });
 
-  testWidgets('with no Patient Information the records use the full width '
-      '(no empty left column)', (t) async {
+  testWidgets('with no Patient Information the Connected Sources column '
+      'remains beside the records', (t) async {
     await t.binding.setSurfaceSize(const Size(1200, 3000));
     addTearDown(() => t.binding.setSurfaceSize(null));
     await pump(t, fixtures());
     await settle(t);
     expect(find.text('Patient Information'), findsNothing);
+    expect(find.text('Connected Sources'), findsOneWidget);
+
+    final sources = t.getRect(find.text('Connected Sources'));
     final history = t.getRect(find.text('Your health history'));
-    expect(history.left, lessThan(100));
+    expect(history.left, greaterThan(sources.right));
   });
 
   testWidgets('with Patient Information it sits in its own column beside the '
@@ -1138,7 +1151,7 @@ void main() {
       // athenahealth connects and now has a different version of Asthma.
       status.remove('/api/athena/resources');
       routes['/api/athena/resources'] = athenaPage('resolved');
-      await t.tap(find.text('Connect athenahealth'));
+      await t.tap(athenaConnect());
       await t.pumpAndSettle();
       await t.tap(find.byType(Checkbox));
       await t.pump();
