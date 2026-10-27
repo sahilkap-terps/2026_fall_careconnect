@@ -4,12 +4,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.careconnect.integration.cerner.CernerAllergyService.CernerSourceException;
+import com.careconnect.integration.cerner.CernerAllergyService.UnknownPatientException;
 import com.careconnect.model.ehr.EhrAppointmentRecord;
 import com.careconnect.model.ehr.EhrSourceIdentity;
 import java.time.Instant;
@@ -24,6 +26,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /** Spring MVC slice coverage for the provisional Patient and Appointment endpoints. */
 @WebMvcTest(
@@ -126,7 +129,63 @@ class CernerPatientAppointmentControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_DATE_RANGE"));
 
+        mvc.perform(get("/v1/api/cerner/patients/42/appointments")
+                        .param("start", "2026-10-01T00:00:00Z")
+                        .param("end", "2026-10-01T00:00:00Z"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_DATE_RANGE"));
+
         verify(service, never()).synchronizeAppointments(anyLong(), any(), any());
+    }
+
+    @Test
+    void unauthenticatedPatientAndAppointmentRequestsReturnUnauthorized() throws Exception {
+        final MockMvc controllerMvc = MockMvcBuilders
+                .standaloneSetup(new CernerPatientAppointmentController(service, policy))
+                .build();
+
+        controllerMvc.perform(get("/v1/api/cerner/patients/42"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.source").value("CARECONNECT"));
+
+        controllerMvc.perform(get("/v1/api/cerner/patients/42/appointments")
+                        .param("start", "2026-10-01T00:00:00Z")
+                        .param("end", "2026-11-01T00:00:00Z"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.source").value("CARECONNECT"));
+
+        verifyNoInteractions(service, policy);
+    }
+
+    @Test
+    @WithMockUser(username = "clinician")
+    void deniedAppointmentRequestReturnsForbiddenWithoutRetrieval() throws Exception {
+        when(policy.canView("clinician", 42L)).thenReturn(false);
+
+        mvc.perform(get("/v1/api/cerner/patients/42/appointments")
+                        .param("start", "2026-10-01T00:00:00Z")
+                        .param("end", "2026-11-01T00:00:00Z"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+
+        verify(service, never()).synchronizeAppointments(anyLong(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "clinician")
+    void unknownPatientReturnsNotFound() throws Exception {
+        when(policy.canView("clinician", 42L)).thenReturn(true);
+        when(service.synchronizeAppointments(anyLong(), any(), any()))
+                .thenThrow(new UnknownPatientException());
+
+        mvc.perform(get("/v1/api/cerner/patients/42/appointments")
+                        .param("start", "2026-10-01T00:00:00Z")
+                        .param("end", "2026-11-01T00:00:00Z"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PATIENT_NOT_FOUND"))
+                .andExpect(jsonPath("$.source").value("CARECONNECT"));
     }
 
     @Test
@@ -163,5 +222,23 @@ class CernerPatientAppointmentControllerTest {
                 .andExpect(jsonPath("$.code").value("CERNER_AUTH_EXPIRED"))
                 .andExpect(jsonPath("$.source").value("ORACLE_HEALTH"))
                 .andExpect(jsonPath("$.retryable").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "clinician")
+    void unavailableAppointmentSourceUsesRetryableErrorEnvelope() throws Exception {
+        when(policy.canView("clinician", 42L)).thenReturn(true);
+        when(service.synchronizeAppointments(anyLong(), any(), any()))
+                .thenThrow(new CernerSourceException("CERNER_UNAVAILABLE", true));
+
+        mvc.perform(get("/v1/api/cerner/patients/42/appointments")
+                        .param("start", "2026-10-01T00:00:00Z")
+                        .param("end", "2026-11-01T00:00:00Z"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("CERNER_UNAVAILABLE"))
+                .andExpect(jsonPath("$.source").value("ORACLE_HEALTH"))
+                .andExpect(jsonPath("$.retryable").value(true))
+                .andExpect(jsonPath("$.message").value("Cerner source error"))
+                .andExpect(jsonPath("$.stackTrace").doesNotExist());
     }
 }
