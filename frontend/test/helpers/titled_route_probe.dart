@@ -24,6 +24,11 @@ class TitledRouteProbe extends NavigatorObserver {
     await tester.tap(finder);
     // Pages opened after an awaited call (for example a form submit) are
     // pushed a few frames later.
+    // tester.idle() finishes pending work without drawing a frame, so the
+    // destination still isn't built; pump only if that isn't enough.
+    for (var i = 0; i < 10 && pushed.length == before; i++) {
+      await tester.idle();
+    }
     for (var i = 0; i < 20 && pushed.length == before; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
