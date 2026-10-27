@@ -11,12 +11,22 @@ class TitledRouteProbe extends NavigatorObserver {
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
       pushed.add(route);
 
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (newRoute != null) pushed.add(newRoute);
+  }
+
   /// Taps [finder] and returns the title of the TitledMaterialPageRoute it
   /// pushed, or null if it pushed something else. The pushed route is removed
   /// before the next frame, so the destination page is never built.
   Future<String?> tapAndReadTitle(WidgetTester tester, Finder finder) async {
     final before = pushed.length;
     await tester.tap(finder);
+    // Pages opened after an awaited call (for example a form submit) are
+    // pushed a few frames later.
+    for (var i = 0; i < 20 && pushed.length == before; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
     expect(pushed.length, greaterThan(before),
         reason: 'tapping should push a page');
     final route = pushed.last;
