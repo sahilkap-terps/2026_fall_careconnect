@@ -350,6 +350,15 @@ void main() {
       expect(route!.redirect, isNotNull);
     });
 
+    test('share-card patient route requires sign-in', () {
+      expect(allPaths, contains('/patients/:patientId'));
+      expect(
+        _findRoute(appRouter.configuration.routes, '/patients/:patientId')!
+            .redirect,
+        isNotNull,
+      );
+    });
+
     test('TC-ROUTE-014: caregiver-dashboard route exists', () {
       expect(allPaths, contains('/caregiver-dashboard'));
     });
