@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:care_connect_app/config/router/app_router.dart';
+import 'package:care_connect_app/features/health/caregiver-patient-list/page/patient_details_page.dart';
 import 'package:care_connect_app/providers/user_provider.dart';
 import 'package:care_connect_app/widgets/hybrid_video_call_widget.dart';
 import 'package:care_connect_app/features/invite_accept/services/pending_invite.dart';
@@ -24,6 +25,8 @@ import 'package:care_connect_app/services/user_role_storage_service.dart';
 import 'package:care_connect_app/services/pending_oracle_health_launch.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+
+import '../../mock_user_provider.dart';
 
 /// Recursively extracts all route paths from a GoRouter's route tree.
 List<String> _extractPaths(List<RouteBase> routes, [String prefix = '']) {
@@ -309,7 +312,9 @@ void main() {
       expect(redirectCount, greaterThan(0));
     });
 
-    test('TC-ROUTE-007: total route count (builders + redirects) covers all paths', () {
+    test(
+        'TC-ROUTE-007: total route count (builders + redirects) covers all paths',
+        () {
       final builderCount = _countBuilderRoutes(appRouter.configuration.routes);
       final redirectCount =
           _countRedirectRoutes(appRouter.configuration.routes);
@@ -344,9 +349,11 @@ void main() {
       expect(allPaths, contains('/dashboard/caregiver'));
     });
 
-    test('TC-ROUTE-180: medical passport route exists and requires sign-in', () {
+    test('TC-ROUTE-180: medical passport route exists and requires sign-in',
+        () {
       expect(allPaths, contains('/medical-passport'));
-      final route = _findRoute(appRouter.configuration.routes, '/medical-passport');
+      final route =
+          _findRoute(appRouter.configuration.routes, '/medical-passport');
       expect(route!.redirect, isNotNull);
     });
 
@@ -696,7 +703,8 @@ void main() {
       expect(topLevelRoutes.length, greaterThanOrEqualTo(40));
     });
 
-    test('TC-ROUTE-090: total routes including nested exceeds top-level count', () {
+    test('TC-ROUTE-090: total routes including nested exceeds top-level count',
+        () {
       final topLevelCount =
           appRouter.configuration.routes.whereType<GoRoute>().length;
       expect(allPaths.length, greaterThanOrEqualTo(topLevelCount));
@@ -704,7 +712,9 @@ void main() {
   });
 
   group('navigateToDashboard function', () {
-    test('TC-ROUTE-091: navigateToDashboard is accessible as a top-level function', () {
+    test(
+        'TC-ROUTE-091: navigateToDashboard is accessible as a top-level function',
+        () {
       // Just verify the function exists - it requires a BuildContext so
       // we can't call it directly in a unit test
       expect(navigateToDashboard, isA<Function>());
@@ -857,7 +867,8 @@ void main() {
       expect(route.routes.length, equals(4));
     });
 
-    test('TC-ROUTE-113: legacy redirect routes all have redirect functions', () {
+    test('TC-ROUTE-113: legacy redirect routes all have redirect functions',
+        () {
       final legacyPaths = [
         '/taskscheduling',
         '/chatandcalls',
@@ -889,7 +900,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-114: shows Invalid user ID when no userId query param',
+    testWidgets(
+        'TC-ROUTE-114: shows Invalid user ID when no userId query param',
         (tester) async {
       final router = _createFullTestRouter('/dashboard/patient');
       await _pumpRouterApp(tester, router);
@@ -899,7 +911,8 @@ void main() {
       expect(find.text('Go to Login'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-115: shows Invalid user ID when userId is 0', (tester) async {
+    testWidgets('TC-ROUTE-115: shows Invalid user ID when userId is 0',
+        (tester) async {
       final router = _createFullTestRouter('/dashboard/patient?userId=0');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -916,7 +929,8 @@ void main() {
       expect(find.text('Invalid user ID'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-117: shows Invalid user ID when userId is non-numeric',
+    testWidgets(
+        'TC-ROUTE-117: shows Invalid user ID when userId is non-numeric',
         (tester) async {
       final router = _createFullTestRouter('/dashboard/patient?userId=abc');
       await _pumpRouterApp(tester, router);
@@ -947,7 +961,8 @@ void main() {
       expect(find.text('Go to Login'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-119: shows Invalid caregiver ID when caregiverId is 0',
+    testWidgets(
+        'TC-ROUTE-119: shows Invalid caregiver ID when caregiverId is 0',
         (tester) async {
       final router =
           _createFullTestRouter('/dashboard/caregiver?caregiverId=0');
@@ -957,7 +972,8 @@ void main() {
       expect(find.text('Invalid caregiver ID'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-120: shows Invalid caregiver ID when caregiverId is negative',
+    testWidgets(
+        'TC-ROUTE-120: shows Invalid caregiver ID when caregiverId is negative',
         (tester) async {
       final router =
           _createFullTestRouter('/dashboard/caregiver?caregiverId=-5');
@@ -967,7 +983,8 @@ void main() {
       expect(find.text('Invalid caregiver ID'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-121: shows Invalid caregiver ID when caregiverId is non-numeric',
+    testWidgets(
+        'TC-ROUTE-121: shows Invalid caregiver ID when caregiverId is non-numeric',
         (tester) async {
       final router =
           _createFullTestRouter('/dashboard/caregiver?caregiverId=xyz');
@@ -999,7 +1016,8 @@ void main() {
       expect(find.text('Go to Login'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-123: shows Invalid caregiver ID when caregiverId is 0',
+    testWidgets(
+        'TC-ROUTE-123: shows Invalid caregiver ID when caregiverId is 0',
         (tester) async {
       final router =
           _createFullTestRouter('/caregiver-dashboard?caregiverId=0');
@@ -1021,7 +1039,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-124: shows error when no token provided', (tester) async {
+    testWidgets('TC-ROUTE-124: shows error when no token provided',
+        (tester) async {
       final router = _createFullTestRouter('/setup-password');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1029,7 +1048,8 @@ void main() {
       expect(find.text('Invalid or missing reset token'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-125: shows error when token is empty string', (tester) async {
+    testWidgets('TC-ROUTE-125: shows error when token is empty string',
+        (tester) async {
       final router = _createFullTestRouter('/setup-password?token=');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1049,7 +1069,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-126: shows Invalid patient ID when no patientId', (tester) async {
+    testWidgets('TC-ROUTE-126: shows Invalid patient ID when no patientId',
+        (tester) async {
       final router = _createFullTestRouter('/evv/start-visit');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1057,7 +1078,8 @@ void main() {
       expect(find.text('Invalid patient ID'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-127: shows Invalid patient ID when patientId is non-numeric',
+    testWidgets(
+        'TC-ROUTE-127: shows Invalid patient ID when patientId is non-numeric',
         (tester) async {
       final router = _createFullTestRouter('/evv/start-visit?patientId=abc');
       await _pumpRouterApp(tester, router);
@@ -1078,7 +1100,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-128: shows Invalid parameters when no params', (tester) async {
+    testWidgets('TC-ROUTE-128: shows Invalid parameters when no params',
+        (tester) async {
       final router = _createFullTestRouter('/evv/checkin-location');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1086,7 +1109,8 @@ void main() {
       expect(find.text('Invalid parameters'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-129: shows Invalid parameters when patientId but no serviceType',
+    testWidgets(
+        'TC-ROUTE-129: shows Invalid parameters when patientId but no serviceType',
         (tester) async {
       final router = _createFullTestRouter('/evv/checkin-location?patientId=1');
       await _pumpRouterApp(tester, router);
@@ -1095,7 +1119,8 @@ void main() {
       expect(find.text('Invalid parameters'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-130: shows Invalid parameters when serviceType but no patientId',
+    testWidgets(
+        'TC-ROUTE-130: shows Invalid parameters when serviceType but no patientId',
         (tester) async {
       final router =
           _createFullTestRouter('/evv/checkin-location?serviceType=nursing');
@@ -1117,7 +1142,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-131: shows Invalid parameters when no params', (tester) async {
+    testWidgets('TC-ROUTE-131: shows Invalid parameters when no params',
+        (tester) async {
       final router = _createFullTestRouter('/evv/visit-progress');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1125,7 +1151,8 @@ void main() {
       expect(find.text('Invalid parameters'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-132: shows Invalid parameters when missing locationType',
+    testWidgets(
+        'TC-ROUTE-132: shows Invalid parameters when missing locationType',
         (tester) async {
       final router = _createFullTestRouter(
           '/evv/visit-progress?patientId=1&serviceType=nursing');
@@ -1147,7 +1174,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-133: shows Invalid parameters when no params', (tester) async {
+    testWidgets('TC-ROUTE-133: shows Invalid parameters when no params',
+        (tester) async {
       final router = _createFullTestRouter('/evv/checkout-location');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1155,7 +1183,8 @@ void main() {
       expect(find.text('Invalid parameters'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-134: shows Invalid parameters when missing locationType',
+    testWidgets(
+        'TC-ROUTE-134: shows Invalid parameters when missing locationType',
         (tester) async {
       final router = _createFullTestRouter(
           '/evv/checkout-location?patientId=1&serviceType=nursing');
@@ -1177,7 +1206,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-135: shows Invalid parameters when no params', (tester) async {
+    testWidgets('TC-ROUTE-135: shows Invalid parameters when no params',
+        (tester) async {
       final router = _createFullTestRouter('/evv/visit-complete');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1185,7 +1215,8 @@ void main() {
       expect(find.text('Invalid parameters'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-136: shows Invalid parameters when missing checkoutLocationType',
+    testWidgets(
+        'TC-ROUTE-136: shows Invalid parameters when missing checkoutLocationType',
         (tester) async {
       final router = _createFullTestRouter(
           '/evv/visit-complete?patientId=1&serviceType=nursing&checkinLocationType=home');
@@ -1207,7 +1238,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-137: shows Invalid parameters when no params', (tester) async {
+    testWidgets('TC-ROUTE-137: shows Invalid parameters when no params',
+        (tester) async {
       final router = _createFullTestRouter('/evv/visit-completed-success');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1215,7 +1247,8 @@ void main() {
       expect(find.text('Invalid parameters'), findsOneWidget);
     });
 
-    testWidgets('TC-ROUTE-138: shows Invalid parameters when missing checkoutLocationType',
+    testWidgets(
+        'TC-ROUTE-138: shows Invalid parameters when missing checkoutLocationType',
         (tester) async {
       final router = _createFullTestRouter(
           '/evv/visit-completed-success?patientId=1&serviceType=nursing&checkinLocationType=home');
@@ -1237,7 +1270,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-139: shows error when no extra data provided', (tester) async {
+    testWidgets('TC-ROUTE-139: shows error when no extra data provided',
+        (tester) async {
       final router = _createFullTestRouter('/notetaker/detail/123');
       await _pumpRouterApp(tester, router);
       await tester.pumpAndSettle();
@@ -1260,7 +1294,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-140: shows loading indicator initially', (tester) async {
+    testWidgets('TC-ROUTE-140: shows loading indicator initially',
+        (tester) async {
       final router = _createFullTestRouter('/dashboard');
       await _pumpRouterApp(tester, router);
       // Don't pumpAndSettle - we want to see the loading state
@@ -1286,7 +1321,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-141: renders with no query params (isRegistration = false)',
+    testWidgets(
+        'TC-ROUTE-141: renders with no query params (isRegistration = false)',
         (tester) async {
       final router = _createFullTestRouter('/payment-cancel');
       await _pumpRouterApp(tester, router);
@@ -1295,7 +1331,8 @@ void main() {
       expect(find.byType(Scaffold), findsWidgets);
     });
 
-    testWidgets('TC-ROUTE-142: renders with registration=complete', (tester) async {
+    testWidgets('TC-ROUTE-142: renders with registration=complete',
+        (tester) async {
       final router =
           _createFullTestRouter('/payment-cancel?registration=complete');
       await _pumpRouterApp(tester, router);
@@ -1316,7 +1353,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-143: defaults userId to 1 when no query param', (tester) async {
+    testWidgets('TC-ROUTE-143: defaults userId to 1 when no query param',
+        (tester) async {
       final router = _createFullTestRouter('/social-feed');
       await _pumpRouterApp(tester, router);
       await tester.pump();
@@ -1333,7 +1371,8 @@ void main() {
       expect(find.byType(Scaffold), findsWidgets);
     });
 
-    testWidgets('TC-ROUTE-145: defaults to 1 when userId is non-numeric', (tester) async {
+    testWidgets('TC-ROUTE-145: defaults to 1 when userId is non-numeric',
+        (tester) async {
       final router = _createFullTestRouter('/social-feed?userId=notanumber');
       await _pumpRouterApp(tester, router);
       await tester.pump();
@@ -1353,7 +1392,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-146: shows Redirecting when no patientId', (tester) async {
+    testWidgets('TC-ROUTE-146: shows Redirecting when no patientId',
+        (tester) async {
       final router = _createFullTestRouter('/analytics');
       await _pumpRouterApp(tester, router);
       await tester.pump();
@@ -1382,7 +1422,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-148: renders video call widget with no params', (tester) async {
+    testWidgets('TC-ROUTE-148: renders video call widget with no params',
+        (tester) async {
       final router = _createFullTestRouter('/video-call-chime');
       await _pumpRouterApp(tester, router);
       await tester.pump();
@@ -1390,7 +1431,8 @@ void main() {
       expect(find.byType(Scaffold), findsWidgets);
     });
 
-    testWidgets('TC-ROUTE-149: renders video call widget with userId and callId',
+    testWidgets(
+        'TC-ROUTE-149: renders video call widget with userId and callId',
         (tester) async {
       final router =
           _createFullTestRouter('/video-call-chime?userId=1&callId=call-123');
@@ -1400,7 +1442,8 @@ void main() {
       expect(find.byType(Scaffold), findsWidgets);
     });
 
-    testWidgets('TC-ROUTE-150: renders video call widget with recipientName', (tester) async {
+    testWidgets('TC-ROUTE-150: renders video call widget with recipientName',
+        (tester) async {
       final router = _createFullTestRouter(
           '/video-call-chime?userId=1&callId=call-123&recipientName=John');
       await _pumpRouterApp(tester, router);
@@ -1409,7 +1452,8 @@ void main() {
       expect(find.byType(Scaffold), findsWidgets);
     });
 
-    testWidgets('TC-ROUTE-151: preserves care-team metadata in video call widget',
+    testWidgets(
+        'TC-ROUTE-151: preserves care-team metadata in video call widget',
         (tester) async {
       final router = _createFullTestRouter(
         '/video-call-chime?userId=1&callId=call-123'
@@ -1448,7 +1492,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-153: shows Redirecting when id is non-numeric', (tester) async {
+    testWidgets('TC-ROUTE-153: shows Redirecting when id is non-numeric',
+        (tester) async {
       final router = _createFullTestRouter('/patient/abc');
       await _pumpRouterApp(tester, router);
       await tester.pump();
@@ -1549,7 +1594,8 @@ void main() {
       expect(evvRoutes.length, greaterThanOrEqualTo(12));
     });
 
-    test('TC-ROUTE-163: invoice routes all share /invoice-assistant prefix', () {
+    test('TC-ROUTE-163: invoice routes all share /invoice-assistant prefix',
+        () {
       final invoiceRoutes =
           allPaths.where((p) => p.startsWith('/invoice-assistant')).toList();
       expect(invoiceRoutes.length, greaterThanOrEqualTo(5));
@@ -1609,7 +1655,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-168: defaults patientId to 0 and patientName to Name Not Found',
+    testWidgets(
+        'TC-ROUTE-168: defaults patientId to 0 and patientName to Name Not Found',
         (tester) async {
       final router = _createFullTestRouter('/patient-tasks');
       await _pumpRouterApp(tester, router);
@@ -1618,7 +1665,8 @@ void main() {
       expect(find.byType(Scaffold), findsWidgets);
     });
 
-    testWidgets('TC-ROUTE-169: parses patientId and patientName from query params',
+    testWidgets(
+        'TC-ROUTE-169: parses patientId and patientName from query params',
         (tester) async {
       final router =
           _createFullTestRouter('/patient-tasks?patientId=5&patientName=Alice');
@@ -1640,7 +1688,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-170: defaults patientId to 0 and patientName to Name Not Found',
+    testWidgets(
+        'TC-ROUTE-170: defaults patientId to 0 and patientName to Name Not Found',
         (tester) async {
       final router = _createFullTestRouter('/assign-task');
       await _pumpRouterApp(tester, router);
@@ -1661,7 +1710,8 @@ void main() {
       _tearDownPlatformChannels();
     });
 
-    testWidgets('TC-ROUTE-171: defaults patientId to 0 and patientName to Name Not Found',
+    testWidgets(
+        'TC-ROUTE-171: defaults patientId to 0 and patientName to Name Not Found',
         (tester) async {
       final router = _createFullTestRouter('/custom-task-scheduling');
       await _pumpRouterApp(tester, router);
@@ -1731,10 +1781,13 @@ void main() {
     );
   }
 
-  Future<BuildContext> contextWithUser(WidgetTester tester) async {
+  Future<BuildContext> contextWithUser(
+    WidgetTester tester, {
+    UserProvider? userProvider,
+  }) async {
     late BuildContext ctx;
     await tester.pumpWidget(ChangeNotifierProvider<UserProvider>.value(
-      value: UserProvider(),
+      value: userProvider ?? UserProvider(),
       child: MaterialApp(home: Builder(builder: (c) {
         ctx = c;
         return const SizedBox();
@@ -1743,225 +1796,706 @@ void main() {
     return ctx;
   }
 
+  group('share-card patient route builder', () {
+    testWidgets('builds selected caregiver tabs', (tester) async {
+      final route =
+          _findRoute(appRouter.configuration.routes, '/patients/:patientId')!;
+      final context = await contextWithUser(
+        tester,
+        userProvider: MockUserProvider(
+          mockUser: MockUser(id: 20, role: 'CAREGIVER', caregiverId: 7),
+        ),
+      );
+
+      for (final tab in ['health', 'medicare', 'other']) {
+        final page = route.builder!(
+          context,
+          routeState(
+            '/patients/42?tab=$tab',
+            params: const {'patientId': '42'},
+          ),
+        ) as PatientDetailsPage;
+        expect(page.patientId, '42');
+        expect(page.isCaregiver, isTrue);
+        expect(page.initialTab, tab == 'other' ? isNull : tab);
+      }
+    });
+
+    testWidgets('rejects an invalid patient ID', (tester) async {
+      final route =
+          _findRoute(appRouter.configuration.routes, '/patients/:patientId')!;
+      final context = await contextWithUser(tester);
+      final page = route.builder!(
+        context,
+        routeState(
+          '/patients/not-a-number?tab=health',
+          params: const {'patientId': 'not-a-number'},
+        ),
+      ) as Scaffold;
+
+      expect((page.body as Center).child, isA<Text>());
+      expect(((page.body as Center).child as Text).data, 'Invalid patient ID');
+    });
+  });
+
   group('TC-ROUTE-174: each route builds the page it names', () {
     // (route pattern, location, path parameters, extra, page type,
     //  fields the page must have been given)
-    final cases = <(String, String, Map<String, String>, Object?, String,
-        Map<String, Object?>)>[
+    final cases = <(
+      String,
+      String,
+      Map<String, String>,
+      Object?,
+      String,
+      Map<String, Object?>
+    )>[
       ('/', '/', {}, null, 'WelcomePage', {}),
       ('/health-data', '/health-data', {}, null, 'HealthDataScreen', {}),
       ('/dob-confirm', '/dob-confirm', {}, null, 'DobConfirmationScreen', {}),
-      ('/passport/:token', '/passport/abc123', {'token': 'abc123'}, null,
-          'PassportScanPage', {'token': 'abc123'}),
-      ('/passport/:token', '/passport/', {}, null, 'PassportScanPage',
-          {'token': ''}),
+      (
+        '/passport/:token',
+        '/passport/abc123',
+        {'token': 'abc123'},
+        null,
+        'PassportScanPage',
+        {'token': 'abc123'}
+      ),
+      (
+        '/passport/:token',
+        '/passport/',
+        {},
+        null,
+        'PassportScanPage',
+        {'token': ''}
+      ),
       ('/emergency-qr', '/emergency-qr', {}, null, 'EmergencyQrPage', {}),
-      ('/medical-passport', '/medical-passport', {}, null, 'MedicalPassportPage', {}),
+      (
+        '/medical-passport',
+        '/medical-passport',
+        {},
+        null,
+        'MedicalPassportPage',
+        {}
+      ),
       ('/ui-preview', '/ui-preview', {}, null, 'UiPreviewScreen', {}),
       ('/stml/brief', '/stml/brief', {}, null, 'StmlBriefPage', {}),
       ('/summaries', '/summaries', {}, null, 'SummaryConfirmationList', {}),
       ('/stml/recall', '/stml/recall', {}, null, 'StmlRecallPage', {}),
       ('/stml/search', '/stml/search', {}, null, 'StmlSearchPage', {}),
-      ('/stml/checkin', '/stml/checkin', {}, null,
-          'StmlCheckInPatientSelectionPage', {}),
-      ('/stml/checkin/:patientId', '/stml/checkin/12', {'patientId': '12'},
-          null, 'StmlCheckInPage', {'patientId': 12}),
-      ('/stml/checkin/:patientId', '/stml/checkin/x', {'patientId': 'x'}, null,
-          'Scaffold', {}),
+      (
+        '/stml/checkin',
+        '/stml/checkin',
+        {},
+        null,
+        'StmlCheckInPatientSelectionPage',
+        {}
+      ),
+      (
+        '/stml/checkin/:patientId',
+        '/stml/checkin/12',
+        {'patientId': '12'},
+        null,
+        'StmlCheckInPage',
+        {'patientId': 12}
+      ),
+      (
+        '/stml/checkin/:patientId',
+        '/stml/checkin/x',
+        {'patientId': 'x'},
+        null,
+        'Scaffold',
+        {}
+      ),
       ('/symptoms', '/symptoms', {}, null, 'SymptomsAllergiesPage', {}),
-      ('/login', '/login', {}, {'userType': 'caregiver'}, 'LoginPage',
-          {'userType': 'caregiver'}),
+      (
+        '/login',
+        '/login',
+        {},
+        {'userType': 'caregiver'},
+        'LoginPage',
+        {'userType': 'caregiver'}
+      ),
       ('/login', '/login', {}, 'not a map', 'LoginPage', {'userType': null}),
       ('/usps-test', '/usps-test', {}, null, 'UspsTestScreen', {}),
       ('/signup', '/signup', {}, null, 'RegistrationPage', {}),
       ('/dashboard', '/dashboard', {}, null, 'FutureBuilder<UserData?>', {}),
-      ('/dashboard/patient', '/dashboard/patient?userId=5', {}, null,
-          'MainScreen', {}),
-      ('/dashboard/patient', '/dashboard/patient?userId=0', {}, null,
-          'Scaffold', {}),
-      ('/dashboard/caregiver',
-          '/dashboard/caregiver?caregiverId=3&patientId=5', {}, null,
-          'MainScreen', {}),
-      ('/dashboard/caregiver', '/dashboard/caregiver?caregiverId=-1', {},
-          null, 'Scaffold', {}),
-      ('/caregiver-dashboard', '/caregiver-dashboard?caregiverId=3', {}, null,
-          'CaregiverDashboard', {}),
-      ('/caregiver-dashboard', '/caregiver-dashboard', {}, null, 'Scaffold',
-          {}),
-      ('/register/caregiver', '/register/caregiver', {}, null,
-          'RegistrationPage', {}),
-      ('/register/patient', '/register/patient', {}, null,
-          'PatientRegistrationPage', {}),
+      (
+        '/dashboard/patient',
+        '/dashboard/patient?userId=5',
+        {},
+        null,
+        'MainScreen',
+        {}
+      ),
+      (
+        '/dashboard/patient',
+        '/dashboard/patient?userId=0',
+        {},
+        null,
+        'Scaffold',
+        {}
+      ),
+      (
+        '/dashboard/caregiver',
+        '/dashboard/caregiver?caregiverId=3&patientId=5',
+        {},
+        null,
+        'MainScreen',
+        {}
+      ),
+      (
+        '/dashboard/caregiver',
+        '/dashboard/caregiver?caregiverId=-1',
+        {},
+        null,
+        'Scaffold',
+        {}
+      ),
+      (
+        '/caregiver-dashboard',
+        '/caregiver-dashboard?caregiverId=3',
+        {},
+        null,
+        'CaregiverDashboard',
+        {}
+      ),
+      (
+        '/caregiver-dashboard',
+        '/caregiver-dashboard',
+        {},
+        null,
+        'Scaffold',
+        {}
+      ),
+      (
+        '/register/caregiver',
+        '/register/caregiver',
+        {},
+        null,
+        'RegistrationPage',
+        {}
+      ),
+      (
+        '/register/patient',
+        '/register/patient',
+        {},
+        null,
+        'PatientRegistrationPage',
+        {}
+      ),
       ('/add-patient', '/add-patient', {}, null, 'AddPatientScreen', {}),
-      ('/care-circle/invite', '/care-circle/invite', {},
-          {'invitedEmail': 'pat@example.test', 'inviteReason': 'help'},
-          'InviteQrAutoloadScreen',
-          {'invitedEmail': 'pat@example.test', 'inviteReason': 'help'}),
-      ('/care-circle/:linkId/invite', '/care-circle/9/invite', {'linkId': '9'},
-          {'invitedEmail': 'pat@example.test'}, 'InviteQrScreen',
-          {'linkId': 9, 'invitedEmail': 'pat@example.test', 'inviteReason': null}),
-      ('/care-circle/:linkId/invite', '/care-circle/x/invite', {'linkId': 'x'},
-          null, 'Scaffold', {}),
-      ('/invite/:token', '/invite/t1', {'token': 't1'}, null,
-          'InviteLandingScreen', {'token': 't1'}),
-      ('/social-feed', '/social-feed?userId=4', {}, null, 'MainFeedScreen',
-          {'userId': 4}),
-      ('/social-feed', '/social-feed?userId=x', {}, null, 'MainFeedScreen',
-          {'userId': 1}),
-      ('/select-package', '/select-package?userId=4', {}, null,
-          'SelectPackagePage', {'userId': '4'}),
-      ('/select-package', '/select-package', {}, null,
-          'SubscriptionManagementPage', {}),
-      ('/reset-password', '/reset-password', {}, null, 'ResetPasswordScreen',
-          {}),
-      ('/subscription', '/subscription', {}, null,
-          'SubscriptionManagementPage', {}),
-      ('/setup-password', '/setup-password?token=abc', {}, null,
-          'PasswordResetPage', {'token': 'abc'}),
+      (
+        '/care-circle/invite',
+        '/care-circle/invite',
+        {},
+        {'invitedEmail': 'pat@example.test', 'inviteReason': 'help'},
+        'InviteQrAutoloadScreen',
+        {'invitedEmail': 'pat@example.test', 'inviteReason': 'help'}
+      ),
+      (
+        '/care-circle/:linkId/invite',
+        '/care-circle/9/invite',
+        {'linkId': '9'},
+        {'invitedEmail': 'pat@example.test'},
+        'InviteQrScreen',
+        {'linkId': 9, 'invitedEmail': 'pat@example.test', 'inviteReason': null}
+      ),
+      (
+        '/care-circle/:linkId/invite',
+        '/care-circle/x/invite',
+        {'linkId': 'x'},
+        null,
+        'Scaffold',
+        {}
+      ),
+      (
+        '/invite/:token',
+        '/invite/t1',
+        {'token': 't1'},
+        null,
+        'InviteLandingScreen',
+        {'token': 't1'}
+      ),
+      (
+        '/social-feed',
+        '/social-feed?userId=4',
+        {},
+        null,
+        'MainFeedScreen',
+        {'userId': 4}
+      ),
+      (
+        '/social-feed',
+        '/social-feed?userId=x',
+        {},
+        null,
+        'MainFeedScreen',
+        {'userId': 1}
+      ),
+      (
+        '/select-package',
+        '/select-package?userId=4',
+        {},
+        null,
+        'SelectPackagePage',
+        {'userId': '4'}
+      ),
+      (
+        '/select-package',
+        '/select-package',
+        {},
+        null,
+        'SubscriptionManagementPage',
+        {}
+      ),
+      (
+        '/reset-password',
+        '/reset-password',
+        {},
+        null,
+        'ResetPasswordScreen',
+        {}
+      ),
+      (
+        '/subscription',
+        '/subscription',
+        {},
+        null,
+        'SubscriptionManagementPage',
+        {}
+      ),
+      (
+        '/setup-password',
+        '/setup-password?token=abc',
+        {},
+        null,
+        'PasswordResetPage',
+        {'token': 'abc'}
+      ),
       ('/gamification', '/gamification', {}, null, 'GamificationScreen', {}),
-      ('/native-billing', '/native-billing', {},
-          {'tierId': 2, 'tier': 'Pro', 'userId': 4}, 'NativeBillingPage',
-          {'tierId': 2, 'tier': 'Pro', 'userId': 4}),
-      ('/native-billing', '/native-billing', {}, null, 'NativeBillingPage',
-          {'tierId': 0, 'tier': null, 'userId': null}),
-      ('/select-subscription-tier', '/select-subscription-tier', {},
-          {'email': 'pat@example.test', 'state': 'MD'},
-          'SubscriptionTierSelectionPage',
-          {'email': 'pat@example.test', 'userState': 'MD'}),
-      ('/web-pay', '/web-pay', {},
-          {'tierId': 3, 'tier': 'Plus', 'email': 'pat@example.test',
-              'userId': 4, 'state': 'MD'},
-          'WebPayPage',
-          {'tierId': 3, 'tier': 'Plus', 'email': 'pat@example.test',
-              'userId': 4, 'state': 'MD'}),
+      (
+        '/native-billing',
+        '/native-billing',
+        {},
+        {'tierId': 2, 'tier': 'Pro', 'userId': 4},
+        'NativeBillingPage',
+        {'tierId': 2, 'tier': 'Pro', 'userId': 4}
+      ),
+      (
+        '/native-billing',
+        '/native-billing',
+        {},
+        null,
+        'NativeBillingPage',
+        {'tierId': 0, 'tier': null, 'userId': null}
+      ),
+      (
+        '/select-subscription-tier',
+        '/select-subscription-tier',
+        {},
+        {'email': 'pat@example.test', 'state': 'MD'},
+        'SubscriptionTierSelectionPage',
+        {'email': 'pat@example.test', 'userState': 'MD'}
+      ),
+      (
+        '/web-pay',
+        '/web-pay',
+        {},
+        {
+          'tierId': 3,
+          'tier': 'Plus',
+          'email': 'pat@example.test',
+          'userId': 4,
+          'state': 'MD'
+        },
+        'WebPayPage',
+        {
+          'tierId': 3,
+          'tier': 'Plus',
+          'email': 'pat@example.test',
+          'userId': 4,
+          'state': 'MD'
+        }
+      ),
       ('/web-pay', '/web-pay', {}, null, 'WebPayPage', {'tierId': 0}),
-      ('/payment-success',
-          '/payment-success?session_id=s1&registration=complete&portal=update',
-          {}, null, 'PaymentSuccessPage',
-          {'sessionId': 's1', 'isRegistration': true, 'fromPortal': true}),
-      ('/payment-cancel', '/payment-cancel?registration=complete', {}, null,
-          'PaymentCancelPage', {'isRegistration': true}),
-      ('/patient/:id', '/patient/8', {'id': '8'}, null, 'PatientStatusPage',
-          {'patientId': 8}),
-      ('/analytics', '/analytics?patientId=8', {}, null, 'AnalyticsPage',
-          {'patientId': 8}),
-      ('/admin/analytics', '/admin/analytics', {}, null,
-          'AdminAnalyticsDashboardPage', {}),
+      (
+        '/payment-success',
+        '/payment-success?session_id=s1&registration=complete&portal=update',
+        {},
+        null,
+        'PaymentSuccessPage',
+        {'sessionId': 's1', 'isRegistration': true, 'fromPortal': true}
+      ),
+      (
+        '/payment-cancel',
+        '/payment-cancel?registration=complete',
+        {},
+        null,
+        'PaymentCancelPage',
+        {'isRegistration': true}
+      ),
+      (
+        '/patient/:id',
+        '/patient/8',
+        {'id': '8'},
+        null,
+        'PatientStatusPage',
+        {'patientId': 8}
+      ),
+      (
+        '/analytics',
+        '/analytics?patientId=8',
+        {},
+        null,
+        'AnalyticsPage',
+        {'patientId': 8}
+      ),
+      (
+        '/admin/analytics',
+        '/admin/analytics',
+        {},
+        null,
+        'AdminAnalyticsDashboardPage',
+        {}
+      ),
       ('/admin/users', '/admin/users', {}, null, 'AdminUsersPage', {}),
-      ('/oauth/callback', '/oauth/callback?token=t&user=u&error=e', {}, null,
-          'OAuthCallbackPage', {'token': 't', 'user': 'u', 'error': 'e'}),
-      ('/oracle-health-launch', '/oracle-health-launch', {}, null,
-          'OracleHealthLaunchPage', {}),
-      ('/oracle-health-linked', '/oracle-health-linked?status=ok', {}, null,
-          'OracleHealthLinkedReturnPage', {'status': 'ok'}),
+      (
+        '/oauth/callback',
+        '/oauth/callback?token=t&user=u&error=e',
+        {},
+        null,
+        'OAuthCallbackPage',
+        {'token': 't', 'user': 'u', 'error': 'e'}
+      ),
+      (
+        '/oracle-health-launch',
+        '/oracle-health-launch',
+        {},
+        null,
+        'OracleHealthLaunchPage',
+        {}
+      ),
+      (
+        '/oracle-health-linked',
+        '/oracle-health-linked?status=ok',
+        {},
+        null,
+        'OracleHealthLinkedReturnPage',
+        {'status': 'ok'}
+      ),
       ('/wearables', '/wearables', {}, null, 'WearablesScreen', {}),
-      ('/home-monitoring', '/home-monitoring', {}, null,
-          'HomeMonitoringScreen', {}),
+      (
+        '/home-monitoring',
+        '/home-monitoring',
+        {},
+        null,
+        'HomeMonitoringScreen',
+        {}
+      ),
       ('/smart-devices', '/smart-devices', {}, null, 'SmartDevicesPage', {}),
-      ('/medication', '/medication', {}, null, 'MedicationManagementScreen',
-          {}),
+      (
+        '/medication',
+        '/medication',
+        {},
+        null,
+        'MedicationManagementScreen',
+        {}
+      ),
       ('/evv', '/evv', {}, null, 'EvvDashboard', {}),
-      ('/evv/select-patient', '/evv/select-patient', {}, null,
-          'PatientSelectionPage', {}),
-      ('/evv/start-visit', '/evv/start-visit?patientId=3', {}, null,
-          'StartVisitPage', {'patientId': 3}),
-      ('/evv/checkin-location',
-          '/evv/checkin-location?patientId=3&serviceType=PCA', {}, null,
-          'CheckinLocationPage', {'patientId': 3, 'serviceType': 'PCA'}),
-      ('/evv/visit-progress',
-          '/evv/visit-progress?patientId=3&serviceType=PCA&locationType=HOME'
-              '&latitude=39.5&longitude=-76.5&noGpsReason=none&accuracyM=8',
-          {}, null, 'VisitInProgressPage',
-          {'patientId': 3, 'locationType': 'HOME', 'latitude': 39.5,
-              'accuracyM': 8.0}),
-      ('/evv/checkout-location',
-          '/evv/checkout-location?patientId=3&serviceType=PCA&locationType=HOME'
-              '&duration=30&notes=ok&scheduledVisitId=11',
-          {}, null, 'CheckoutLocationPage',
-          {'duration': 30, 'notes': 'ok', 'scheduledVisitId': 11}),
-      ('/evv/visit-complete',
-          '/evv/visit-complete?patientId=3&serviceType=PCA'
-              '&checkinLocationType=HOME&checkoutLocationType=HOME&duration=45',
-          {}, null, 'VisitCompletePage',
-          {'checkoutLocationType': 'HOME', 'duration': 45}),
-      ('/evv/visit-completed-success',
-          '/evv/visit-completed-success?patientId=3&serviceType=PCA'
-              '&checkinLocationType=HOME&checkoutLocationType=HOME'
-              '&checkinTime=2026-10-15T09:00:00Z&checkoutTime=bad',
-          {}, null, 'VisitCompletedSuccessPage',
-          {'checkinTime': DateTime.utc(2026, 10, 15, 9)}),
-      ('/evv/visit-completed-success',
-          '/evv/visit-completed-success?patientId=3&serviceType=PCA'
-              '&checkinLocationType=HOME&checkoutLocationType=HOME'
-              '&checkinTime=bad&checkoutTime=2026-10-15T10:00:00Z',
-          {}, null, 'VisitCompletedSuccessPage',
-          {'checkoutTime': DateTime.utc(2026, 10, 15, 10)}),
-      ('/evv/review-records', '/evv/review-records', {}, null,
-          'EvvRecordReviewPage', {}),
-      ('/evv/visit-history', '/evv/visit-history', {}, null,
-          'EvvVisitHistoryPage', {}),
-      ('/evv/corrections', '/evv/corrections', {}, null, 'EvvCorrectionsPage',
-          {}),
-      ('/evv/offline-sync', '/evv/offline-sync', {}, null,
-          'EvvOfflineSyncPage', {}),
-      ('/profile-settings', '/profile-settings', {}, null,
-          'ProfileSettingsPage', {}),
+      (
+        '/evv/select-patient',
+        '/evv/select-patient',
+        {},
+        null,
+        'PatientSelectionPage',
+        {}
+      ),
+      (
+        '/evv/start-visit',
+        '/evv/start-visit?patientId=3',
+        {},
+        null,
+        'StartVisitPage',
+        {'patientId': 3}
+      ),
+      (
+        '/evv/checkin-location',
+        '/evv/checkin-location?patientId=3&serviceType=PCA',
+        {},
+        null,
+        'CheckinLocationPage',
+        {'patientId': 3, 'serviceType': 'PCA'}
+      ),
+      (
+        '/evv/visit-progress',
+        '/evv/visit-progress?patientId=3&serviceType=PCA&locationType=HOME'
+            '&latitude=39.5&longitude=-76.5&noGpsReason=none&accuracyM=8',
+        {},
+        null,
+        'VisitInProgressPage',
+        {
+          'patientId': 3,
+          'locationType': 'HOME',
+          'latitude': 39.5,
+          'accuracyM': 8.0
+        }
+      ),
+      (
+        '/evv/checkout-location',
+        '/evv/checkout-location?patientId=3&serviceType=PCA&locationType=HOME'
+            '&duration=30&notes=ok&scheduledVisitId=11',
+        {},
+        null,
+        'CheckoutLocationPage',
+        {'duration': 30, 'notes': 'ok', 'scheduledVisitId': 11}
+      ),
+      (
+        '/evv/visit-complete',
+        '/evv/visit-complete?patientId=3&serviceType=PCA'
+            '&checkinLocationType=HOME&checkoutLocationType=HOME&duration=45',
+        {},
+        null,
+        'VisitCompletePage',
+        {'checkoutLocationType': 'HOME', 'duration': 45}
+      ),
+      (
+        '/evv/visit-completed-success',
+        '/evv/visit-completed-success?patientId=3&serviceType=PCA'
+            '&checkinLocationType=HOME&checkoutLocationType=HOME'
+            '&checkinTime=2026-10-15T09:00:00Z&checkoutTime=bad',
+        {},
+        null,
+        'VisitCompletedSuccessPage',
+        {'checkinTime': DateTime.utc(2026, 10, 15, 9)}
+      ),
+      (
+        '/evv/visit-completed-success',
+        '/evv/visit-completed-success?patientId=3&serviceType=PCA'
+            '&checkinLocationType=HOME&checkoutLocationType=HOME'
+            '&checkinTime=bad&checkoutTime=2026-10-15T10:00:00Z',
+        {},
+        null,
+        'VisitCompletedSuccessPage',
+        {'checkoutTime': DateTime.utc(2026, 10, 15, 10)}
+      ),
+      (
+        '/evv/review-records',
+        '/evv/review-records',
+        {},
+        null,
+        'EvvRecordReviewPage',
+        {}
+      ),
+      (
+        '/evv/visit-history',
+        '/evv/visit-history',
+        {},
+        null,
+        'EvvVisitHistoryPage',
+        {}
+      ),
+      (
+        '/evv/corrections',
+        '/evv/corrections',
+        {},
+        null,
+        'EvvCorrectionsPage',
+        {}
+      ),
+      (
+        '/evv/offline-sync',
+        '/evv/offline-sync',
+        {},
+        null,
+        'EvvOfflineSyncPage',
+        {}
+      ),
+      (
+        '/profile-settings',
+        '/profile-settings',
+        {},
+        null,
+        'ProfileSettingsPage',
+        {}
+      ),
       ('/profile', '/profile', {}, null, 'ProfilePage', {}),
       ('/settings', '/settings', {}, null, 'SettingsPage', {}),
-      ('/file-management', '/file-management?fileId=f1', {}, null,
-          'FileManagementPage', {'highlightFileId': 'f1'}),
-      ('/calls/:callId/summary', '/calls/c1/summary', {'callId': 'c1'}, null,
-          'PostCallTelemetrySummaryScreen', {'callId': 'c1'}),
-      ('/calls/:callId/summary', '/calls//summary', {'callId': ''}, null,
-          'Scaffold', {}),
-      ('/ai-configuration', '/ai-configuration', {}, null,
-          'AIConfigurationPage', {}),
-      ('/notetaker-configuration', '/notetaker-configuration', {}, null,
-          'NotetakerConfigurationPage', {}),
-      ('/notetaker-search', '/notetaker-search', {}, null,
-          'NotetakerSearchPage', {}),
-      ('/notetaker/detail/:noteId', '/notetaker/detail/n1', {'noteId': 'n1'},
-          null, 'NotetakerDetailView', {}),
-      ('/video-call-chime',
-          '/video-call-chime?userId=2&callId=c9&video=false&audio=FALSE'
-              '&initiator=true&contextPatientUserIds=1,x,-2,3,3'
-              '&forcePatientDetailsOnExit=true&returnAsCaregiver=TRUE',
-          {}, null, 'HybridVideoCallWidget',
-          {'userId': '2', 'callId': 'c9', 'isVideoEnabled': false,
-              'isAudioEnabled': false, 'isInitiator': true,
-              'contextPatientUserIds': [1, 3],
-              'forcePatientDetailsOnExit': true, 'returnAsCaregiver': true}),
+      (
+        '/file-management',
+        '/file-management?fileId=f1',
+        {},
+        null,
+        'FileManagementPage',
+        {'highlightFileId': 'f1'}
+      ),
+      (
+        '/calls/:callId/summary',
+        '/calls/c1/summary',
+        {'callId': 'c1'},
+        null,
+        'PostCallTelemetrySummaryScreen',
+        {'callId': 'c1'}
+      ),
+      (
+        '/calls/:callId/summary',
+        '/calls//summary',
+        {'callId': ''},
+        null,
+        'Scaffold',
+        {}
+      ),
+      (
+        '/ai-configuration',
+        '/ai-configuration',
+        {},
+        null,
+        'AIConfigurationPage',
+        {}
+      ),
+      (
+        '/notetaker-configuration',
+        '/notetaker-configuration',
+        {},
+        null,
+        'NotetakerConfigurationPage',
+        {}
+      ),
+      (
+        '/notetaker-search',
+        '/notetaker-search',
+        {},
+        null,
+        'NotetakerSearchPage',
+        {}
+      ),
+      (
+        '/notetaker/detail/:noteId',
+        '/notetaker/detail/n1',
+        {'noteId': 'n1'},
+        null,
+        'NotetakerDetailView',
+        {}
+      ),
+      (
+        '/video-call-chime',
+        '/video-call-chime?userId=2&callId=c9&video=false&audio=FALSE'
+            '&initiator=true&contextPatientUserIds=1,x,-2,3,3'
+            '&forcePatientDetailsOnExit=true&returnAsCaregiver=TRUE',
+        {},
+        null,
+        'HybridVideoCallWidget',
+        {
+          'userId': '2',
+          'callId': 'c9',
+          'isVideoEnabled': false,
+          'isAudioEnabled': false,
+          'isInitiator': true,
+          'contextPatientUserIds': [1, 3],
+          'forcePatientDetailsOnExit': true,
+          'returnAsCaregiver': true
+        }
+      ),
       ('/calendar', '/calendar', {}, null, 'CalendarAssistantScreen', {}),
-      ('/virtual-checkin', '/virtual-checkin', {}, null,
-          'PatientVirtualCheckIn', {}),
+      (
+        '/virtual-checkin',
+        '/virtual-checkin',
+        {},
+        null,
+        'PatientVirtualCheckIn',
+        {}
+      ),
       ('/alexaLogin', '/alexaLogin', {}, null, 'AlexaLoginPage', {}),
-      ('/alexaLogin/:redirectUri/:state', '/alexaLogin/r/s',
-          {'redirectUri': 'r', 'state': 's'}, null, 'AlexaLoginPage', {}),
-      ('/informed-delivery', '/informed-delivery', {}, null,
-          'InformedDeliveryScreen', {}),
+      (
+        '/alexaLogin/:redirectUri/:state',
+        '/alexaLogin/r/s',
+        {'redirectUri': 'r', 'state': 's'},
+        null,
+        'AlexaLoginPage',
+        {}
+      ),
+      (
+        '/informed-delivery',
+        '/informed-delivery',
+        {},
+        null,
+        'InformedDeliveryScreen',
+        {}
+      ),
       ('/tasks', '/tasks', {}, null, 'CaregiverPatientList', {}),
-      ('/patient-tasks', '/patient-tasks?patientId=3&patientName=Pat', {},
-          null, 'TasksScreen', {'patientId': 3, 'patientName': 'Pat'}),
-      ('/assign-task', '/assign-task?patientId=3&patientName=Pat', {}, null,
-          'AssignTaskScreen', {'patientId': 3, 'patientName': 'Pat'}),
-      ('/custom-task-scheduling', '/custom-task-scheduling?patientId=3', {},
-          null, 'CustomTaskScreen',
-          {'patientId': 3, 'patientName': 'Name Not Found'}),
-      ('/pre-defined-task', '/pre-defined-task?patientId=3&templateId=4', {},
-          null, 'PreDefinedTaskScreen', {'patientId': 3, 'templateId': 4}),
-      ('/invoice-assistant/dashboard', '/invoice-assistant/dashboard', {},
-          null, 'InvoiceTabbedPage', {'initialTabIndex': 0}),
-      ('/invoice-assistant/upload', '/invoice-assistant/upload', {}, null,
-          'InvoiceTabbedPage', {'initialTabIndex': 1}),
-      ('/invoice-assistant/list', '/invoice-assistant/list', {}, null,
-          'InvoiceTabbedPage', {'initialTabIndex': 2}),
-      ('/invoice-assistant/list/:filter', '/invoice-assistant/list/overdue',
-          {'filter': 'overdue'}, null, 'InvoiceTabbedPage',
-          {'initialTabIndex': 2, 'quickFilter': 'overdue'}),
+      (
+        '/patient-tasks',
+        '/patient-tasks?patientId=3&patientName=Pat',
+        {},
+        null,
+        'TasksScreen',
+        {'patientId': 3, 'patientName': 'Pat'}
+      ),
+      (
+        '/assign-task',
+        '/assign-task?patientId=3&patientName=Pat',
+        {},
+        null,
+        'AssignTaskScreen',
+        {'patientId': 3, 'patientName': 'Pat'}
+      ),
+      (
+        '/custom-task-scheduling',
+        '/custom-task-scheduling?patientId=3',
+        {},
+        null,
+        'CustomTaskScreen',
+        {'patientId': 3, 'patientName': 'Name Not Found'}
+      ),
+      (
+        '/pre-defined-task',
+        '/pre-defined-task?patientId=3&templateId=4',
+        {},
+        null,
+        'PreDefinedTaskScreen',
+        {'patientId': 3, 'templateId': 4}
+      ),
+      (
+        '/invoice-assistant/dashboard',
+        '/invoice-assistant/dashboard',
+        {},
+        null,
+        'InvoiceTabbedPage',
+        {'initialTabIndex': 0}
+      ),
+      (
+        '/invoice-assistant/upload',
+        '/invoice-assistant/upload',
+        {},
+        null,
+        'InvoiceTabbedPage',
+        {'initialTabIndex': 1}
+      ),
+      (
+        '/invoice-assistant/list',
+        '/invoice-assistant/list',
+        {},
+        null,
+        'InvoiceTabbedPage',
+        {'initialTabIndex': 2}
+      ),
+      (
+        '/invoice-assistant/list/:filter',
+        '/invoice-assistant/list/overdue',
+        {'filter': 'overdue'},
+        null,
+        'InvoiceTabbedPage',
+        {'initialTabIndex': 2, 'quickFilter': 'overdue'}
+      ),
       ('menu', '/menu', {}, null, 'MenuPage', {}),
       ('/alertpage', '/alertpage', {}, null, 'MockAlertLabPage', {}),
-      ('/alertpage-patient', '/alertpage-patient', {}, null,
-          'PatientFallPromptPage', {}),
+      (
+        '/alertpage-patient',
+        '/alertpage-patient',
+        {},
+        null,
+        'PatientFallPromptPage',
+        {}
+      ),
       ('/search', '/search', {}, null, 'RouteSearchPage', {}),
     ];
 
@@ -2031,12 +2565,24 @@ void main() {
       'missing', (tester) async {
     final ctx = await contextWithUser(tester);
     for (final (pattern, location, params, text) in [
-      ('/visits/:visitId/summary', '/visits/v7/summary', {'visitId': 'v7'},
-          'Visit v7 summary is available in EVV visit history.'),
-      ('/visits/:visitId/summary', '/visits//summary', <String, String>{},
-          'Missing visit id'),
-      ('/mail/:mailId', '/mail/m3', {'mailId': 'm3'},
-          'Open Informed Delivery for mail piece m3.'),
+      (
+        '/visits/:visitId/summary',
+        '/visits/v7/summary',
+        {'visitId': 'v7'},
+        'Visit v7 summary is available in EVV visit history.'
+      ),
+      (
+        '/visits/:visitId/summary',
+        '/visits//summary',
+        <String, String>{},
+        'Missing visit id'
+      ),
+      (
+        '/mail/:mailId',
+        '/mail/m3',
+        {'mailId': 'm3'},
+        'Open Informed Delivery for mail piece m3.'
+      ),
       ('/mail/:mailId', '/mail/', <String, String>{}, 'Missing mail id'),
     ]) {
       final route = _findRoute(appRouter.configuration.routes, pattern)!;
@@ -2046,8 +2592,7 @@ void main() {
     }
   });
 
-  group('TC-ROUTE-176: each redirect route sends the user where it should',
-      () {
+  group('TC-ROUTE-176: each redirect route sends the user where it should', () {
     // (route pattern, location, signed-in role or null, expected redirect)
     final cases = <(String, String, String?, String?)>[
       ('/home', '/home', null, '/'),
@@ -2068,7 +2613,12 @@ void main() {
       ('/admin/users', '/admin/users', 'CAREGIVER', '/dashboard'),
       ('/admin/users', '/admin/users', 'ADMIN', null),
       ('/taskscheduling', '/taskscheduling', null, '/login'),
-      ('/taskscheduling', '/taskscheduling', 'CAREGIVER', '/dashboard?tab=tasks'),
+      (
+        '/taskscheduling',
+        '/taskscheduling',
+        'CAREGIVER',
+        '/dashboard?tab=tasks'
+      ),
       ('/taskscheduling', '/taskscheduling', 'PATIENT', '/dashboard?tab=home'),
       ('/chatandcalls', '/chatandcalls', null, '/login'),
       ('/chatandcalls', '/chatandcalls', 'PATIENT', '/dashboard?tab=messages'),
@@ -2077,8 +2627,12 @@ void main() {
       ('/fitbit', '/fitbit', null, '/wearables'),
       ('/sos', '/sos', null, '/login'),
       ('/sos', '/sos', 'PATIENT', '/dashboard?tab=home'),
-      ('/invoice-assistant', '/invoice-assistant', null,
-          '/invoice-assistant/upload'),
+      (
+        '/invoice-assistant',
+        '/invoice-assistant',
+        null,
+        '/invoice-assistant/upload'
+      ),
       ('/invoice-assistant', '/invoice-assistant/list', null, null),
     ];
 
@@ -2132,8 +2686,8 @@ void main() {
         WidgetTester tester, String initial,
         {bool provideRouter = true}) async {
       GoRouter? ref;
-      final observer =
-          TelemetryGoRouterObserver(routerProvider: () => provideRouter ? ref : null);
+      final observer = TelemetryGoRouterObserver(
+          routerProvider: () => provideRouter ? ref : null);
       Page<void> page(GoRouterState s) =>
           NoTransitionPage<void>(key: s.pageKey, child: Text(s.uri.path));
       final router = ref = GoRouter(
@@ -2245,7 +2799,8 @@ void main() {
   // screen, WBS 6.2.59.
   testWidgets('TC-ROUTE-181: /medicare-sharing builds MedicareSharingPage',
       (tester) async {
-    final route = _findRoute(appRouter.configuration.routes, '/medicare-sharing');
+    final route =
+        _findRoute(appRouter.configuration.routes, '/medicare-sharing');
     expect(route?.builder, isNotNull);
     final ctx = await contextWithUser(tester);
     final page = route!.builder!(ctx, routeState('/medicare-sharing'));
@@ -2258,17 +2813,17 @@ void main() {
     _setupPlatformChannels();
     addTearDown(_tearDownPlatformChannels);
     addTearDown(UserRoleStorageService.instance.clearUserData);
-    final route = _findRoute(appRouter.configuration.routes, '/medicare-sharing');
+    final route =
+        _findRoute(appRouter.configuration.routes, '/medicare-sharing');
     expect(route?.redirect, isNotNull);
     final ctx = await contextWithUser(tester);
 
     await UserRoleStorageService.instance.clearUserData();
-    expect(await route!.redirect!(ctx, routeState('/medicare-sharing')),
-        '/login');
+    expect(
+        await route!.redirect!(ctx, routeState('/medicare-sharing')), '/login');
 
     await UserRoleStorageService.instance
         .setUserData(role: 'PATIENT', userId: 21, patientId: 21);
-    expect(
-        await route.redirect!(ctx, routeState('/medicare-sharing')), isNull);
+    expect(await route.redirect!(ctx, routeState('/medicare-sharing')), isNull);
   });
 }
