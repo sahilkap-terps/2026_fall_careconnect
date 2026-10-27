@@ -41,12 +41,16 @@ void main() {
             .parent
             .parent
             .uri;
+    // Roboto ships with the tests (test/fixtures/fonts, Apache 2.0) because
+    // CI's Flutter cache doesn't include it; the SDK copy is the fallback.
     final loader = FontLoader('Roboto');
     for (final font in ['regular', 'medium', 'bold']) {
-      final uri =
-          sdk.resolve('bin/cache/artifacts/material_fonts/roboto-$font.ttf');
-      loader
-          .addFont(File.fromUri(uri).readAsBytes().then(ByteData.sublistView));
+      final bundled = File('test/fixtures/fonts/roboto-$font.ttf');
+      final file = bundled.existsSync()
+          ? bundled
+          : File.fromUri(sdk
+              .resolve('bin/cache/artifacts/material_fonts/roboto-$font.ttf'));
+      loader.addFont(file.readAsBytes().then(ByteData.sublistView));
     }
     await loader.load();
   });

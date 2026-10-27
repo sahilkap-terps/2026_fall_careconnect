@@ -571,8 +571,9 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Semantics(headingLevel: 1, child: Text(t.settings)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        // BackButton, not a bare IconButton: it carries the "Back" tooltip
+        // that screen readers announce (#259, TC-HELP-058/059).
+        leading: BackButton(
           // Router-safe back: Settings can be reached via context.go(...) (a
           // replace, e.g. from the Epic return page, or Help's Back to
           // Settings), leaving nothing to pop. Navigator.pop() then asserts
